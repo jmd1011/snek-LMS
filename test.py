@@ -98,15 +98,16 @@ class RepStringD(object):
   def __call__(self):
     return staged_read_str(2)
 
+# Resource - http://scottlobdell.me/2015/04/decorators-arguments-python/
 class RepAny(object):
   def __init__(self, *args, **kwargs):
     # just implementing for this example
-    # print "-------RepAny-------"
+    print "-------RepAny-------"
     for arg in args:
       self.arg = arg
-      # print arg
+      print arg
       # print type(arg)
-    # print "-------xxxxxx-------" 
+    print "-------xxxxxx-------" 
     return
 
   def __call__(self, fn):
