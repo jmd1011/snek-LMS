@@ -112,7 +112,7 @@ class RepAny(object):
   def __call__(self, fn):
     def n_func():
       # This is just an if statement in a better way. I hate python if statements
-      new_fn = (staged_read(2), staged_read_str(2))[type(self.arg).__name__ == 'int'] 
+      new_fn = (staged_read_str(2), staged_read(2))[type(self.arg).__name__ == 'int'] 
       return new_fn
     return n_func
 
