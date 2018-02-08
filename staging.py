@@ -145,8 +145,8 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
         if node.id in self.reps:
             return ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id].__name__, ctx=ast.Load()),
-                                            args=[ast.Str(s=node.id)],
-                                            keywords=[]),
+                                              args=[ast.Str(s=node.id)],
+                                              keywords=[]),
                                     node)
         return node
 
