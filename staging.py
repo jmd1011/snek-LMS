@@ -56,9 +56,9 @@ class PyGenIRIntAdd:
         return "{0} + {1}".format(lhscode, rhscode)
 
 class PyGenIRIntMul:
-    def gen(self, iradd):
-        lhscode = PyCodeGen(iradd.lhs).gen()
-        rhscode = PyCodeGen(iradd.rhs).gen()
+    def gen(self, irmul):
+        lhscode = PyCodeGen(irmul.lhs).gen()
+        rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
 
 class CodeGen: pass
