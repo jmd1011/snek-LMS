@@ -15,7 +15,7 @@ def parametrized(dec):
 
 ################################################
 
-class IR: pass
+class IR(object): pass
 
 class IRConst(IR):
     def __init__(self, v):
@@ -35,33 +35,33 @@ class IRIntMul(IR):
         self.lhs = lhs
         self.rhs = rhs
 
-class IRIf:
+class IRIf(IR):
     def __init__(self, cnd, thn, els): NotImplemented
 
-class IRRet:
+class IRRet(IR):
     def __init__(self, val): NotImplemented
 
 ################################################
 
-class PyGenIRConst:
+class PyGenIRConst(object):
     def gen(self, irconst): return str(irconst.v)
 
-class PyGenIRInt:
+class PyGenIRInt(object):
     def gen(self, irint): return str(irint.n)
 
-class PyGenIRIntAdd:
+class PyGenIRIntAdd(object):
     def gen(self, iradd):
         lhscode = PyCodeGen(iradd.lhs).gen()
         rhscode = PyCodeGen(iradd.rhs).gen()
         return "{0} + {1}".format(lhscode, rhscode)
 
-class PyGenIRIntMul:
+class PyGenIRIntMul(object):
     def gen(self, irmul):
         lhscode = PyCodeGen(irmul.lhs).gen()
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
 
-class CodeGen: pass
+class CodeGen(object): pass
 
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
@@ -72,12 +72,11 @@ class PyCodeGen(CodeGen):
         Cls = getattr(modl, clsName)
         return Cls().gen(self.ir)
 
-class CCodeGen(CodeGen):
-    raise NotImplementedError()
+class CCodeGen(CodeGen): pass
 
 ################################################
 
-class RepTyp: pass
+class RepTyp(object): pass
 
 class RepInt(RepTyp):
     def __init__(self, n):
@@ -116,14 +115,20 @@ def Rep(obj, *args, **kwargs):
         return RepFunc(obj, *args, **kwargs)
     else: return NotImplemented
 
-@parametrized
-def Specalize(ast, Codegen, *args, **kwargs):
+#@parametrized
+def Specalize(f, Codegen, *args, **kwargs):
     """
     Specalize transforms the annotated IR to target language.
+    Note: f must be a named function
     """
-    codegen = Codegen()
-    def f(b): return eval(codegen.gen(ast))
-    return f
+    fun_name = f.__name__
+    fun_args = inspect.getargspec(f).args
+    rep_args = [kwargs[fa](fa) for fa in fun_args]
+    irbody = f(*rep_args)
+    codegen = Codegen(irbody)
+    codestr = "def {0}({1}): return {2}".format(fun_name, ','.join(fun_args), codegen.gen())
+    exec(codestr, globals())
+    return eval(fun_name)
 
 ################################################
 
@@ -152,13 +157,15 @@ def stagedPower(b, x):
 """
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
-"""
 @Specalize(PyCodeGen, b = RepInt)
 def snippet(b):
     return power(b, 3)
+"""
 
-def specializedSnippet(b):
-    return b * b * b * 1
+# Decorating `snippet` with Specalize is equivalent to:
+def snippet2(b): return stagedPower(b, 3)
+power3 = Specalize(snippet2, PyCodeGen, b = RepInt)
+assert(power3(3) == 27)
 
 ir = stagedPower(0, 3) # 0 is just a dummy value
-print(PyCodeGen(ir).gen())
+#print(PyCodeGen(ir).gen())
