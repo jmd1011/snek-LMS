@@ -38,7 +38,7 @@ class IRIntMul(IR):
 class IRIf:
     def __init__(self, cnd, thn, els): NotImplemented
 
-class IRRet
+class IRRet:
     def __init__(self, val): NotImplemented
 
 ################################################
