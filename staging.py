@@ -122,8 +122,7 @@ def Specalize(ast, Codegen, *args, **kwargs):
     Specalize transforms the annotated IR to target language.
     """
     codegen = Codegen()
-    def f(b):
-        eval(codegen.gen(ast))
+    def f(b): return eval(codegen.gen(ast))
     return f
 
 ################################################
