@@ -35,6 +35,12 @@ class IRIntMul(IR):
         self.lhs = lhs
         self.rhs = rhs
 
+class IRIf:
+    def __init__(self, cnd, thn, els): NotImplemented
+
+class IRRet
+    def __init__(self, val): NotImplemented
+
 ################################################
 
 class PyGenIRConst:
@@ -85,12 +91,6 @@ class RepInt(RepTyp):
     def __mul__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntMul(self.__IR__(), m)
-
-class RepIf(RepTyp):
-    def __init__(self, cndVal, thn, els): NotImplemented
-
-class RepRet(RepTyp):
-    def __init__(self, val): NotImplemented
 
 ################################################
 
