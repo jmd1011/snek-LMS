@@ -129,7 +129,7 @@ def startSnippet():
   print "#include<string>"
   print ""
   print "int main() {"
-  print "  fstream fin;"
+  print "  std::fstream fin;"
   print "  fin.open(\"data.csv\");"
   return
 def endSnippet():
