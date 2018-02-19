@@ -29,6 +29,9 @@ class RepInt(object):
     print "{}{} = {} + {};".format(buildspaces(tab), res.val, self.val, y.val)
     return res
 
+def plus(x, y):
+  x + y
+
   def read(self, tab=0):
     # res = RepInt()
     print "{}fin >> {};".format(buildspaces(tab), self.val)
