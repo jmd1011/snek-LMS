@@ -7,6 +7,8 @@ import parser
 import inspect
 import builtins
 
+import virtualized
+
 def parametrized(dec):
     def layer(*args, **kwargs):
         def repl(f):
@@ -117,6 +119,17 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
+        # print(ast.dump(node))
+
+        # if node is of the form (test, body, orelse)
+
+        # iter_fields lets me iterate through the contents of the if node
+        # gives the child as a tuple of the form (child-type, object)
+        for x in ast.iter_fields(node) :
+            # check if it is the condition
+            if(x[0] == 'test'):
+                print(ast.dump(x[1]))
+
         self.generic_visit(node)
         return node
 
