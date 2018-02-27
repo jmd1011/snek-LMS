@@ -24,4 +24,11 @@ def compile_c_file(file_name, options, output_file):
         ])
     exec_command_line(string_command)
 
+def run_output_file(output_file):
+    command = "./" + output_file
+    exec_command_line(command)
+
+
+# EXAMPLE: 
 compile_c_file("./test.c", [], "output")
+run_output_file("output")
