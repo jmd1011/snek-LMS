@@ -6,7 +6,6 @@ import types
 import parser
 import inspect
 import builtins
-
 import virtualized
 
 def parametrized(dec):
@@ -125,10 +124,10 @@ class StagingRewriter(ast.NodeTransformer):
 
         # iter_fields lets me iterate through the contents of the if node
         # gives the child as a tuple of the form (child-type, object)
-        for x in ast.iter_fields(node) :
-            # check if it is the condition
-            if(x[0] == 'test'):
-                print(ast.dump(x[1]))
+        # print(ast.dump(node))
+        print(ast.dump(node.test))
+        cond_node = node.test;
+        # check for BoolOp and then Compare
 
         self.generic_visit(node)
         return node
@@ -202,13 +201,14 @@ def Specalize(f, Codegen, *args, **kwargs):
     return eval(fun_name)
 
 ################################################
-
+def giveBack(x):
+    return x
 """
 TODO: Does user need to provide Rep annotation on returned value?
 """
 @Rep(b = RepInt)
 def power(b, x):
-    if (x == 0): return 1
+    if ( 0 <= x < 1 < 2): return 1
     else: return b * power(b, x-1)
 
 """
