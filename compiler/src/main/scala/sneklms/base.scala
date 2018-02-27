@@ -45,7 +45,7 @@ object Base {
   case class Cst(n:Int) extends Val
   case class Str(s:String) extends Val
   case class Clo(env:Env,e:Exp) extends Val //{ override def toString="CLO"}
-  case class Tup(v1:Val,v2:Val) extends Val
+  case class Tup(v1:Val*) extends Val
   class Cell(var v: Val) extends Val
 
   case class Code(e:Exp) extends Val
