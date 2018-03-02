@@ -9,17 +9,17 @@ object Lisp {
   object parser extends JavaTokenParsers with PackratParsers {
     override val whiteSpace = """(\s|(;[^\n]*))+""".r
 
-    def S(x:String) = Str(x)
+    def S(x:String) = x
     def Str2(x:String) = ???
-    def P(x:Val*): Val = x match {
-      case Seq(h, Tup(t @ _*)) => P((h +: t) : _*)
-      case _ => Tup(x : _*)
+    def P(x:Any*): Any = x match {
+      case Seq(h, t: List[Any]) => h::t
+      case _ => x.toList
     }
     def B(x:Boolean) = ???
-    def I(x:Int) = Cst(x)
-    val N = Str(".")
+    def I(x:Int) = x
+    val N = Nil
 
-    lazy val exp: Parser[Val] =
+    lazy val exp: Parser[Any] =
         "#f" ^^ { case _ => B(false) } |
         "#t" ^^ { case _ => B(true) } |
         wholeNumber ^^ { case s => I(s.toInt) } |
@@ -29,7 +29,7 @@ object Lisp {
         "()" ^^ { case _ => N } |
         "(" ~> exps <~ ")" ^^ { case vs => vs }
 
-    lazy val exps: Parser[Val] =
+    lazy val exps: Parser[Any] =
         exp ~ opt(exps) ^^ { case v~Some(vs) => P(v, vs) case v~None => P(v,N) }
   }
 

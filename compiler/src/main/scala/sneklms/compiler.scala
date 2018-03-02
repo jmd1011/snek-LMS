@@ -9,14 +9,54 @@ import scala.reflect.SourceContext
 
 trait Compiler extends Dsl {
 
-  type Env = Map[String,Rep[Any]]
 
-  def compile(exp: Val)(implicit env: Env = Map.empty): Rep[Any] = exp match {
-    case Cst(x) => unit(x)
-    case Str(x) => env(x)
-    case Tup(x, Str(".")) => compile(x)
-    case Tup(Str("let"),Str(x),a, b @ _*) =>
-      compile(Tup(b : _*))(env + (x -> compile(a)))
+  abstract class Value {
+    def get = this
+  }
+  case class Literal[T](v: Rep[T]) extends Value
+  case class Wrap(var v: Value) extends Value {
+    override def get = v.get
+  }
+  case object VError extends Value
+
+  type Env = Map[String,Value]
+
+  def compile[T](n: Any, m: Any)(op: (Rep[T], Rep[T]) => Rep[T])(implicit env: Env): Value = (compile(n), compile(m)) match {
+    case (Literal(n: Rep[T]), Literal(m: Rep[T])) => Literal(op(n, m))
+  }
+
+  implicit def repToValue[T](x: Rep[T]) = Literal(x)
+
+  def compile(exp: Any)(implicit env: Env = Map.empty): Value = exp match {
+    case x: Int => unit(x)
+    case x: String => env(x)
+    case x::Nil => compile(x)
+    case "*"::n::m =>
+      compile[Int](n, m)(_ * _)
+    case "+"::n::m =>
+      compile[Int](n, m)(_ + _)
+    case "-"::n::m =>
+      compile[Int](n, m)(_ - _)
+    case "if"::c::t::e =>
+      val Literal(rc: Rep[Int]) = compile(c)
+      compile[Int](t, e) { (t: Rep[Int], e: Rep[Int]) =>
+        if (rc != 0) t else e
+      }
+    case "let"::(x: String)::a::b =>
+      compile(b)(env + (x -> compile(a)))
+    case "lambda"::(f: String)::(x: String)::e =>
+      val fix = Wrap(VError)
+      fix.v = Literal[Int => Int](fun { (xv: Rep[Int]) =>
+        compile(e)(env + (x -> Literal(xv)) + (f -> fix)) match {
+          case Literal(n: Rep[Int]) => n
+        }
+      })
+
+      fix.v
+    case f::x =>
+      (compile(f).get, compile(x)) match {
+        case (Literal(f: Rep[Int => Int]), Literal(x: Rep[Int])) => f(x)
+      }
   }
 
 }
@@ -214,12 +254,26 @@ abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with Ds
   val codegen = new DslGenC {
     val IR: q.type = q
   }
+
+  def indent(str: String) = {
+    val strLines = str.split("\n")
+    val res = new StringBuilder
+    var level: Int = 0
+    for (line <- strLines) {
+      if(line.contains("}")) level -= 1
+      res ++= (("  " * level) + line + "\n")
+      if(line.contains("{")) level += 1
+    }
+    res.toString
+  }
+
   lazy val code: String = {
     implicit val mA = manifestTyp[A]
     implicit val mB = manifestTyp[B]
     val source = new java.io.StringWriter()
     codegen.emitSource(snippet, "Snippet", new java.io.PrintWriter(source))
-    source.toString
+
+    indent(source.toString)
   }
   def eval(a:A): Unit = { // TBD: should read result of type B?
     val out = new java.io.PrintWriter("/tmp/snippet.c")
