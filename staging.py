@@ -8,7 +8,7 @@ import inspect
 import builtins
 import virtualized
 
-def parametrized(dec):
+def parameterized(dec):
     def layer(*args, **kwargs):
         def repl(f):
             return dec(f, *args, **kwargs)
@@ -124,24 +124,29 @@ class StagingRewriter(ast.NodeTransformer):
 
         # iter_fields lets me iterate through the contents of the if node
         # gives the child as a tuple of the form (child-type, object)
-        # print(ast.dump(node))
-        # print(ast.dump(node.test))
-        # print("iffff")
-        cond_node = node.test;
+        # cond_node = node.test;
         # check for BoolOp and then Compare
 
-        x = ast.Call(func=ast.Name('__if', ast.Load()), args=[node.test, node.body, node.orelse], keywords=[])
-        # print("defined x")
-        # print(ast.dump(x))
-
         self.generic_visit(node)
-        return node
+        return node # COMMENT WHEN __if IS DONE
+
+        # UNCOMMENT WHEN __if IS DONE
+        # return ast.copy_location(ast.Call(func=ast.Name('__if', ast.Load()),
+        #                                 args=[node.test, node.body, node.orelse],
+        #                                 keywords=[]),
+        #                         node)
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
-        # print("while")
+
         self.generic_visit(node)
-        return node
+        return node # COMMENT WHEN __while IS DONE
+
+        # UNCOMMENT WHEN __while IS DONE
+        # return ast.copy_location(ast.Call(func=ast.Name('__while', ast.Load()),
+        #                                 args=[node.test, node.body],
+        #                                 keywords=[]),
+        #                         node)
 
     def visit_FunctionDef(self, node):
         # Drop the decorator
@@ -159,7 +164,13 @@ class StagingRewriter(ast.NodeTransformer):
                                      node)
 
             return ret
-        return node
+        return node # COMMENT WHEN __return IS DONE
+
+        # UNCOMMENT WHEN __return IS DONE
+        # return ast.copy_location(ast.Call(func=ast.Name('__return', ast.Load()),
+        #                                 args=[node.value],
+        #                                 keywords=[]),
+        #                         node)
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -170,7 +181,7 @@ class StagingRewriter(ast.NodeTransformer):
                                     node)
         return node
 
-@parametrized
+@parameterized
 def lms(obj, *args, **kwargs):
     """
     Rep transforms the AST to annotated AST with Rep(s).
@@ -183,18 +194,22 @@ def lms(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         func_ast = ast.parse(inspect.getsource(func))
-        for n in ast.walk(func_ast):
-            # if isinstance(n, ast.If):
-            print(ast.dump(n))
+
+        print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(func_ast)))
+        print("========================================================")
+
         new_func_ast = StagingRewriter(kwargs).visit(func_ast)
         ast.fix_missing_locations(new_func_ast)
+
+        print("after fixing, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_func_ast)))
+
         exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
         return eval(func.__name__)
     elif isinstance(obj, types.MethodType):
         return NotImplemented
     else: return NotImplemented
 
-@parametrized
+@parameterized
 def Specalize(f, Codegen, *args, **kwargs):
     """
     Specalize transforms the annotated IR to target language.
@@ -219,6 +234,9 @@ TODO: Does user need to provide Rep annotation on returned value?
 """
 @lms(b = RepInt)
 def power(b, x):
+    y = x
+    while (y > 0):
+        y = y - 1
     if (x == 0): return 1
     else: return b * power(b, x-1)
 

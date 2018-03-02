@@ -7,9 +7,14 @@ import parser
 import inspect
 import builtins
 import virtualized
+import os
 
 class AstVisitor(ast.NodeVisitor):
+    def _print(self, s):
+        self.f.write(s)
+
     def __init__(self):
+        self.f = open("test.out", "w")
         super()
 
     def visit_If(self, node):
@@ -19,11 +24,11 @@ class AstVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        print("(def {0}")
+        self._print("(def {0}".format(node.name))
 
         #visit all child nodes using self.generic_visit(child nodes...)
 
-        print(")")
+        self._print(")")
 
         # Drop the decorator
         self.generic_visit(node)
