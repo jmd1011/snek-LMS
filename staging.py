@@ -124,15 +124,15 @@ class StagingRewriter(ast.NodeTransformer):
 
         # iter_fields lets me iterate through the contents of the if node
         # gives the child as a tuple of the form (child-type, object)
-        print(ast.dump(node))
+        # print(ast.dump(node))
         # print(ast.dump(node.test))
         # print("iffff")
         cond_node = node.test;
         # check for BoolOp and then Compare
 
         x = ast.Call(func=ast.Name('__if', ast.Load()), args=[node.test, node.body, node.orelse], keywords=[])
-        print("defined x")
-        print(ast.dump(x))
+        # print("defined x")
+        # print(ast.dump(x))
 
         self.generic_visit(node)
         return node
@@ -183,9 +183,9 @@ def lms(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         func_ast = ast.parse(inspect.getsource(func))
-        # for n in ast.walk(func_ast):
+        for n in ast.walk(func_ast):
             # if isinstance(n, ast.If):
-                # print(ast.dump(n))
+            print(ast.dump(n))
         new_func_ast = StagingRewriter(kwargs).visit(func_ast)
         ast.fix_missing_locations(new_func_ast)
         exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
@@ -219,11 +219,29 @@ TODO: Does user need to provide Rep annotation on returned value?
 """
 @lms(b = RepInt)
 def power(b, x):
-    y = x
-    while (y > 0):
-        y = y - 1
     if (x == 0): return 1
     else: return b * power(b, x-1)
+
+"""
+@lms
+def power(b : RepInt, x):
+    __if(x == 0, __return([1]), __return(b * power(b, x - 1)))
+
+def __if(cond, body, orelse):
+    #look at cond
+    if (cond is staged): #if cond has an operand with Rep[T]
+        generate if () ...
+    else:
+        if (cond):
+            ret = visit(body) #generate code for then branch (maybe)
+            if isinstance(ret, ast.Return):
+                return eval(ret)
+            else:
+                return ret
+        else:
+            visit(orelse)
+
+"""
 
 """
 Explaination: intuitively, the instrumented AST of `power` looks like `stagedPower`.
@@ -235,7 +253,7 @@ By running `stagedPower`, we obtain the IR that will be used later by code gener
 """
 def stagedPower(b, x):
     if (x == 0): return RepInt(1)
-    else: return RepInt("b") * stagedPower(RepInt("b"), x - 1)
+    else: return b * stagedPower(b, x - 1)
 
 ################################################
 
