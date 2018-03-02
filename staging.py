@@ -134,6 +134,7 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
+        print("while")
         self.generic_visit(node)
         return node
 
@@ -144,13 +145,18 @@ class StagingRewriter(ast.NodeTransformer):
         return node
 
     def visit_Return(self, node):
+        print("ret")
         self.generic_visit(node)
         # TODO: just a poor hack to make power work
         if ast.dump(node.value) == ast.dump(ast.Num(1)):
-            return ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
+            ret = ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
                                                                args=[ast.Num(1)],
                                                                keywords=[])),
                                      node)
+
+            print("returning")
+            print(ast.dump(ret))
+            return ret
         return node
 
     def visit_Name(self, node):
@@ -208,7 +214,10 @@ TODO: Does user need to provide Rep annotation on returned value?
 """
 @Rep(b = RepInt)
 def power(b, x):
-    if ( 0 <= x < 1 < 2): return 1
+    y = x
+    while (y > 0):
+        y = y - 1
+    if (x == 0): return 1
     else: return b * power(b, x-1)
 
 """
