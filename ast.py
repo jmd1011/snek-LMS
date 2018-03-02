@@ -104,15 +104,8 @@ class CompiledCode:
     def __init__(self):
         pass
 
-class StagingRewriter(ast.NodeTransformer):
-    """
-    StagingRewriter does two things:
-    1) lift next-stage variables to be Rep
-    2) virtualize primitives such as `if`, `while`, `for` and etc
-    Note: Probably we may also rewrite operators such as `+` rather than overloading them.
-    """
-    def __init__(self, reps):
-        self.reps = reps
+class AstVisitor(ast.NodeVisitor):
+    def __init__(self):
         super()
 
     def visit_If(self, node):
@@ -144,6 +137,12 @@ class StagingRewriter(ast.NodeTransformer):
         return node
 
     def visit_FunctionDef(self, node):
+        print("(def {0}")
+
+        #visit all child nodes
+
+        print(")")
+
         # Drop the decorator
         self.generic_visit(node)
         node.decorator_list = []
@@ -170,8 +169,7 @@ class StagingRewriter(ast.NodeTransformer):
                                     node)
         return node
 
-@parametrized
-def lms(obj, *args, **kwargs):
+def ast(obj):
     """
     Rep transforms the AST to annotated AST with Rep(s).
     TODO: What about Rep values defined inside of a function, rather than as an argument?
@@ -183,93 +181,35 @@ def lms(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         func_ast = ast.parse(inspect.getsource(func))
-        for n in ast.walk(func_ast):
-            # if isinstance(n, ast.If):
-            print(ast.dump(n))
-        new_func_ast = StagingRewriter(kwargs).visit(func_ast)
-        ast.fix_missing_locations(new_func_ast)
-        exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
-        return eval(func.__name__)
+        AstVisitor().visit(func_ast)
+        # for n in ast.walk(func_ast):
+        #     # if isinstance(n, ast.If):
+        #     print(ast.dump(n))
+        # new_func_ast = AstVisitor().visit(func_ast)
+        # ast.fix_missing_locations(new_func_ast)
+        # exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
+        # return eval(func.__name__)
     elif isinstance(obj, types.MethodType):
         return NotImplemented
     else: return NotImplemented
 
-@parametrized
-def Specalize(f, Codegen, *args, **kwargs):
-    """
-    Specalize transforms the annotated IR to target language.
-    Note: f must be a named function
-    TODO: f's argument names may different with variables in the inner body
-    """
-    fun_name = f.__name__
-    fun_args = inspect.getargspec(f).args
-    rep_args = [kwargs[fa](fa) for fa in fun_args]
-    irbody = f(*rep_args)
-    codegen = Codegen(irbody)
-    codestr = "def {0}({1}): return {2}".format(fun_name, ','.join(fun_args), codegen.gen())
-    exec(codestr, globals())
-    return eval(fun_name)
+######################################
 
-################################################
-
-def giveBack(x):
-    return x
-"""
-TODO: Does user need to provide Rep annotation on returned value?
-"""
-@lms(b = RepInt)
+@ast
 def power(b, x):
     if (x == 0): return 1
     else: return b * power(b, x-1)
 
 """
-@lms
-def power(b : RepInt, x):
-    __if(x == 0, __return([1]), __return(b * power(b, x - 1)))
 
-def __if(cond, body, orelse):
-    #look at cond
-    if (cond is staged): #if cond has an operand with Rep[T]
-        generate if () ...
-    else:
-        if (cond):
-            ret = visit(body) #generate code for then branch (maybe)
-            if isinstance(ret, ast.Return):
-                return eval(ret)
-            else:
-                return ret
-        else:
-            visit(orelse)
+@ast
+def power(b, x):
+    if (x == 0): return 1
+    else: return b * power(b, x - 1)
 
-"""
+==========
 
+(def power (b x) (
+    (if (== x 0) (return 1) (return (* b (call power b (- x 1))))
+))
 """
-Explaination: intuitively, the instrumented AST of `power` looks like `stagedPower`.
-`if` is a current-stage expression, so it is not virtualized, and will be executed as normal code.
-But `b` is a next-stage variable, so it became `RepInt(b)`. `1` also lifted to `RepInt(1)`
-because we (implicitly) require that the types of both branches should same.
-`*` __mul__ operator should be overloaded by RepInt.
-By running `stagedPower`, we obtain the IR that will be used later by code generator.
-"""
-def stagedPower(b, x):
-    if (x == 0): return RepInt(1)
-    else: return b * stagedPower(b, x - 1)
-
-################################################
-
-"""
-Ideally, user could specify different code generators for different targer languages.
-The code generator translates IR to string representation of target language.
-"""
-@Specalize(PyCodeGen, b = RepInt)
-def snippet(b):
-    return power(b, 3)
-
-assert(snippet(3) == 27) # Here we can just use snippet
-
-"""
-Explaination: decorating `snippet` with @Specalize is equivalent to:
-"""
-def snippet2(b): return stagedPower(b, 3)
-power3 = Specalize(PyCodeGen, b = RepInt)(snippet2)
-assert(power3(3) == 27)
