@@ -98,10 +98,29 @@ class RepStringD(object):
   def __call__(self):
     return staged_read_str(2)
 
+# Resource - http://scottlobdell.me/2015/04/decorators-arguments-python/
+class RepAny(object):
+  def __init__(self, *args, **kwargs):
+    # just implementing for this example
+    print "-------RepAny-------"
+    for arg in args:
+      self.arg = arg
+      print arg
+      # print type(arg)
+    print "-------xxxxxx-------" 
+    return
+
+  def __call__(self, fn):
+    def n_func():
+      # This is just an if statement in a better way. I hate python if statements
+      new_fn = (staged_read_str(2), staged_read(2))[type(self.arg).__name__ == 'int'] 
+      return new_fn
+    return n_func
+
 def plus(x, y):
   x.add(y)
 
-@RepIntD
+@RepAny("res")
 def readInt():
   res = readingInt()
 
@@ -112,7 +131,7 @@ def readInt():
 
   return
 
-@RepStringD
+@RepAny("res")
 def readString():
   return
 
