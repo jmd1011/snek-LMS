@@ -35,7 +35,7 @@ class AstVisitor(ast.NodeVisitor):
     def visit_Name(self, node):
         self.generic_visit(node)
 
-def ast(obj):
+def sexp(obj):
     """
     Rep transforms the AST to annotated AST with Rep(s).
     TODO: What about Rep values defined inside of a function, rather than as an argument?
@@ -61,14 +61,14 @@ def ast(obj):
 
 ######################################
 
-@ast
+@sexp
 def power(b, x):
     if (x == 0): return 1
     else: return b * power(b, x-1)
 
 """
 
-@ast
+@sexp
 def power(b, x):
     if (x == 0): return 1
     else: return b * power(b, x - 1)
