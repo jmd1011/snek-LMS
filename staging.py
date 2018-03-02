@@ -6,6 +6,7 @@ import types
 import parser
 import inspect
 import builtins
+import virtualized
 
 def parametrized(dec):
     def layer(*args, **kwargs):
@@ -117,11 +118,28 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
+        # print(ast.dump(node))
+
+        # if node is of the form (test, body, orelse)
+
+        # iter_fields lets me iterate through the contents of the if node
+        # gives the child as a tuple of the form (child-type, object)
+        print(ast.dump(node))
+        # print(ast.dump(node.test))
+        # print("iffff")
+        cond_node = node.test;
+        # check for BoolOp and then Compare
+
+        x = ast.Call(func=ast.Name('__if', ast.Load()), args=[node.test, node.body, node.orelse], keywords=[])
+        print("defined x")
+        print(ast.dump(x))
+
         self.generic_visit(node)
         return node
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
+        # print("while")
         self.generic_visit(node)
         return node
 
@@ -135,10 +153,12 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
         # TODO: just a poor hack to make power work
         if ast.dump(node.value) == ast.dump(ast.Num(1)):
-            return ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
+            ret = ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
                                                                args=[ast.Num(1)],
                                                                keywords=[])),
                                      node)
+
+            return ret
         return node
 
     def visit_Name(self, node):
@@ -151,7 +171,7 @@ class StagingRewriter(ast.NodeTransformer):
         return node
 
 @parametrized
-def Rep(obj, *args, **kwargs):
+def lms(obj, *args, **kwargs):
     """
     Rep transforms the AST to annotated AST with Rep(s).
     TODO: What about Rep values defined inside of a function, rather than as an argument?
@@ -163,7 +183,9 @@ def Rep(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         func_ast = ast.parse(inspect.getsource(func))
-        #for n in ast.walk(func_ast): print(n)
+        # for n in ast.walk(func_ast):
+            # if isinstance(n, ast.If):
+                # print(ast.dump(n))
         new_func_ast = StagingRewriter(kwargs).visit(func_ast)
         ast.fix_missing_locations(new_func_ast)
         exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
@@ -190,11 +212,16 @@ def Specalize(f, Codegen, *args, **kwargs):
 
 ################################################
 
+def giveBack(x):
+    return x
 """
 TODO: Does user need to provide Rep annotation on returned value?
 """
-@Rep(b = RepInt)
+@lms(b = RepInt)
 def power(b, x):
+    y = x
+    while (y > 0):
+        y = y - 1
     if (x == 0): return 1
     else: return b * power(b, x-1)
 
