@@ -135,8 +135,6 @@ class StagingRewriter(ast.NodeTransformer):
         print(ast.dump(x))
 
         self.generic_visit(node)
-
-
         return node
 
     def visit_While(self, node):
@@ -213,6 +211,7 @@ def Specalize(f, Codegen, *args, **kwargs):
     return eval(fun_name)
 
 ################################################
+
 def giveBack(x):
     return x
 """
