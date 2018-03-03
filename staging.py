@@ -29,28 +29,20 @@ class ConditionRepChecker(ast.NodeVisitor):
 
 def vIf(test, body, orelse, reps):
     print("----------IF----------")
-    x = ConditionRepChecker(reps)
-    x.visit(ast.parse(inspect.getsource(test)))
-
-    # # x.hasRep Bool says whether or not node has a bool
-    print("RESULT = " + str(x.hasRep))
-
-    if x.hasRep:
-    #     # do stuff for rep here
-        print("REP No EVAL")
+    if(isinstance(test, bool)):
+        print("No rep")
+        if(test):
+            # print(ast.dump(body()))
+            print(body())
+            return body()
+        else:
+            # print(type(orelse))
+            # print(ast.dump(orelse()))
+            print(orelse())
+            return orelse()
+            # return orelse()
     else:
-    # print("++++++++++++++++++\n")
-    # print(ast.dump(node))
-    # print("\n")
-    # print(astunparse.dump(node))
-    # print("\n++++++++++++++++++")
-        ast.fix_missing_locations(test)
-        c = compile(ast.Expression(body=[test]), '<ast>', 'eval')
-        eval(c, globals())
-    # if eval(compile(cond, filename="<ast>", mode="exec"), globals()):
-    #     eval(compile(tBranch, filename="<ast>", mode="exec"), globals())
-    # else: 
-    #     eval(compile(eBranch, filename="<ast>", mode="exec"), globals())
+        print("Rep")
     print("--------End IF--------")
 
 def parameterized(dec):
@@ -110,6 +102,11 @@ class IRIntMul(IR):
         self.lhs = lhs
         self.rhs = rhs
 
+class IRIntEq(IR):
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
 class IRIf(IR):
     def __init__(self, cnd, thn, els):
         raise NotImplementedError("IRIf")
@@ -150,9 +147,17 @@ class PyGenIRIntAdd(object):
 
 class PyGenIRIntMul(object):
     def gen(self, irmul):
+        print(irmul.lhs)
+        print(irmul.rhs)
         lhscode = PyCodeGen(irmul.lhs).gen()
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
+
+class PyGenIRIntEq(object):
+    def gen(self, ireq):
+        lhscode = PyCodeGen(ireq.lhs).gen()
+        rhscode = PyCodeGen(ireq.rhs).gen()
+        return "{0} == {1}".format(lhscode, rhscode)
 
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
@@ -220,7 +225,9 @@ class RepInt(RepTyp):
     def __mul__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntMul(self.__IR__(), m)
-
+    def __eq__(self, m):
+        if isinstance(m, RepTyp): m = m.__IR__()
+        return IRIntEq(self.__IR__(), m)
 class RepStr(RepTyp): pass
 
 ################################################
@@ -235,7 +242,6 @@ class StagingRewriter(ast.NodeTransformer):
     def __init__(self, reps = {}):
         self.reps = reps
         super()
-
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
