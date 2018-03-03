@@ -242,15 +242,8 @@ def __return(valueNode):
     # idea: we evaluate whatever is being returned down to a single statement (e.g., b * b * ...)
     # note that because this is wrapped inside this __return function, it *should* (might)
     # handle control flow issues because only the first return is transformed
-    pass
     ret = exec(compile(valueNode, filename="<ast>", mode="exec"), globals())
     return ret
-    # if isinstance(valueNode, ast.Num):
-    #     return valueNode.n
-    # else:
-    #     #here's my idea: if we have anything other than just a number, we can evaluate it
-    #     ret = exec(compile(valueNode, filename="<ast>", mode="exec"), globals())
-    #     return ret
 
 @parameterized
 def Specalize(f, Codegen, *args, **kwargs):
