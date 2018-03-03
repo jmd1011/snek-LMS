@@ -37,7 +37,6 @@ def getFunRepAnno(f):
 
     raise NotImplementedError(f.__name__)
 
-
 ################################################
 
 class IR(object): pass
@@ -72,7 +71,8 @@ class IRIf(IR):
 
 class IRWhile(IR):
     def __init__(self, cnd, body):
-        raise NotImplementedError("IRWhile")
+        self.cnd = cnd
+        self.body = body
 
 class IRRet(IR):
     def __init__(self, val):
@@ -112,10 +112,17 @@ class PyGenIRIntMul(object):
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
         self.ir = ir
+
     def gen(self):
         clsName = "PyGen{0}".format(type(self.ir).__name__)
         Cls = getClass(clsName)
         return Cls().gen(self.ir)
+
+    def ast(self):
+        return ast.parse(self.gen())
+    
+    def dumpast(self):
+        return ast.dump(self.ast())
 
 class CCodeGen(CodeGen): pass
 
@@ -302,7 +309,6 @@ def Specalize(f, Codegen, *args, **kwargs):
     irbody = f(*rep_args)
     codegen = Codegen(IRDef(fun_name, fun_args, irbody))
     codestr = codegen.gen()
-    print(codestr)
     exec(codestr, globals())
     return eval(fun_name)
 
