@@ -42,6 +42,12 @@ def getFunRepAnno(f):
 
 class IR(object): pass
 
+class IRDef(IR):
+    def __init__(self, name, args, body):
+        self.name = name
+        self.args = args
+        self.body = body
+
 class IRConst(IR):
     def __init__(self, v):
         self.v = v
@@ -78,6 +84,13 @@ __return = IRRet
 
 ################################################
 
+class CodeGen(object): pass
+
+class PyGenIRDef(object):
+    def gen(self, irdef):
+        bodycode = PyCodeGen(irdef.body).gen()
+        return "def {0}({1}): return {2}".format(irdef.name, ",".join(irdef.args), bodycode)
+
 class PyGenIRConst(object):
     def gen(self, irconst): return str(irconst.v)
 
@@ -96,8 +109,6 @@ class PyGenIRIntMul(object):
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
 
-class CodeGen(object): pass
-
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
         self.ir = ir
@@ -107,6 +118,38 @@ class PyCodeGen(CodeGen):
         return Cls().gen(self.ir)
 
 class CCodeGen(CodeGen): pass
+
+class SchemeGenIRDef(object):
+    def gen(self, irdef):
+        bodycode = SchemeCodeGen(irdef.body).gen()
+        return "(define ({0} {1}) {2})".format(irdef.name, " ".join(irdef.args), bodycode)
+
+class SchemeGenIRConst(object):
+    def gen(self, irconst): return str(irconst.v)
+
+class SchemeGenIRInt(object):
+    def gen(self, irint): return str(irint.n)
+
+class SchemeGenIRIntAdd(object):
+    def gen(self, iradd):
+        lhscode = SchemeCodeGen(iradd.lhs).gen()
+        rhscode = SchemeCodeGen(iradd.rhs).gen()
+        return "(+ {0} {1})".format(lhscode, rhscode)
+
+class SchemeGenIRIntMul(object):
+    def gen(self, irmul):
+        lhscode = SchemeCodeGen(irmul.lhs).gen()
+        rhscode = SchemeCodeGen(irmul.rhs).gen()
+        return "(* {0} {1})".format(lhscode, rhscode)
+
+class SchemeCodeGen(CodeGen):
+    def __init__(self, ir):
+        self.ir = ir
+
+    def gen(self):
+        clsName = "SchemeGen{0}".format(type(self.ir).__name__)
+        Cls = getClass(clsName)
+        return Cls().gen(self.ir)
 
 ################################################
 
@@ -257,8 +300,9 @@ def Specalize(f, Codegen, *args, **kwargs):
     rep_anno = getFunRepAnno(f)
     rep_args = [getClass(rep_anno[farg])(farg) for farg in fun_args]
     irbody = f(*rep_args)
-    codegen = Codegen(irbody)
-    codestr = "def {0}({1}): return {2}".format(fun_name, ','.join(fun_args), codegen.gen())
+    codegen = Codegen(IRDef(fun_name, fun_args, irbody))
+    codestr = codegen.gen()
+    print(codestr)
     exec(codestr, globals())
     return eval(fun_name)
 
