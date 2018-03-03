@@ -237,7 +237,9 @@ def giveBack(x):
     return x
 
 """
-TODO: Does user need to provide Rep annotation on returned value?
+TODO: User can provide return type.
+TODO: User can even provide return type as union;
+      eg, power(b: RepInt, x) -> RepInt | RepStr
 """
 @lms
 def power(b : RepInt, x) -> RepInt:
