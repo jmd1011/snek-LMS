@@ -119,7 +119,7 @@ class IRWhile(IR):
 
 class IRRet(IR):
     def __init__(self, val):
-        raise NotImplementedError("IRRet")
+        self.val = val
 
 __if = IRIf
 __while = IRWhile
@@ -153,6 +153,27 @@ class PyGenIRIntMul(object):
         lhscode = PyCodeGen(irmul.lhs).gen()
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
+
+class PyGenIRIf(object):
+    def gen(self, irif):
+        print(irif.cnd)
+        print(irif.thn)
+        print(irif.els)
+        cond = PyCodeGen(irif.cnd).gen()
+        thn = PyCodeGen(irif.thn).gen()
+        els = PyCodeGen(irif.els).gen()
+        return """
+if {0}:
+    {1}
+else:
+    {2}
+        """.format(cond, thn, els)
+
+class PyGenIRReturn(object):
+    def gen(self, irret):
+        print(irret.val)
+        val = PyCodeGen(irret.val).gen()
+        return "return {0}".format(val)
 
 class PyGenIRIntEq(object):
     def gen(self, ireq):
@@ -254,37 +275,36 @@ class StagingRewriter(ast.NodeTransformer):
         # gives the child as a tuple of the form (child-type, object)
         # cond_node = node.test;
         # check for BoolOp and then Compare
-        self.generic_visit(node)
-        
+        node.body = list(map(lambda x: self.generic_visit(x), node.body))
+
         # vIf(node.test, node.body, node.orelse, self.reps)
         tBranch_name = freshName()
         eBranch_name = freshName()
-        tBranch = ast.FunctionDef(name=tBranch_name, 
+        tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=node.body, 
+                                  body=node.body,
                                   decorator_list=[])
-        eBranch = ast.FunctionDef(name=eBranch_name, 
+        eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=node.orelse, 
+                                  body=node.orelse,
                                   decorator_list=[])
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
 
         # self.vIf(node.test, tBranch, eBranch)
-        # return node # COMMENT WHEN __if IS DONE
-
-        # UNCOMMENT WHEN __if IS DONE
         # print(node.lineno)
-        new_node = ast.Expr(ast.Call(
-            func=ast.Name(id='vIf', ctx=ast.Load()), 
-            args=[node.test, 
-                  ast.Name(id=tBranch_name, ctx=ast.Load()), 
+        new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()), args=[
+            ast.Call(
+            func=ast.Name(id='vIf', ctx=ast.Load()),
+            args=[node.test,
+                  ast.Name(id=tBranch_name, ctx=ast.Load()),
                   ast.Name(id=eBranch_name, ctx=ast.Load()),
-                  ast.Dict(list(map(ast.Str, self.reps.keys())), 
+                  ast.Dict(list(map(ast.Str, self.reps.keys())),
                            list(map(ast.Str, self.reps.values()))),
-                 ], 
+                 ],
             keywords=[]
-        ))
+        )], keywords=[]))
+
         ast.fix_missing_locations(new_node)
         mod = [tBranch, eBranch, new_node]
         return mod
@@ -304,33 +324,26 @@ class StagingRewriter(ast.NodeTransformer):
         # return nnode
 
     def visit_FunctionDef(self, node):
-        # Retrieve the Rep annotations
-        # TODO: handle multiple functions using a dict
         self.reps = getFunRepAnno(node)
         self.generic_visit(node)
         node.decorator_list = [] # Drop the decorator
         return node
 
     def visit_Return(self, node):
-        print("IN RETURN\n\n{0}\n\n".format(ast.dump(node)));
-        # map(lambda n: n.parent = node, node.iter_child_nodes)
         self.generic_visit(node)
-        print("AGAIN\n\n{0}\n\n".format(ast.dump(node)))
-        # TODO: just a poor hack to make power work
-        if ast.dump(node.value) == ast.dump(ast.Num(1)):
-            ret = ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
-                                                               args=[ast.Num(1)],
-                                                               keywords=[])),
-                                     node)
-            ret.parent = node.parent
-            return ret
-        return node # COMMENT WHEN __return IS DONE
 
-        # UNCOMMENT WHEN __return IS DONE
-        # return ast.copy_location(ast.Call(func=ast.Name('__return', ast.Load()),
-        #                                 args=[node],
-        #                                 keywords=[]),
-        #                         node)
+        ret_name = freshName()
+        retfun = ast.FunctionDef(name=ret_name,
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=[node],
+                                  decorator_list=[])
+
+        ast.fix_missing_locations(retfun)
+        retnode = ast.Expr(ast.Call(func=ast.Name('__return', ast.Load()),
+                                        args=[ast.Name(id=ret_name, ctx=ast.Load())],
+                                        keywords=[]))
+        ast.fix_missing_locations(retnode)
+        return [retfun, retnode]
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -339,29 +352,10 @@ class StagingRewriter(ast.NodeTransformer):
                                               args=[ast.Str(s=node.id)],
                                               keywords=[]),
                                     node)
-            nnode.parent = node.parent
             return nnode
         return node
 
-def __return(retNode, rewriter):
-    curr = valueNode
-    stop = False
-
-    while not stop and (isinstance(curr.parent, ast.If) or isinstance(curr.parent, ast.While)):
-        if curr.parent.test.left in rewriter.reps:
-            break
-        for comp in curr.parent.test.comparators:
-            if comp in rewriter.reps:
-                stop = True
-                break
-        curr = curr.parent #can rewrite curr.parent
-
-    rval = exec(compile(retNode.value, filename="<ast>", mode="exec"), globals())
-    nnode = ast.copy_location(ast.Return(value=rval), curr)
-    return nnode
-
-@parameterized
-def lms(obj, *args, **kwargs):
+def lms(obj):
     """
     Rep transforms the AST to annotated AST with Rep(s).
     TODO: What about Rep values defined inside of a function, rather than as an argument?
@@ -380,13 +374,19 @@ def lms(obj, *args, **kwargs):
         print("========================================================")
 
         for node in ast.walk(mod_ast):
-            for child in ast.iter_child_nodes(node):
-                child.parent = node
+            print("\n{0}\n".format(ast.dump(node)))
+            # for child in ast.iter_child_nodes(node):
+            #     child.parent = node
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
 
-        print("after modding, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
+        print("===========================AFTERTERTETE==================\n\n")
+
+        for node in ast.walk(mod_ast):
+            print("\n{0}\n".format(ast.dump(node)))
+
+        # print("after modding, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
 
         exec(compile(new_mod_ast, filename="<ast>", mode="exec"), globals())
         return eval(func.__name__)
@@ -415,8 +415,9 @@ def Specalize(f, Codegen, *args, **kwargs):
     irbody = f(*rep_args)
     codegen = Codegen(IRDef(fun_name, fun_args, irbody))
     codestr = codegen.gen()
-    exec(codestr, globals())
-    return eval(fun_name)
+    print(codestr)
+    # exec(codestr, globals())
+    # return eval(fun_name)
 
 ################################################
 
