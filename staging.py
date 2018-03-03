@@ -285,13 +285,13 @@ def lms(obj, *args, **kwargs):
 
         # GW: do you want to compare unfix/fix version of new_mod_ast?
         #     rather than mod_ast vs new_mod_ast
-        print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
+        print("before modding, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
 
-        print("after fixing, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
+        print("after modding, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
 
         exec(compile(new_mod_ast, filename="<ast>", mode="exec"), globals())
         return eval(func.__name__)
