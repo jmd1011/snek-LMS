@@ -6,7 +6,27 @@ import types
 import parser
 import inspect
 import builtins
-from virtualize import vIf
+
+
+var_counter = 0
+
+def freshName():
+    global var_counter
+    n_var = var_counter
+    var_counter += 1
+    return "1_$vb" + str(n_var)
+
+class ConditionRepChecker(ast.NodeVisitor):
+    def __init__(self, reps):
+        self.reps = reps
+        self.hasRep = False
+        super()
+
+    def visit_Name(self, node):
+        print("-------Name-------")
+        if node.id == "RepString" or node.id == "RepInt":
+            self.hasRep = True
+
 
 def parameterized(dec):
     def layer(*args, **kwargs):
@@ -191,6 +211,33 @@ class StagingRewriter(ast.NodeTransformer):
         self.reps = reps
         super()
 
+    def vIf(self, test, body, orelse):
+        print("----------IF----------")
+        x = ConditionRepChecker(self.reps)
+        x.visit(test)
+        
+        # # x.hasRep Bool says whether or not node has a bool
+        print("RESULT = " + str(x.hasRep))
+
+        if x.hasRep:
+        #     # do stuff for rep here
+            print("REP No EVAL")
+        else:
+
+        # print("++++++++++++++++++\n")
+        # print(ast.dump(node))
+        # print("\n")
+        # print(astunparse.dump(node))
+        # print("\n++++++++++++++++++")
+            ast.fix_missing_locations(test)
+            c = compile(ast.Expression(body=[test]), '<ast>', 'eval')
+            eval(c, globals())
+        # if eval(compile(cond, filename="<ast>", mode="exec"), globals()):
+        #     eval(compile(tBranch, filename="<ast>", mode="exec"), globals())
+        # else: 
+        #     eval(compile(eBranch, filename="<ast>", mode="exec"), globals())
+        print("--------End IF--------")
+
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
@@ -206,17 +253,25 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
         
         # vIf(node.test, node.body, node.orelse, self.reps)
+        tBranch_name = freshName()
+        eBranch_name = freshName()
+        tBranch = ast.FunctionDef(id=tBranch_name, args=[], body=node.body, decorator_list=[])
+        eBranch = ast.FunctionDef(id=eBranch_name, args=[], body=node.orelse, decorator_list=[])
 
-
+        # self.vIf(node.test, tBranch, eBranch)
         # return node # COMMENT WHEN __if IS DONE
 
         # UNCOMMENT WHEN __if IS DONE
-        print(node.lineno)
-        new_node = ast.Expr(
-            value=ast.Call(func=ast.Name(id='vIf', ctx=ast.Load()), args=[node.test, node.body, node.orelse, self.reps], keywords=[])
+        # print(node.lineno)
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='vIf', ctx=ast.Load()), 
+            args=[node.test, ast.Name(id=tBranch_name, ctx=ast.Load()), ast.Name(id=eBranch_name, ctx=ast.Load())], 
+            keywords=[]
+        ))
+        mod = ast.Module(
+            body=[tBranch, eBranch, new_node]
         )
-
-        return ast.copy_location(new_node, node)
+        return ast.copy_location(mod, node)
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
