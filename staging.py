@@ -115,6 +115,18 @@ class StagingRewriter(ast.NodeTransformer):
         self.reps = reps
         super()
 
+    def __If(self, cond, tBranch, eBranch):
+        print("----------IF----------")
+
+        if type(cond).__name__ == "Compare" :
+            # From = Compare(expr left, cmpop* ops, expr* comparators)
+        elif type(cond).__name__ == "BoolOp" : 
+            # From = BoolOp(boolop op, expr* values)
+        else :
+            print("Unknown Node: " + type(cond).__name__)
+
+        print("--------End IF--------")
+
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
@@ -128,6 +140,7 @@ class StagingRewriter(ast.NodeTransformer):
         # check for BoolOp and then Compare
 
         self.generic_visit(node)
+        self.__If(node.test, node.body, node.orelse)
         return node # COMMENT WHEN __if IS DONE
 
         # UNCOMMENT WHEN __if IS DONE
