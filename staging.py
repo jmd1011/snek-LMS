@@ -38,10 +38,20 @@ class IRIntMul(IR):
         self.rhs = rhs
 
 class IRIf(IR):
-    def __init__(self, cnd, thn, els): NotImplemented
+    def __init__(self, cnd, thn, els): 
+        raise NotImplementedError("IRIf")
+
+class IRWhile(IR):
+    def __init__(self, cnd, body):
+        raise NotImplementedError("IRWhile")
 
 class IRRet(IR):
-    def __init__(self, val): NotImplemented
+    def __init__(self, val): 
+        raise NotImplementedError("IRRet")
+
+__if = IRIf
+__while = IRWhile
+__return = IRRet
 
 ################################################
 
@@ -97,15 +107,6 @@ class RepInt(RepTyp):
 class RepStr(RepTyp): pass
 
 ################################################
-
-class RepFunc():
-    def __init__(self, func, *args, **kwargs):
-        self.func = func
-        #TODO
-
-class CompiledCode:
-    def __init__(self):
-        pass
 
 class StagingRewriter(ast.NodeTransformer):
     """
@@ -287,7 +288,7 @@ Ideally, user could specify different code generators for different targer langu
 The code generator translates IR to string representation of target language.
 """
 @Specalize(PyCodeGen, b = RepInt)
-def snippet(b):
+def snippet(b : RepInt):
     return power(b, 3)
 
 assert(snippet(3) == 27) # Here we can just use snippet
