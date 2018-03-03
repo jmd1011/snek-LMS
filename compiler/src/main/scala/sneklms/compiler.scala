@@ -27,6 +27,12 @@ trait Compiler extends Dsl {
 
   implicit def repToValue[T](x: Rep[T]) = Literal(x)
 
+  def printEnv(implicit env: Env) = {
+    System.out.println("====== Env =======")
+    env foreach { case (k, v) => System.out.println(s"$k -> $v") }
+    System.out.println("==================")
+  }
+
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = exp match {
     case x: Int => unit(x)
     case x: String => env(x)
@@ -45,26 +51,19 @@ trait Compiler extends Dsl {
     case "let"::(x: String)::a::b =>
       compile(b)(env + (x -> compile(a)))
     case "lambda"::(f: String)::(x: String)::e =>
-      val fix = Wrap(VError)
-      fix.v = Literal[Int => Int](fun { (xv: Rep[Int]) =>
-        compile(e)(env + (x -> Literal(xv)) + (f -> fix)) match {
+      lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
+        compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
           case Literal(n: Rep[Int]) => n
         }
-      })
-
-      fix.v
+      }
+      Literal(fptr)
     case f::x =>
+      printEnv
       (compile(f).get, compile(x)) match {
         case (Literal(f: Rep[Int => Int]), Literal(x: Rep[Int])) => f(x)
       }
   }
-
 }
-
-
-
-
-
 
 trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString with LiftPrimitives with LiftNumeric with LiftBoolean with IfThenElse with Equal with RangeOps with OrderingOps with MiscOps with ArrayOps with StringOps with SeqOps with Functions with While with StaticData with Variables with LiftVariables with ObjectOps {
   implicit def repStrToSeqOps(a: Rep[String]) = new SeqOpsCls(a.asInstanceOf[Rep[Seq[Char]]])
@@ -74,7 +73,7 @@ trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString w
   def comment[A:Typ](l: String, verbose: Boolean = true)(b: => Rep[A]): Rep[A]
 }
 
-trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with BooleanOpsExp with IfThenElseExpOpt with EqualExpBridgeOpt with RangeOpsExp with OrderingOpsExp with MiscOpsExp with EffectExp with ArrayOpsExpOpt with StringOpsExp with SeqOpsExp with FunctionsRecursiveExp with WhileExp with StaticDataExp with VariablesExpOpt with ObjectOpsExpOpt with MathOpsExp with UncheckedOpsExp {
+trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with BooleanOpsExp with IfThenElseExpOpt with EqualExpBridgeOpt with RangeOpsExp with OrderingOpsExp with MiscOpsExp with EffectExp with ArrayOpsExpOpt with StringOpsExp with SeqOpsExp with FunctionsRecursiveExp with WhileExp with StaticDataExp with VariablesExpOpt with ObjectOpsExpOpt with MathOpsExp with UncheckedOpsExp with TupledFunctionsExp {
   override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
     case Const(false) => rhs
     case _ => super.boolean_or(lhs, rhs)
@@ -107,6 +106,22 @@ trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with Bool
 
   // TODO: should this be in LMS?
   override def isPrimitiveType[T](m: Typ[T]) = (m == manifest[String]) || super.isPrimitiveType(m)
+
+  override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
+    val x1 = unbox(x)
+    val x1_effects = x1 match {
+      case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
+        case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
+        case _ => b
+      })
+        case _ => Pure()
+    }
+    f match {
+      case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
+      case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
+    }
+  }
+
 }
 
 // TODO: currently part of this is specific to the query tests. generalize? move?
