@@ -6,7 +6,45 @@ import types
 import parser
 import inspect
 import builtins
-import virtualized
+
+
+var_counter = 0
+
+def freshName():
+    global var_counter
+    n_var = var_counter
+    var_counter += 1
+    return "1_$vb" + str(n_var)
+
+class ConditionRepChecker(ast.NodeVisitor):
+    def __init__(self, reps):
+        self.reps = reps
+        self.hasRep = False
+        super()
+
+    def visit_Name(self, node):
+        print("-------Name-------")
+        if node.id == "RepString" or node.id == "RepInt":
+            self.hasRep = True
+
+def vIf(test, body, orelse, reps):
+    print("----------IF----------")
+    if(isinstance(test, bool)):
+        print("No rep")
+        if(test):
+            # print(ast.dump(body()))
+            print("True")
+            return body()
+        else:
+            # print(type(orelse))
+            # print(ast.dump(orelse()))
+            print("False")
+            # print(orelse())
+            return orelse()
+            # return orelse()
+    else:
+        print("Rep")
+    print("--------End IF--------")
 
 def parameterized(dec):
     def layer(*args, **kwargs):
@@ -65,6 +103,11 @@ class IRIntMul(IR):
         self.lhs = lhs
         self.rhs = rhs
 
+class IRIntEq(IR):
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
 class IRIf(IR):
     def __init__(self, cnd, thn, els):
         raise NotImplementedError("IRIf")
@@ -105,9 +148,17 @@ class PyGenIRIntAdd(object):
 
 class PyGenIRIntMul(object):
     def gen(self, irmul):
+        print(irmul.lhs)
+        print(irmul.rhs)
         lhscode = PyCodeGen(irmul.lhs).gen()
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
+
+class PyGenIRIntEq(object):
+    def gen(self, ireq):
+        lhscode = PyCodeGen(ireq.lhs).gen()
+        rhscode = PyCodeGen(ireq.rhs).gen()
+        return "{0} == {1}".format(lhscode, rhscode)
 
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
@@ -175,7 +226,9 @@ class RepInt(RepTyp):
     def __mul__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntMul(self.__IR__(), m)
-
+    def __eq__(self, m):
+        if isinstance(m, RepTyp): m = m.__IR__()
+        return IRIntEq(self.__IR__(), m)
 class RepStr(RepTyp): pass
 
 ################################################
@@ -190,7 +243,6 @@ class StagingRewriter(ast.NodeTransformer):
     def __init__(self, reps = {}):
         self.reps = reps
         super()
-
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
@@ -203,15 +255,40 @@ class StagingRewriter(ast.NodeTransformer):
         # cond_node = node.test;
         # check for BoolOp and then Compare
         self.generic_visit(node)
-        return node # COMMENT WHEN __if IS DONE
+        
+        # vIf(node.test, node.body, node.orelse, self.reps)
+        tBranch_name = freshName()
+        eBranch_name = freshName()
+        tBranch = ast.FunctionDef(name=tBranch_name, 
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.body, 
+                                  decorator_list=[])
+        eBranch = ast.FunctionDef(name=eBranch_name, 
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.orelse, 
+                                  decorator_list=[])
+        ast.fix_missing_locations(tBranch)
+        ast.fix_missing_locations(eBranch)
+
+        # self.vIf(node.test, tBranch, eBranch)
+        # return node # COMMENT WHEN __if IS DONE
 
         # UNCOMMENT WHEN __if IS DONE
-        # nnode = ast.copy_location(ast.Call(func=ast.Name('__if', ast.Load()),
-        #                                 args=[node.test, node.body, node.orelse],
-        #                                 keywords=[]),
-        #                         node)
-        # nnode.parent = node.parent
-        # return nnode
+        # print(node.lineno)
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='vIf', ctx=ast.Load()), 
+            args=[node.test, 
+                  ast.Name(id=tBranch_name, ctx=ast.Load()), 
+                  ast.Name(id=eBranch_name, ctx=ast.Load()),
+                  ast.Dict(list(map(ast.Str, self.reps.keys())), 
+                           list(map(ast.Str, self.reps.values()))),
+                 ], 
+            keywords=[]
+        ))
+        ast.fix_missing_locations(new_node)
+        mod = [tBranch, eBranch, new_node]
+        return mod
+        #return ast.copy_location(mod, node)
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
