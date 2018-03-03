@@ -61,7 +61,7 @@ class IRIntMul(IR):
         self.rhs = rhs
 
 class IRIf(IR):
-    def __init__(self, cnd, thn, els): 
+    def __init__(self, cnd, thn, els):
         raise NotImplementedError("IRIf")
 
 class IRWhile(IR):
@@ -69,7 +69,7 @@ class IRWhile(IR):
         raise NotImplementedError("IRWhile")
 
 class IRRet(IR):
-    def __init__(self, val): 
+    def __init__(self, val):
         raise NotImplementedError("IRRet")
 
 __if = IRIf
@@ -221,8 +221,8 @@ def lms(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         mod_ast = ast.parse(inspect.getsource(func))
-        
-        # GW: do you want to compare unfix/fix version of new_mod_ast? 
+
+        # GW: do you want to compare unfix/fix version of new_mod_ast?
         #     rather than mod_ast vs new_mod_ast
         print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
@@ -237,6 +237,20 @@ def lms(obj, *args, **kwargs):
     elif isinstance(obj, types.MethodType):
         return NotImplemented
     else: return NotImplemented
+
+def __return(valueNode):
+    # idea: we evaluate whatever is being returned down to a single statement (e.g., b * b * ...)
+    # note that because this is wrapped inside this __return function, it *should* (might)
+    # handle control flow issues because only the first return is transformed
+    pass
+    ret = exec(compile(valueNode, filename="<ast>", mode="exec"), globals())
+    return ret
+    # if isinstance(valueNode, ast.Num):
+    #     return valueNode.n
+    # else:
+    #     #here's my idea: if we have anything other than just a number, we can evaluate it
+    #     ret = exec(compile(valueNode, filename="<ast>", mode="exec"), globals())
+    #     return ret
 
 @parameterized
 def Specalize(f, Codegen, *args, **kwargs):
