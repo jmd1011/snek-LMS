@@ -223,7 +223,7 @@ def lms(obj, *args, **kwargs):
         mod_ast = ast.parse(inspect.getsource(func))
         
         # GW: do you want to compare unfix/fix version of new_mod_ast? 
-        #     rather than mod_ast vs new_mod_ast_
+        #     rather than mod_ast vs new_mod_ast
         print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
 
