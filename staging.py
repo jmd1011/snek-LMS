@@ -129,16 +129,18 @@ class StagingRewriter(ast.NodeTransformer):
 
         self.generic_visit(node)
         
-        vIf(node.test, node.body, node.orelse, self.reps)
+        # vIf(node.test, node.body, node.orelse, self.reps)
 
 
-        return node # COMMENT WHEN __if IS DONE
+        # return node # COMMENT WHEN __if IS DONE
 
         # UNCOMMENT WHEN __if IS DONE
-        # return ast.copy_location(ast.Call(func=ast.Name('__if', ast.Load()),
-        #                                 args=[node.test, node.body, node.orelse],
-        #                                 keywords=[]),
-        #                         node)
+        print(node.lineno)
+        new_node = ast.Expr(
+            value=ast.Call(func=ast.Name(id='vIf', ctx=ast.Load()), args=[node.test, node.body, node.orelse, self.reps], keywords=[])
+        )
+
+        return ast.copy_location(new_node, node)
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
