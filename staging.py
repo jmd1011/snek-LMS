@@ -233,7 +233,9 @@ class StagingRewriter(ast.NodeTransformer):
         return node
 
     def visit_Return(self, node):
+        print("IN RETURN\n\n{0}\n\n".format(ast.dump(node)));
         self.generic_visit(node)
+        print("AGAIN\n\n{0}\n\n".format(ast.dump(node)))
         # TODO: just a poor hack to make power work
         if ast.dump(node.value) == ast.dump(ast.Num(1)):
             ret = ast.copy_location(ast.Return(value=ast.Call(func=ast.Name(id='RepInt', ctx=ast.Load()),
@@ -259,6 +261,15 @@ class StagingRewriter(ast.NodeTransformer):
                                     node)
         return node
 
+def __return(valueNode):
+    if isinstance(valueNode, ast.Num):
+        return valueNode.n
+
+    if isinstance(valueNode, ast.BinOp):
+        pass #should be able to call our normal generation code?
+
+
+@parameterized
 def lms(obj, *args, **kwargs):
     """
     Rep transforms the AST to annotated AST with Rep(s).
