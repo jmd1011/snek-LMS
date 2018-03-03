@@ -80,6 +80,7 @@ class CCodeGen(CodeGen): pass
 
 class RepTyp(object): pass
 
+#class RepInt(RepTyp, metaclass=RepTyp):
 class RepInt(RepTyp):
     def __init__(self, n):
         self.n = n
@@ -92,6 +93,8 @@ class RepInt(RepTyp):
     def __mul__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntMul(self.__IR__(), m)
+
+class RepStr(RepTyp): pass
 
 ################################################
 
@@ -111,7 +114,7 @@ class StagingRewriter(ast.NodeTransformer):
     2) virtualize primitives such as `if`, `while`, `for` and etc
     Note: Probably we may also rewrite operators such as `+` rather than overloading them.
     """
-    def __init__(self, reps):
+    def __init__(self, reps = {}):
         self.reps = reps
         super()
 
@@ -149,9 +152,11 @@ class StagingRewriter(ast.NodeTransformer):
         #                         node)
 
     def visit_FunctionDef(self, node):
-        # Drop the decorator
+        # Retrieve the Rep annotations
+        ann_args = list(filter(lambda a: a.annotation, node.args.args))
+        self.reps = dict(list(map(lambda a: (a.arg, a.annotation.id), ann_args)))
         self.generic_visit(node)
-        node.decorator_list = []
+        node.decorator_list = [] # Drop the decorator
         return node
 
     def visit_Return(self, node):
@@ -175,13 +180,12 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Name(self, node):
         self.generic_visit(node)
         if node.id in self.reps:
-            return ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id].__name__, ctx=ast.Load()),
+            return ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id], ctx=ast.Load()),
                                               args=[ast.Str(s=node.id)],
                                               keywords=[]),
                                     node)
         return node
 
-@parameterized
 def lms(obj, *args, **kwargs):
     """
     Rep transforms the AST to annotated AST with Rep(s).
@@ -194,11 +198,13 @@ def lms(obj, *args, **kwargs):
     if isinstance(obj, types.FunctionType):
         func = obj
         func_ast = ast.parse(inspect.getsource(func))
-
+        
+        # GW: do you want to compare unfix/fix version of new_func_ast? 
+        #     rather than func_ast vs new_func_ast
         print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(func_ast)))
         print("========================================================")
 
-        new_func_ast = StagingRewriter(kwargs).visit(func_ast)
+        new_func_ast = StagingRewriter().visit(func_ast)
         ast.fix_missing_locations(new_func_ast)
 
         print("after fixing, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_func_ast)))
@@ -229,16 +235,15 @@ def Specalize(f, Codegen, *args, **kwargs):
 
 def giveBack(x):
     return x
+
 """
 TODO: Does user need to provide Rep annotation on returned value?
 """
-@lms(b = RepInt)
-def power(b, x):
-    y = x
-    while (y > 0):
-        y = y - 1
+@lms
+def power(b : RepInt, x) -> RepInt:
     if (x == 0): return 1
     else: return b * power(b, x-1)
+
 
 """
 @lms
@@ -291,3 +296,4 @@ Explaination: decorating `snippet` with @Specalize is equivalent to:
 def snippet2(b): return stagedPower(b, 3)
 power3 = Specalize(PyCodeGen, b = RepInt)(snippet2)
 assert(power3(3) == 27)
+
