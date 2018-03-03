@@ -33,12 +33,13 @@ def vIf(test, body, orelse, reps):
         print("No rep")
         if(test):
             # print(ast.dump(body()))
-            print(body())
+            print("True")
             return body()
         else:
             # print(type(orelse))
             # print(ast.dump(orelse()))
-            print(orelse())
+            print("False")
+            # print(orelse())
             return orelse()
             # return orelse()
     else:
