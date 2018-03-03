@@ -6,7 +6,7 @@ import types
 import parser
 import inspect
 import builtins
-from vb import vIf
+from virtualize import vIf
 
 def parameterized(dec):
     def layer(*args, **kwargs):
