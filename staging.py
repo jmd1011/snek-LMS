@@ -15,6 +15,29 @@ def parameterized(dec):
         return repl
     return layer
 
+def getClass(cls_name, mod_name = __name__):
+    """
+    Get Class definition from module, current module by default
+    """
+    modl = sys.modules[mod_name]
+    Cls = getattr(modl, cls_name)
+    return Cls
+
+def getFunRepAnno(f):
+    if isinstance(f, types.FunctionType):
+        mod_ast = ast.parse(inspect.getsource(f))
+        assert(isinstance(mod_ast, ast.Module))
+        funcdef_ast = mod_ast.body[0] #TODO: always get the first one?
+        assert(isinstance(funcdef_ast, ast.FunctionDef))
+        return getFunRepAnno(funcdef_ast)
+
+    if isinstance(f, ast.FunctionDef):
+        ann_args = list(filter(lambda a: a.annotation, f.args.args))
+        return dict(list(map(lambda a: (a.arg, a.annotation.id), ann_args)))
+
+    raise NotImplementedError(f.__name__)
+
+
 ################################################
 
 class IR(object): pass
@@ -80,8 +103,7 @@ class PyCodeGen(CodeGen):
         self.ir = ir
     def gen(self):
         clsName = "PyGen{0}".format(type(self.ir).__name__)
-        modl = sys.modules[__name__]
-        Cls = getattr(modl, clsName)
+        Cls = getClass(clsName)
         return Cls().gen(self.ir)
 
 class CCodeGen(CodeGen): pass
@@ -154,8 +176,8 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         # Retrieve the Rep annotations
-        ann_args = list(filter(lambda a: a.annotation, node.args.args))
-        self.reps = dict(list(map(lambda a: (a.arg, a.annotation.id), ann_args)))
+        # TODO: handle multiple functions using a dict
+        self.reps = getFunRepAnno(node)
         self.generic_visit(node)
         node.decorator_list = [] # Drop the decorator
         return node
@@ -198,19 +220,19 @@ def lms(obj, *args, **kwargs):
     """
     if isinstance(obj, types.FunctionType):
         func = obj
-        func_ast = ast.parse(inspect.getsource(func))
+        mod_ast = ast.parse(inspect.getsource(func))
         
-        # GW: do you want to compare unfix/fix version of new_func_ast? 
-        #     rather than func_ast vs new_func_ast
-        print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(func_ast)))
+        # GW: do you want to compare unfix/fix version of new_mod_ast? 
+        #     rather than mod_ast vs new_mod_ast_
+        print("before fixing, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
 
-        new_func_ast = StagingRewriter().visit(func_ast)
-        ast.fix_missing_locations(new_func_ast)
+        new_mod_ast = StagingRewriter().visit(mod_ast)
+        ast.fix_missing_locations(new_mod_ast)
 
-        print("after fixing, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_func_ast)))
+        print("after fixing, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
 
-        exec(compile(new_func_ast, filename="<ast>", mode="exec"), globals())
+        exec(compile(new_mod_ast, filename="<ast>", mode="exec"), globals())
         return eval(func.__name__)
     elif isinstance(obj, types.MethodType):
         return NotImplemented
@@ -224,8 +246,9 @@ def Specalize(f, Codegen, *args, **kwargs):
     TODO: f's argument names may different with variables in the inner body
     """
     fun_name = f.__name__
-    fun_args = inspect.getargspec(f).args
-    rep_args = [kwargs[fa](fa) for fa in fun_args]
+    fun_args = inspect.getfullargspec(f).args
+    rep_anno = getFunRepAnno(f)
+    rep_args = [getClass(rep_anno[farg])(farg) for farg in fun_args]
     irbody = f(*rep_args)
     codegen = Codegen(irbody)
     codestr = "def {0}({1}): return {2}".format(fun_name, ','.join(fun_args), codegen.gen())
@@ -246,7 +269,6 @@ TODO: User can even provide return type as union;
 def power(b : RepInt, x) -> RepInt:
     if (x == 0): return 1
     else: return b * power(b, x-1)
-
 
 """
 @lms
@@ -287,8 +309,8 @@ def stagedPower(b, x):
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
-@Specalize(PyCodeGen, b = RepInt)
-def snippet(b : RepInt):
+@Specalize(PyCodeGen)
+def snippet(b: RepInt):
     return power(b, 3)
 
 assert(snippet(3) == 27) # Here we can just use snippet
@@ -296,7 +318,7 @@ assert(snippet(3) == 27) # Here we can just use snippet
 """
 Explaination: decorating `snippet` with @Specalize is equivalent to:
 """
-def snippet2(b): return stagedPower(b, 3)
-power3 = Specalize(PyCodeGen, b = RepInt)(snippet2)
+def snippet2(b : RepInt): return stagedPower(b, 3)
+power3 = Specalize(PyCodeGen)(snippet2)
 assert(power3(3) == 27)
 
