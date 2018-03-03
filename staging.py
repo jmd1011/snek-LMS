@@ -27,6 +27,31 @@ class ConditionRepChecker(ast.NodeVisitor):
         if node.id == "RepString" or node.id == "RepInt":
             self.hasRep = True
 
+def vIf(test, body, orelse, reps):
+    print("----------IF----------")
+    x = ConditionRepChecker(reps)
+    x.visit(ast.parse(inspect.getsource(test)))
+
+    # # x.hasRep Bool says whether or not node has a bool
+    print("RESULT = " + str(x.hasRep))
+
+    if x.hasRep:
+    #     # do stuff for rep here
+        print("REP No EVAL")
+    else:
+    # print("++++++++++++++++++\n")
+    # print(ast.dump(node))
+    # print("\n")
+    # print(astunparse.dump(node))
+    # print("\n++++++++++++++++++")
+        ast.fix_missing_locations(test)
+        c = compile(ast.Expression(body=[test]), '<ast>', 'eval')
+        eval(c, globals())
+    # if eval(compile(cond, filename="<ast>", mode="exec"), globals()):
+    #     eval(compile(tBranch, filename="<ast>", mode="exec"), globals())
+    # else: 
+    #     eval(compile(eBranch, filename="<ast>", mode="exec"), globals())
+    print("--------End IF--------")
 
 def parameterized(dec):
     def layer(*args, **kwargs):
@@ -211,33 +236,6 @@ class StagingRewriter(ast.NodeTransformer):
         self.reps = reps
         super()
 
-    def vIf(self, test, body, orelse):
-        print("----------IF----------")
-        x = ConditionRepChecker(self.reps)
-        x.visit(test)
-        
-        # # x.hasRep Bool says whether or not node has a bool
-        print("RESULT = " + str(x.hasRep))
-
-        if x.hasRep:
-        #     # do stuff for rep here
-            print("REP No EVAL")
-        else:
-
-        # print("++++++++++++++++++\n")
-        # print(ast.dump(node))
-        # print("\n")
-        # print(astunparse.dump(node))
-        # print("\n++++++++++++++++++")
-            ast.fix_missing_locations(test)
-            c = compile(ast.Expression(body=[test]), '<ast>', 'eval')
-            eval(c, globals())
-        # if eval(compile(cond, filename="<ast>", mode="exec"), globals()):
-        #     eval(compile(tBranch, filename="<ast>", mode="exec"), globals())
-        # else: 
-        #     eval(compile(eBranch, filename="<ast>", mode="exec"), globals())
-        print("--------End IF--------")
-
     def visit_If(self, node):
         # TODO: Virtualization of `if`
         # If the condition part relies on a staged value, then it should be virtualized.
@@ -255,8 +253,16 @@ class StagingRewriter(ast.NodeTransformer):
         # vIf(node.test, node.body, node.orelse, self.reps)
         tBranch_name = freshName()
         eBranch_name = freshName()
-        tBranch = ast.FunctionDef(id=tBranch_name, args=[], body=node.body, decorator_list=[])
-        eBranch = ast.FunctionDef(id=eBranch_name, args=[], body=node.orelse, decorator_list=[])
+        tBranch = ast.FunctionDef(name=tBranch_name, 
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.body, 
+                                  decorator_list=[])
+        eBranch = ast.FunctionDef(name=eBranch_name, 
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.orelse, 
+                                  decorator_list=[])
+        ast.fix_missing_locations(tBranch)
+        ast.fix_missing_locations(eBranch)
 
         # self.vIf(node.test, tBranch, eBranch)
         # return node # COMMENT WHEN __if IS DONE
@@ -265,13 +271,18 @@ class StagingRewriter(ast.NodeTransformer):
         # print(node.lineno)
         new_node = ast.Expr(ast.Call(
             func=ast.Name(id='vIf', ctx=ast.Load()), 
-            args=[node.test, ast.Name(id=tBranch_name, ctx=ast.Load()), ast.Name(id=eBranch_name, ctx=ast.Load())], 
+            args=[node.test, 
+                  ast.Name(id=tBranch_name, ctx=ast.Load()), 
+                  ast.Name(id=eBranch_name, ctx=ast.Load()),
+                  ast.Dict(list(map(ast.Str, self.reps.keys())), 
+                           list(map(ast.Str, self.reps.values()))),
+                 ], 
             keywords=[]
         ))
-        mod = ast.Module(
-            body=[tBranch, eBranch, new_node]
-        )
-        return ast.copy_location(mod, node)
+        ast.fix_missing_locations(new_node)
+        mod = [tBranch, eBranch, new_node]
+        return mod
+        #return ast.copy_location(mod, node)
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
