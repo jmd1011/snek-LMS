@@ -120,7 +120,7 @@ class PyCodeGen(CodeGen):
 
     def ast(self):
         return ast.parse(self.gen())
-    
+
     def dumpast(self):
         return ast.dump(self.ast())
 
@@ -202,27 +202,29 @@ class StagingRewriter(ast.NodeTransformer):
         # gives the child as a tuple of the form (child-type, object)
         # cond_node = node.test;
         # check for BoolOp and then Compare
-
         self.generic_visit(node)
         return node # COMMENT WHEN __if IS DONE
 
         # UNCOMMENT WHEN __if IS DONE
-        # return ast.copy_location(ast.Call(func=ast.Name('__if', ast.Load()),
+        # nnode = ast.copy_location(ast.Call(func=ast.Name('__if', ast.Load()),
         #                                 args=[node.test, node.body, node.orelse],
         #                                 keywords=[]),
         #                         node)
+        # nnode.parent = node.parent
+        # return nnode
 
     def visit_While(self, node):
         # TODO: Virtualization of `while`
-
         self.generic_visit(node)
         return node # COMMENT WHEN __while IS DONE
 
         # UNCOMMENT WHEN __while IS DONE
-        # return ast.copy_location(ast.Call(func=ast.Name('__while', ast.Load()),
+        # nnode = ast.copy_location(ast.Call(func=ast.Name('__while', ast.Load()),
         #                                 args=[node.test, node.body],
         #                                 keywords=[]),
         #                         node)
+        # nnode.parent = node.parent
+        # return nnode
 
     def visit_FunctionDef(self, node):
         # Retrieve the Rep annotations
@@ -234,6 +236,7 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_Return(self, node):
         print("IN RETURN\n\n{0}\n\n".format(ast.dump(node)));
+        # map(lambda n: n.parent = node, node.iter_child_nodes)
         self.generic_visit(node)
         print("AGAIN\n\n{0}\n\n".format(ast.dump(node)))
         # TODO: just a poor hack to make power work
@@ -242,32 +245,43 @@ class StagingRewriter(ast.NodeTransformer):
                                                                args=[ast.Num(1)],
                                                                keywords=[])),
                                      node)
-
+            ret.parent = node.parent
             return ret
         return node # COMMENT WHEN __return IS DONE
 
         # UNCOMMENT WHEN __return IS DONE
         # return ast.copy_location(ast.Call(func=ast.Name('__return', ast.Load()),
-        #                                 args=[node.value],
+        #                                 args=[node],
         #                                 keywords=[]),
         #                         node)
 
     def visit_Name(self, node):
         self.generic_visit(node)
         if node.id in self.reps:
-            return ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id], ctx=ast.Load()),
+            nnode = ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id], ctx=ast.Load()),
                                               args=[ast.Str(s=node.id)],
                                               keywords=[]),
                                     node)
+            nnode.parent = node.parent
+            return nnode
         return node
 
-def __return(valueNode):
-    if isinstance(valueNode, ast.Num):
-        return valueNode.n
+def __return(retNode, rewriter):
+    curr = valueNode
+    stop = False
 
-    if isinstance(valueNode, ast.BinOp):
-        pass #should be able to call our normal generation code?
+    while not stop and (isinstance(curr.parent, ast.If) or isinstance(curr.parent, ast.While)):
+        if curr.parent.test.left in rewriter.reps:
+            break
+        for comp in curr.parent.test.comparators:
+            if comp in rewriter.reps:
+                stop = True
+                break
+        curr = curr.parent #can rewrite curr.parent
 
+    rval = exec(compile(retNode.value, filename="<ast>", mode="exec"), globals())
+    nnode = ast.copy_location(ast.Return(value=rval), curr)
+    return nnode
 
 @parameterized
 def lms(obj, *args, **kwargs):
@@ -287,6 +301,10 @@ def lms(obj, *args, **kwargs):
         #     rather than mod_ast vs new_mod_ast
         print("before modding, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
+
+        for node in ast.walk(mod_ast):
+            for child in ast.iter_child_nodes(node):
+                child.parent = node
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
