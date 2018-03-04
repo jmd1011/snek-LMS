@@ -46,7 +46,7 @@ def vIf(test, body, orelse, reps):
             return res
             # return orelse()
     else:
-        print("Rep")
+        return IRIf(test, body, orelse)
     print("--------End IF--------")
 
 def parameterized(dec):
@@ -113,7 +113,9 @@ class IRIntEq(IR):
 
 class IRIf(IR):
     def __init__(self, cnd, thn, els):
-        raise NotImplementedError("IRIf")
+        self.cnd = cnd
+        self.thn = thn
+        self.els = els
 
 class IRWhile(IR):
     def __init__(self, cnd, body):
@@ -172,8 +174,8 @@ class PyGenIRIf(object):
         print(irif.thn)
         print(irif.els)
         cond = PyCodeGen(irif.cnd).gen()
-        thn = PyCodeGen(irif.thn).gen()
-        els = PyCodeGen(irif.els).gen()
+        thn = PyCodeGen(irif.thn()).gen()
+        els = PyCodeGen(irif.els()).gen()
         return """
 if {0}:
     {1}
@@ -518,13 +520,21 @@ def even(x : RepInt, n) -> RepInt:
 
     return n
 
+@lms
+def test(x : RepInt) -> RepInt:
+    if (x == 2):
+        return x + 1
+    else:
+        return x + 2
+
 """
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
 @Specalize(PyCodeGen)
 def snippet(b: RepInt):
-    return even(b, 3)
+    # return even(b, 3)
+    return test(b)
     # return power1(3, 3)
     # return zero(0)
     # return power(b, 3)
