@@ -3,6 +3,7 @@ import ast as py_ast
 import types
 import parser
 import inspect
+import astunparse
 
 from .py_to_sexpr import AstVisitor
 from .lms_tree_rewriter import StagingRewriter
@@ -43,6 +44,7 @@ def lms(func):
             visitor = StagingRewriter()
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
+            self.src = astunparse.unparse(self.ast)
             exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
             self.func = eval(func.__name__)
 

@@ -20,3 +20,16 @@ def test_power():
 def test_power_staged():
     assert(str(power1(Rep("in"),3)) == "['*', in, ['*', in, ['*', in, 1]]]")
     assert(str(power2(Rep("in"),3)) == "['*', in, ['*', in, ['*', in, 1]]]")
+
+def test_power_rewrite():
+    assert(power2.src == """
+
+def power2(b, x):
+
+    def then$1():
+        return 1
+
+    def else$1():
+        return (b * power2(b, (x - 1)))
+    return vIf((x == 0), then$1, else$1, {})
+""")
