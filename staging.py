@@ -465,7 +465,11 @@ def Specialize(f, Codegen, *args, **kwargs):
     irbody = f(*rep_args)
     codegen = Codegen(IRDef(fun_name, fun_args, irbody))
     codestr = codegen.gen()
-    print(codestr)
+    # print(codestr)
+    from py_to_sexpr import sexp
+    q = ast.parse(codestr)
+    exec(compile(q, filename="<ast>", mode="exec"), globals())
+    sexp(q) #TODO: need to turn this into a function
     # exec(codestr, globals())
     # return eval(fun_name)
 
@@ -505,9 +509,9 @@ def test(x : RepInt) -> RepInt:
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
-# @Specialize(PyCodeGen)
-# def snippet1(b: RepInt):
-#     return multiply(b, 3)
+@Specialize(PyCodeGen)
+def snippet1(b: RepInt):
+    return multiply(b, 3)
 
 # assert(snippet(3) == 27) # Here we can just use snippet
 

@@ -179,20 +179,20 @@ def sexp(obj):
 
 ######################################
 
-@sexp
-def power(b, x):
-    if (x == 0): return 1
-    else: return b * power(b, x - 1)
+# @sexp
+# def power(b, x):
+#     if (x == 0): return 1
+#     else: return b * power(b, x - 1)
 
 
-@sexp
-def test(x):
-    model.eval()
-    if x == 0:
-        print("Hello")
-    else:
-        print("world!")
-    return x
+# @sexp
+# def test(x):
+#     model.eval()
+#     if x == 0:
+#         print("Hello")
+#     else:
+#         print("world!")
+#     return x
 
 """
 @sexp
