@@ -24,12 +24,12 @@ def ast(func):
             return func(*args)
     return Snippet()
 
-def lms(obj):
+def lms(func):
     class Snippet(object):
         def __init__(self):
-            self.original = obj
-            self.code = "foobar"
+            self.original = func
+            #self.code = "foobar"
         def __call__(self,*args):
-            return obj(*args)
+            return func(*args)
     return Snippet()
 

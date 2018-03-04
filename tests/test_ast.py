@@ -1,4 +1,4 @@
-from pylms import ast, lms
+from pylms import ast
 
 @ast
 def power(b, x):
