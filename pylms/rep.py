@@ -18,3 +18,25 @@ class Rep(object):
         return reflect(["<",self,m])
     def __repr__(self):
         return str(self.n)
+
+def vIf(test, body, orelse, reps):
+    # print("----------IF----------")
+    if(isinstance(test, bool)):
+        # print("No rep")
+        if(test):
+            # print(ast.dump(body()))
+            # print("True")
+            res = body()
+            return res
+        else:
+            # print(type(orelse))
+            # print(ast.dump(orelse()))
+            # print("False")
+            # print(orelse())
+            res = orelse()
+            return res
+            # return orelse()
+    else:
+        return IRIf(test, body, orelse)
+    # print("--------End IF--------")
+	
