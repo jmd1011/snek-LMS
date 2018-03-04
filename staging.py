@@ -275,21 +275,25 @@ class StagingRewriter(ast.NodeTransformer):
         # gives the child as a tuple of the form (child-type, object)
         # cond_node = node.test;
         # check for BoolOp and then Compare
-        node.body = list(map(lambda x: self.generic_visit(x), node.body))
+        # node.body = list(map(lambda x: self.generic_visit(x), node.body))
+        self.generic_visit(node)
 
         # vIf(node.test, node.body, node.orelse, self.reps)
         tBranch_name = freshName()
         eBranch_name = freshName()
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=list(map(lambda x: self.generic_visit(x), node.body)),
+                                  body=node.body,
                                   decorator_list=[])
         eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=list(map(lambda x: self.generic_visit(x), node.orelse)),
+                                  body=node.orelse,
                                   decorator_list=[])
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
+
+        self.generic_visit(tBranch)
+        self.generic_visit(eBranch)
 
         # self.vIf(node.test, tBranch, eBranch)
         # print(node.lineno)
@@ -306,6 +310,7 @@ class StagingRewriter(ast.NodeTransformer):
         )], keywords=[]))
 
         ast.fix_missing_locations(new_node)
+        # self.generic_visit(new_node)
         mod = [tBranch, eBranch, new_node]
         return mod
         #return ast.copy_location(mod, node)
@@ -343,6 +348,7 @@ class StagingRewriter(ast.NodeTransformer):
                                         args=[ast.Name(id=ret_name, ctx=ast.Load())],
                                         keywords=[]))
         ast.fix_missing_locations(retnode)
+        # ast.copy_location(retnode, node)
         return [retfun, retnode]
 
     def visit_Name(self, node):
