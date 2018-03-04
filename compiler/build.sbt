@@ -18,14 +18,16 @@ libraryDependencies += "org.scala-lang.virtualized" % "scala-reflect" % "2.11.2"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0"
 
+libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.4"
+
 libraryDependencies += "net.sf.py4j" % "py4j" % "0.8.1"
 
 scalacOptions += "-Yvirtualize"
 
 scalacOptions += "-deprecation"
 
-// assemblyJarName in assembly := "sneklms.jar"
-// mainClass in assembly := Some("server.ServerApplication")
+assemblyJarName in assembly := "sneklms.jar"
+mainClass in assembly := Some("server.ServerApplication")
 // assemblyMergeStrategy in assembly := {
 //   case PathList("javax", "servlet", xs @ _*)         => MergeStrategy.first
 //   case PathList(ps @ _*) if ps.last endsWith ".html" => MergeStrategy.first
