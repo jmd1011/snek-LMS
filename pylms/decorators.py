@@ -5,6 +5,8 @@ import parser
 import inspect
 import astunparse
 
+from py4j.java_gateway import JavaGateway
+
 from .py_to_sexpr import AstVisitor
 from .lms_tree_rewriter import StagingRewriter
 
@@ -24,6 +26,9 @@ def ast(func):
             visitor = AstVisitor()
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
+            self.gateway = JavaGateway()
+            self.Ccode = self.gateway.jvm.sneklms.Main.compile(self.code)
+
         def __call__(self,*args):
             return func(*args)
 

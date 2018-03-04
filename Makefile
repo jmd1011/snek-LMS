@@ -8,4 +8,10 @@ run_server:
 	java -jar jars/sneklms.jar &
 
 test:
-	py.test
+	{ java -jar jars/sneklms.jar & }; \
+	pid=$$!; \
+	sleep 1; \
+	py.test; \
+	r=$$?; \
+	 kill $$pid; \
+	exit $$r

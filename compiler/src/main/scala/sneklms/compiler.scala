@@ -21,7 +21,7 @@ trait Compiler extends Dsl {
 
   type Env = Map[String,Value]
 
-  def compile[T](n: Any, m: Any)(op: (Rep[T], Rep[T]) => Rep[T])(implicit env: Env): Value = (compile(n), compile(m)) match {
+  def compile[T,U](n: Any, m: Any)(op: (Rep[T], Rep[T]) => Rep[U])(implicit env: Env): Value = (compile(n), compile(m)) match {
     case (Literal(n: Rep[T]), Literal(m: Rep[T])) => Literal(op(n, m))
   }
 
@@ -35,21 +35,44 @@ trait Compiler extends Dsl {
 
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = exp match {
     case x: Int => unit(x)
-    case x: String => env(x)
+    case x: String => env getOrElse (x, Literal(unit(-42)))
     case x::Nil => compile(x)
     case "*"::n::m =>
-      compile[Int](n, m)(_ * _)
+      compile[Int,Int](n, m)(_ * _)
     case "+"::n::m =>
-      compile[Int](n, m)(_ + _)
+      compile[Int,Int](n, m)(_ + _)
     case "-"::n::m =>
-      compile[Int](n, m)(_ - _)
+      compile[Int,Int](n, m)(_ - _)
+    case "=="::n::m =>
+      compile[Int,Boolean](n, m)(_ == _)
     case "if"::c::t::e =>
-      val Literal(rc: Rep[Int]) = compile(c)
-      compile[Int](t, e) { (t: Rep[Int], e: Rep[Int]) =>
-        if (rc != 0) t else e
+      val Literal(rc: Rep[Boolean]) = compile(c)
+      compile[Int,Int](t, e) { (t: Rep[Int], e: Rep[Int]) =>
+        if (rc) t else e
       }
     case "let"::(x: String)::a::b =>
       compile(b)(env + (x -> compile(a)))
+    case "return"::x =>
+      val Literal(rx: Rep[Int]) = compile(x)
+      return rx
+    case "def"::(f: String)::(args: List[String])::body::r =>
+      val func = args match {
+        case x1::Nil =>
+          lazy val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) + (f -> Literal(fptr))) match {
+              case Literal(n: Rep[Int]) => n
+            }
+          }
+          Literal(fptr)
+        case x1::x2::Nil =>
+          lazy val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) + (f -> Literal(fptr))) match {
+              case Literal(n: Rep[Int]) => n
+            }
+          }
+          Literal(fptr)
+      }
+      compile(r)(env + (f -> func))
     case "lambda"::(f: String)::(x: String)::e =>
       lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
         compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
@@ -57,15 +80,19 @@ trait Compiler extends Dsl {
         }
       }
       Literal(fptr)
-    case f::x =>
-      printEnv
-      (compile(f).get, compile(x)) match {
-        case (Literal(f: Rep[Int => Int]), Literal(x: Rep[Int])) => f(x)
+    case f::(x: List[Any]) =>
+      val args = x map(compile(_) match { case Literal(x: Rep[Int]) => x })
+      (compile(f).get, args) match {
+        case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
+        case (Literal(f: Rep[((Int, Int)) => Int]), x1::x2::Nil) => f((x1, x2))
       }
+    case Nil =>
+      val x = unit(0)
+      return x
   }
 }
 
-trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString with LiftPrimitives with LiftNumeric with LiftBoolean with IfThenElse with Equal with RangeOps with OrderingOps with MiscOps with ArrayOps with StringOps with SeqOps with Functions with While with StaticData with Variables with LiftVariables with ObjectOps {
+trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString with LiftPrimitives with LiftNumeric with LiftBoolean with IfThenElse with Equal with RangeOps with OrderingOps with MiscOps with ArrayOps with StringOps with SeqOps with Functions with While with StaticData with Variables with LiftVariables with ObjectOps with TupledFunctions {
   implicit def repStrToSeqOps(a: Rep[String]) = new SeqOpsCls(a.asInstanceOf[Rep[Seq[Char]]])
   override def infix_&&(lhs: Rep[Boolean], rhs: => Rep[Boolean])(implicit pos: scala.reflect.SourceContext): Rep[Boolean] =
     __ifThenElse(lhs, rhs, unit(false))
@@ -131,7 +158,8 @@ trait DslGenC extends CGenNumericOps
     with CGenMiscOps with CGenArrayOps with CGenStringOps
     with CGenSeqOps with CGenFunctions with CGenWhile
     with CGenStaticData with CGenVariables
-    with CGenObjectOps with CGenUncheckedOps with CLikeGenMathOps {
+    with CGenObjectOps with CGenUncheckedOps with CLikeGenMathOps
+    with CGenTupledFunctions {
   val IR: DslExp
   import IR._
 
@@ -198,67 +226,69 @@ trait DslGenC extends CGenNumericOps
     case _ => super.emitNode(sym,rhs)
   }
   override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: java.io.PrintWriter) = {
+
+    val sA = remap(typ[A])
+
     withStream(out) {
-      stream.println("""
-      |#include <fcntl.h>
-      |#include <errno.h>
-      |#include <err.h>
-      |#include <sys/mman.h>
-      |#include <sys/stat.h>
-      |#include <stdio.h>
-      |#include <stdint.h>
-      |#include <unistd.h>
-      |#include <math.h>
-      |#ifndef MAP_FILE
-      |#define MAP_FILE MAP_SHARED
-      |#endif
+      stream.println("""/*****************************************/
+       |#include <stdio.h>
+       |#include <stdlib.h>
+       |#include <stdint.h>
+       |using namespace std;""".stripMargin)
 
-      |using namespace std;
-      """.stripMargin)
+      stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
+      emitBlock(body)
+
+      val y = getBlockResult(body)
+      if (remap(y.tp) != "void")
+        stream.println("return " + quote(y) + ";")
+
+      stream.println("}")
+      stream.println("/*******************************************/")
+      }
+      Nil
     }
-    super.emitSource[A](args, body, functionName, out)
-  }
-}
-
-
-abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
-  def snippet(x: Rep[A]): Rep[B]
-}
-
-abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with DslExp { q =>
-  val codegen = new DslGenC {
-    val IR: q.type = q
   }
 
-  def indent(str: String) = {
-    val strLines = str.split("\n")
-    val res = new StringBuilder
-    var level: Int = 0
-    for (line <- strLines) {
-      if(line.contains("}")) level -= 1
-      res ++= (("  " * level) + line + "\n")
+
+  abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
+    def snippet(x: Rep[A]): Rep[B]
+  }
+
+  abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with DslExp { q =>
+    val codegen = new DslGenC {
+      val IR: q.type = q
+    }
+
+    def indent(str: String) = {
+      val strLines = str.split("\n")
+      val res = new StringBuilder
+      var level: Int = 0
+      for (line <- strLines) {
+        if(line.contains("}")) level -= 1
+        res ++= (("  " * level) + line + "\n")
       if(line.contains("{")) level += 1
+      }
+      res.toString
     }
-    res.toString
-  }
 
-  lazy val code: String = {
-    implicit val mA = manifestTyp[A]
-    implicit val mB = manifestTyp[B]
-    val source = new java.io.StringWriter()
-    codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
+    lazy val code: String = {
+      implicit val mA = manifestTyp[A]
+      implicit val mB = manifestTyp[B]
+      val source = new java.io.StringWriter()
+      codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
 
-    indent(source.toString)
+      indent(source.toString)
+    }
+    def eval(a:A): Unit = { // TBD: should read result of type B?
+      val out = new java.io.PrintWriter("/tmp/snippet.c")
+      out.println(code)
+      out.close
+      //TODO: use precompile
+      (new java.io.File("/tmp/snippet")).delete
+      import scala.sys.process._
+      (s"gcc -std=c99 -O3 /tmp/snippet.c -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
+      (s"/tmp/snippet $a":ProcessBuilder).lines.foreach(Console.println _)
+    }
   }
-  def eval(a:A): Unit = { // TBD: should read result of type B?
-    val out = new java.io.PrintWriter("/tmp/snippet.c")
-    out.println(code)
-    out.close
-    //TODO: use precompile
-    (new java.io.File("/tmp/snippet")).delete
-    import scala.sys.process._
-    (s"gcc -std=c99 -O3 /tmp/snippet.c -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
-    (s"/tmp/snippet $a":ProcessBuilder).lines.foreach(Console.println _)
-  }
-}
 

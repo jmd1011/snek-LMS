@@ -7,6 +7,7 @@ scalaVersion := "2.11.2"
 scalaOrganization := "org.scala-lang.virtualized"
 
 resolvers += Resolver.sonatypeRepo("snapshots")
+resolvers += Resolver.mavenLocal
 
 libraryDependencies += "org.scala-lang.lms" %% "lms-core" % "1.0.1-SNAPSHOT"
 

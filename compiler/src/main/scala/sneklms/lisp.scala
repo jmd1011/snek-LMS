@@ -10,7 +10,7 @@ object Lisp {
     override val whiteSpace = """(\s|(;[^\n]*))+""".r
 
     def S(x:String) = x
-    def Str2(x:String) = ???
+    def Str2(x:String) = x
     def P(x:Any*): Any = x match {
       case Seq(h, t: List[Any]) => h::t
       case _ => x.toList
