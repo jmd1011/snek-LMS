@@ -25,40 +25,46 @@ def test_power_rewrite():
     assert(power2.src == """
 
 def power2(b, x):
+    try:
 
-    def then$1():
-        return 1
+        def then$1():
+            raise NonLocalReturnValue(1)
 
-    def else$1():
-        return (b * power2(b, (x - 1)))
-    return vIf((x == 0), then$1, else$1, {})
+        def else$1():
+            raise NonLocalReturnValue((b * power2(b, (x - 1))))
+        __if((x == 0), then$1, else$1, {})
+    except NonLocalReturnValue as r:
+        return r.value
 """)
-
 
 # FIXE: this is wrong!
 
 @lms
 def foobar1(x):
-    if (x == 0): 
+    if (x == 0):
         print('yes')
-    else: 
+    else:
         print('no')
     return x
 
 # FIXME: currently returns None
-# def test_foobar1():
-#     assert(foobar1(7) == 7)
+def test_foobar1():
+    assert(foobar1(7) == 7)
 
 def test_foobar1_rewrite():
     assert(foobar1.src == """
 
 def foobar1(x):
+    try:
 
-    def then$2():
-        print('yes')
+        def then$2():
+            print('yes')
 
-    def else$2():
-        print('no')
-    return vIf((x == 0), then$2, else$2, {})
-    return x
+        def else$2():
+            print('no')
+        __if((x == 0), then$2, else$2, {})
+        raise NonLocalReturnValue(x)
+    except NonLocalReturnValue as r:
+        return r.value
 """)
+
