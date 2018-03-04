@@ -200,61 +200,21 @@ trait DslGenC extends CGenNumericOps
   override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: java.io.PrintWriter) = {
     withStream(out) {
       stream.println("""
-      #include <fcntl.h>
-      #include <errno.h>
-      #include <err.h>
-      #include <sys/mman.h>
-      #include <sys/stat.h>
-      #include <stdio.h>
-      #include <stdint.h>
-      #include <unistd.h>
-      #include <math.h>
-      #ifndef MAP_FILE
-      #define MAP_FILE MAP_SHARED
-      #endif
-      int fsize(int fd) {
-        struct stat stat;
-        int res = fstat(fd,&stat);
-        return stat.st_size;
-      }
-      int printll(char* s) {
-        while (*s != '\n' && *s != ',' && *s != '\t') {
-          putchar(*s++);
-        }
-        return 0;
-      }
-      long hash(char *str0, int len)
-      {
-        unsigned char* str = (unsigned char*)str0;
-        unsigned long hash = 5381;
-        int c;
+      |#include <fcntl.h>
+      |#include <errno.h>
+      |#include <err.h>
+      |#include <sys/mman.h>
+      |#include <sys/stat.h>
+      |#include <stdio.h>
+      |#include <stdint.h>
+      |#include <unistd.h>
+      |#include <math.h>
+      |#ifndef MAP_FILE
+      |#define MAP_FILE MAP_SHARED
+      |#endif
 
-        while ((c = *str++) && len--)
-          hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-        return hash;
-      }
-      void Snippet(char*);
-      int main(int argc, char *argv[])
-      {
-        if (argc != 2) {
-          printf("usage: query <filename>\n");
-          return 0;
-        }
-        Snippet(argv[1]);
-        return 0;
-      }
-
-      int string_toInt(char* s) {
-        int val = 0;
-        char c;
-        while ((c = *s++) != 0) {
-          val = val * 10 + (c - '0');
-        }
-        return val;
-      }
-
-      """)
+      |using namespace std;
+      """.stripMargin)
     }
     super.emitSource[A](args, body, functionName, out)
   }
@@ -286,7 +246,7 @@ abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with Ds
     implicit val mA = manifestTyp[A]
     implicit val mB = manifestTyp[B]
     val source = new java.io.StringWriter()
-    codegen.emitSource(snippet, "Snippet", new java.io.PrintWriter(source))
+    codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
 
     indent(source.toString)
   }

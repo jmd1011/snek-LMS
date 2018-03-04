@@ -2,3 +2,4 @@
 __pycache__
 compiler/target
 compiler/project/target
+.*.sw*

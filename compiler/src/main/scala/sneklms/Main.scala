@@ -7,7 +7,12 @@ object Main {
   import Matches._
 
   def main(args: Array[String]) = {
-    val prog_val = parseExp(args(0))
+    val code = compile(args(0))
+    println(code)
+  }
+
+  def compile(arg: String) = {
+    val prog_val = parseExp(arg)
     println(prog_val)
 
     val code = new DslDriverC[Int,Int] with Compiler {
@@ -18,6 +23,6 @@ object Main {
       }
     }.code
 
-    println(code)
+    code
   }
 }
