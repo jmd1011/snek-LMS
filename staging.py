@@ -8,13 +8,14 @@ import inspect
 import builtins
 
 
-var_counter = 0
+var_names = {}
 
-def freshName():
-    global var_counter
-    n_var = var_counter
-    var_counter += 1
-    return "1_$vb" + str(n_var)
+def freshName(s = ""):
+    global var_names
+    if s not in var_names:
+        var_names[s] = 0
+    var_names[s] += 1
+    return "{0}${1}".format(s, var_names[s])
 
 class ConditionRepChecker(ast.NodeVisitor):
     def __init__(self, reps):
@@ -184,9 +185,13 @@ class PyGenIRIntEq(object):
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
         self.ir = ir
+        print("self.ir = {0}".format(self.ir))
 
     def gen(self):
-        clsName = "PyGen{0}".format(type(self.ir).__name__)
+        n = type(self.ir).__name__
+        nm = n[0].upper()
+        nmm = nm + n[1:]
+        clsName = "PyGen{0}".format(nmm)
         Cls = getClass(clsName)
         return Cls().gen(self.ir)
 
@@ -279,8 +284,8 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
 
         # vIf(node.test, node.body, node.orelse, self.reps)
-        tBranch_name = freshName()
-        eBranch_name = freshName()
+        tBranch_name = freshName("then")
+        eBranch_name = freshName("else")
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
@@ -312,6 +317,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         # self.generic_visit(new_node)
         mod = [tBranch, eBranch, new_node]
+        print(ast.dump(eBranch))
         return mod
         #return ast.copy_location(mod, node)
 
@@ -337,7 +343,7 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Return(self, node):
         self.generic_visit(node)
 
-        ret_name = freshName()
+        ret_name = freshName("ret")
         retfun = ast.FunctionDef(name=ret_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=[node],
@@ -349,7 +355,8 @@ class StagingRewriter(ast.NodeTransformer):
                                         keywords=[]))
         ast.fix_missing_locations(retnode)
         # ast.copy_location(retnode, node)
-        return [retfun, retnode]
+        # return [retfun, retnode]
+        return retnode
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -469,13 +476,18 @@ def stagedPower(b, x):
 
 ################################################
 
+def zero(x):
+    if (x == 0): return 1
+    else: return 0
+
 """
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
 @Specalize(PyCodeGen)
 def snippet(b: RepInt):
-    return power(b, 3)
+    return zero(0)
+    # return power(b, 3)
 
 assert(snippet(3) == 27) # Here we can just use snippet
 
