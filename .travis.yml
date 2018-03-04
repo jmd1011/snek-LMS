@@ -1,5 +1,17 @@
+sudo: false # docker-based container
+
 language: python
+
 python:
-  - "3.5"
+  - 3.6
+
+scala:
+  - 2.11.2
+
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot
+
 script:
   - python3 test.py
