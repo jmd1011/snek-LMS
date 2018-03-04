@@ -282,11 +282,11 @@ class StagingRewriter(ast.NodeTransformer):
         eBranch_name = freshName()
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=node.body,
+                                  body=list(map(lambda x: self.generic_visit(x), node.body)),
                                   decorator_list=[])
         eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=node.orelse,
+                                  body=list(map(lambda x: self.generic_visit(x), node.orelse)),
                                   decorator_list=[])
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
@@ -373,18 +373,18 @@ def lms(obj):
         print("before modding, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
         print("========================================================")
 
-        for node in ast.walk(mod_ast):
-            print("\n{0}\n".format(ast.dump(node)))
+        # for node in ast.walk(mod_ast):
+        print("\n{0}\n".format(ast.dump(mod_ast)))
             # for child in ast.iter_child_nodes(node):
             #     child.parent = node
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
 
-        print("===========================AFTERTERTETE==================\n\n")
+        print("===========================AFTER==================\n\n")
 
-        for node in ast.walk(mod_ast):
-            print("\n{0}\n".format(ast.dump(node)))
+        # for node in ast.walk(mod_ast):
+        print("\n{0}\n".format(ast.dump(mod_ast)))
 
         # print("after modding, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
 
