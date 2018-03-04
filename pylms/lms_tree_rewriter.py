@@ -6,7 +6,6 @@ import inspect
 import builtins
 import astunparse
 
-
 class StagingRewriter(ast.NodeTransformer):
     """
     StagingRewriter does two things:
@@ -39,7 +38,6 @@ class StagingRewriter(ast.NodeTransformer):
         # check for BoolOp and then Compare
         # node.body = list(map(lambda x: self.generic_visit(x), node.body))
         self.generic_visit(node)
-
         # vIf(node.test, node.body, node.orelse, self.reps)
         tBranch_name = self.freshName("then")
         eBranch_name = self.freshName("else")
@@ -71,8 +69,8 @@ class StagingRewriter(ast.NodeTransformer):
         #     keywords=[]
         # )], keywords=[]))
 
-        new_node = ast.Return(value=ast.Call(
-            func=ast.Name(id='vIf', ctx=ast.Load()),
+        new_node = ast.Expr(value=ast.Call(
+            func=ast.Name(id='__if', ctx=ast.Load()),
             args=[node.test,
                   ast.Name(id=tBranch_name, ctx=ast.Load()),
                   ast.Name(id=eBranch_name, ctx=ast.Load()),
@@ -105,13 +103,30 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         #self.reps = getFunRepAnno(node)
         self.generic_visit(node)
-        node.decorator_list = [] # Drop the decorator
+        new_node = ast.copy_location(ast.FunctionDef(name=node.name,
+                                         args=node.args,
+                                         body=[ast.Try(body=node.body,
+                                                      handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()), 
+                                                                                       name='r', 
+                                                                                       body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
+                                                      orelse=[],
+                                                      finalbody=[])],
+                                         decorator_list=[],
+                                         returns=node.returns),
+                          node)
+        ast.fix_missing_locations(new_node)
+        #node.decorator_list = [] # Drop the decorator
         # print(node.name)
-        return node
+        return new_node
 
     def visit_Return(self, node):
         self.generic_visit(node)
-        return node
+        new_node = ast.Raise(exc=ast.Call(func=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()),
+                                          args=[node.value],
+                                          keywords=[]),
+                             cause=None)
+        ast.fix_missing_locations(new_node)
+        return new_node
 
         # ret_name = freshName("ret")
         # retfun = ast.FunctionDef(name=ret_name,
