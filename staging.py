@@ -317,7 +317,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         # self.generic_visit(new_node)
         mod = [tBranch, eBranch, new_node]
-        print(ast.dump(eBranch))
+        # print(ast.dump(eBranch))
         return mod
         #return ast.copy_location(mod, node)
 
@@ -355,8 +355,8 @@ class StagingRewriter(ast.NodeTransformer):
                                         keywords=[]))
         ast.fix_missing_locations(retnode)
         # ast.copy_location(retnode, node)
-        # return [retfun, retnode]
-        return retnode
+        return [retfun, retnode]
+        # return retnode
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -436,7 +436,7 @@ TODO: User can provide return type.
 TODO: User can even provide return type as union;
       eg, power(b: RepInt, x) -> RepInt | RepStr
 """
-@lms
+# @lms
 def power(b : RepInt, x) -> RepInt:
     if (x == 0): return 1
     else: return b * power(b, x-1)
@@ -476,6 +476,7 @@ def stagedPower(b, x):
 
 ################################################
 
+@lms
 def zero(x):
     if (x == 0): return 1
     else: return 0
