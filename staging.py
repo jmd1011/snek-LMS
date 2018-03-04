@@ -144,6 +144,10 @@ class PyGenIRInt(object):
     def gen(self, irint):
         return str(irint.n)
 
+class PyGenRepInt(object):
+    def gen(self, irint):
+        return str(irint.n)
+
 class PyGenInt(object):
     def gen(self, n):
         return str(n)
@@ -500,13 +504,29 @@ def zero(x):
     if (x == 0): return 1
     else: return 0
 
+@lms
+def power1(x : RepInt, n) -> RepInt:
+    if n == 0: return 1
+    else: return x * power1(x, n - 1)
+
+@lms
+def even(x : RepInt, n) -> RepInt:
+    if (n > 2):
+        return x + 2
+    else:
+        n = 4
+
+    return n
+
 """
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
 @Specalize(PyCodeGen)
 def snippet(b: RepInt):
-    return zero(0)
+    return even(b, 3)
+    # return power1(3, 3)
+    # return zero(0)
     # return power(b, 3)
 
 # assert(snippet(3) == 27) # Here we can just use snippet
