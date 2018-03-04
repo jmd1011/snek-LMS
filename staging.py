@@ -6,7 +6,7 @@ import types
 import parser
 import inspect
 import builtins
-
+import astunparse
 
 var_names = {}
 
@@ -393,7 +393,7 @@ def lms(obj):
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
-
+        print(astunparse.dump(new_mod_ast))
         # print("===========================AFTER==================\n\n")
 
         # for node in ast.walk(mod_ast):
