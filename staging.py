@@ -35,13 +35,15 @@ def vIf(test, body, orelse, reps):
         if(test):
             # print(ast.dump(body()))
             print("True")
-            return body()
+            res = body()
+            return res
         else:
             # print(type(orelse))
             # print(ast.dump(orelse()))
             print("False")
             # print(orelse())
-            return orelse()
+            res = orelse()
+            return res
             # return orelse()
     else:
         print("Rep")
@@ -139,7 +141,12 @@ class PyGenIRConst(object):
     def gen(self, irconst): return str(irconst.v)
 
 class PyGenIRInt(object):
-    def gen(self, irint): return str(irint.n)
+    def gen(self, irint):
+        return str(irint.n)
+
+class PyGenInt(object):
+    def gen(self, n):
+        return str(n)
 
 class PyGenIRIntAdd(object):
     def gen(self, iradd):
@@ -302,8 +309,19 @@ class StagingRewriter(ast.NodeTransformer):
 
         # self.vIf(node.test, tBranch, eBranch)
         # print(node.lineno)
-        new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()), args=[
-            ast.Call(
+        # new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()), args=[
+        #     ast.Call(
+        #     func=ast.Name(id='vIf', ctx=ast.Load()),
+        #     args=[node.test,
+        #           ast.Name(id=tBranch_name, ctx=ast.Load()),
+        #           ast.Name(id=eBranch_name, ctx=ast.Load()),
+        #           ast.Dict(list(map(ast.Str, self.reps.keys())),
+        #                    list(map(ast.Str, self.reps.values()))),
+        #          ],
+        #     keywords=[]
+        # )], keywords=[]))
+
+        new_node = ast.Return(value=ast.Call(
             func=ast.Name(id='vIf', ctx=ast.Load()),
             args=[node.test,
                   ast.Name(id=tBranch_name, ctx=ast.Load()),
@@ -312,7 +330,7 @@ class StagingRewriter(ast.NodeTransformer):
                            list(map(ast.Str, self.reps.values()))),
                  ],
             keywords=[]
-        )], keywords=[]))
+        ))
 
         ast.fix_missing_locations(new_node)
         # self.generic_visit(new_node)
@@ -342,20 +360,21 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_Return(self, node):
         self.generic_visit(node)
+        return node
 
-        ret_name = freshName("ret")
-        retfun = ast.FunctionDef(name=ret_name,
-                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=[node],
-                                  decorator_list=[])
+        # ret_name = freshName("ret")
+        # retfun = ast.FunctionDef(name=ret_name,
+        #                           args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+        #                           body=[node],
+        #                           decorator_list=[])
 
-        ast.fix_missing_locations(retfun)
-        retnode = ast.Expr(ast.Call(func=ast.Name('__return', ast.Load()),
-                                        args=[ast.Name(id=ret_name, ctx=ast.Load())],
-                                        keywords=[]))
-        ast.fix_missing_locations(retnode)
-        # ast.copy_location(retnode, node)
-        return [retfun, retnode]
+        # ast.fix_missing_locations(retfun)
+        # retnode = ast.Expr(ast.Call(func=ast.Name('__return', ast.Load()),
+        #                                 args=[ast.Name(id=ret_name, ctx=ast.Load())],
+        #                                 keywords=[]))
+        # ast.fix_missing_locations(retnode)
+        # # ast.copy_location(retnode, node)
+        # return [retfun, retnode]
         # return retnode
 
     def visit_Name(self, node):
@@ -490,12 +509,12 @@ def snippet(b: RepInt):
     return zero(0)
     # return power(b, 3)
 
-assert(snippet(3) == 27) # Here we can just use snippet
+# assert(snippet(3) == 27) # Here we can just use snippet
 
-"""
-Explaination: decorating `snippet` with @Specalize is equivalent to:
-"""
-def snippet2(b : RepInt): return stagedPower(b, 3)
-power3 = Specalize(PyCodeGen)(snippet2)
-assert(power3(3) == 27)
+# """
+# Explaination: decorating `snippet` with @Specalize is equivalent to:
+# """
+# def snippet2(b : RepInt): return stagedPower(b, 3)
+# power3 = Specalize(PyCodeGen)(snippet2)
+# assert(power3(3) == 27)
 
