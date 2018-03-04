@@ -64,14 +64,14 @@ trait Compiler extends Dsl {
     case "def"::(f: String)::(args: List[String])::body::r =>
       val func = args match {
         case x1::Nil =>
-          lazy val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+          lazy val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
             compile(body)(env + (x1 -> Literal(x1v)) + (f -> Literal(fptr))) match {
               case Literal(n: Rep[Int]) => n
             }
           }
           Literal(fptr)
         case x1::x2::Nil =>
-          lazy val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+          lazy val fptr: Rep[(Int, Int) => Int] = uninlinedFunc2 { (x1v: Rep[Int], x2v: Rep[Int]) =>
             compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) + (f -> Literal(fptr))) match {
               case Literal(n: Rep[Int]) => n
             }
@@ -104,9 +104,48 @@ trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString w
     __ifThenElse(lhs, rhs, unit(false))
   def generate_comment(l: String): Rep[Unit]
   def comment[A:Typ](l: String, verbose: Boolean = true)(b: => Rep[A]): Rep[A]
+
+  def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]): Rep[Unit=>B]
+  def uninlinedFunc1[A:Typ,B:Typ](f: Rep[A]=>Rep[B])(implicit pos: SourceContext): Rep[A => B]
+  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: Function2[Rep[A1],Rep[A2],Rep[B]]): Rep[(A1,A2)=>B]
+  implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B]
+  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]): Rep[(A1,A2,A3)=>B]
+  implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B]
 }
 
 trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with BooleanOpsExp with IfThenElseExpOpt with EqualExpBridgeOpt with RangeOpsExp with OrderingOpsExp with MiscOpsExp with EffectExp with ArrayOpsExpOpt with StringOpsExp with SeqOpsExp with FunctionsRecursiveExp with WhileExp with StaticDataExp with VariablesExpOpt with ObjectOpsExpOpt with MathOpsExp with UncheckedOpsExp with TupledFunctionsExp {
+
+  case class UninlinedFunc0[B:Typ](b: Block[B]) extends Def[Unit => B] {
+    val mB = typ[B]
+  }
+  case class UninlinedFunc1[A:Typ,B:Typ](s:Sym[A], b: Block[B]) extends Def[A => B] {
+    val mA = typ[A]
+    val mB = typ[B]
+  }
+  case class UninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], b: Block[B]) extends Def[(A1,A2) => B] {
+    val mA1 = typ[A1]
+    val mA2 = typ[A2]
+    val mB = typ[B]
+  }
+  implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B] = {
+    implicit val ManifestTyp(mA1) = typ[A1]
+    implicit val ManifestTyp(mA2) = typ[A2]
+    implicit val ManifestTyp(mB) = typ[B]
+    manifestTyp
+  }
+  case class UninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], s3:Sym[A3], b: Block[B]) extends Def[(A1,A2,A3) => B] {
+    val mA1 = typ[A1]
+    val mA2 = typ[A2]
+    val mA3 = typ[A3]
+    val mB = typ[B]
+  }
+  implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B] = {
+    implicit val ManifestTyp(mA1) = typ[A1]
+    implicit val ManifestTyp(mA2) = typ[A2]
+    implicit val ManifestTyp(mA3) = typ[A3]
+    implicit val ManifestTyp(mB) = typ[B]
+    manifestTyp
+  }
   override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
     case Const(false) => rhs
     case _ => super.boolean_or(lhs, rhs)
@@ -116,61 +155,141 @@ trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with Bool
     case _ => super.boolean_and(lhs, rhs)
   }
 
-  case class GenerateComment(l: String) extends Def[Unit]
-  def generate_comment(l: String) = reflectEffect(GenerateComment(l))
-  case class Comment[A:Typ](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
-  def comment[A:Typ](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
-    val br = reifyEffects(b)
-    val be = summarizeEffects(br)
-    reflectEffect[A](Comment(l, verbose, br), be)
-  }
-
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case Comment(_, _, b) => effectSyms(b)
-    case _ => super.boundSyms(e)
-  }
-
-  override def array_apply[T:Typ](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
-    case (Def(StaticData(x:Array[T])), Const(n)) =>
-      val y = x(n)
-      if (y.isInstanceOf[Int]) unit(y) else staticData(y)
-    case _ => super.array_apply(x,n)
-  }
-
-  // TODO: should this be in LMS?
-  override def isPrimitiveType[T](m: Typ[T]) = (m == manifest[String]) || super.isPrimitiveType(m)
-
-  override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
-    val x1 = unbox(x)
-    val x1_effects = x1 match {
-      case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
-        case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
-        case _ => b
-      })
-        case _ => Pure()
+    case class GenerateComment(l: String) extends Def[Unit]
+    def generate_comment(l: String) = reflectEffect(GenerateComment(l))
+    case class Comment[A:Typ](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
+    def comment[A:Typ](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
+      val br = reifyEffects(b)
+      val be = summarizeEffects(br)
+      reflectEffect[A](Comment(l, verbose, br), be)
     }
-    f match {
-      case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
-      case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
-    }
-  }
 
+    override def boundSyms(e: Any): List[Sym[Any]] = e match {
+      case Comment(_, _, b) => effectSyms(b)
+      case _ => super.boundSyms(e)
+    }
+
+    override def array_apply[T:Typ](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
+      case (Def(StaticData(x:Array[T])), Const(n)) =>
+        val y = x(n)
+        if (y.isInstanceOf[Int]) unit(y) else staticData(y)
+      case _ => super.array_apply(x,n)
+    }
+
+    // TODO: should this be in LMS?
+    override def isPrimitiveType[T](m: Typ[T]) = (m == typ[String]) || super.isPrimitiveType(m)
+
+    override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
+      val x1 = unbox(x)
+      val x1_effects = x1 match {
+        case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
+          case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
+          case _ => b
+        })
+          case _ => Pure()
+      }
+      f match {
+        case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
+        case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
+      }
+    }
+
+    // BEGINNING UNINLINED FUNCTIONS
+    val functionList0 = new scala.collection.mutable.HashMap[Sym[Any],Block[Any]]()
+    val functionList1 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Block[Any])]()
+    val functionList2 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Block[Any])]()
+    val functionList3 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Sym[Any],Block[Any])]()
+    def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]) = {
+      val b = reifyEffects(f())
+      uninlinedFunc0(b)
+    }
+    def uninlinedFunc0[B:Typ](b: Block[B]) = {
+      val l = reflectEffect(UninlinedFunc0(b), Pure())
+      functionList0 += (l.asInstanceOf[Sym[Any]] -> b)
+      l
+    }
+
+    val topfunTable = new scala.collection.mutable.HashMap[Any,Sym[Any]]()
+    def uninlinedFunc1[A:Typ,B:Typ](f: Exp[A] => Exp[B])(implicit pos: SourceContext): Exp[A => B] = {
+      val can = canonicalize(f)
+      topfunTable.get(can) match {
+        case Some(funSym) =>
+          funSym.asInstanceOf[Exp[A=>B]]
+        case _ =>
+          val funSym = fresh[A=>B]
+          topfunTable += can->funSym.asInstanceOf[Sym[Any]]
+          val s = fresh[A]
+          val b = reifyEffects(f(s))
+          functionList1 += (funSym.asInstanceOf[Sym[Any]] -> (s,b))
+          funSym
+      }
+    }
+    def canonicalize1(f: Any) = {
+      val s = new java.io.ByteArrayOutputStream()
+      val o = new java.io.ObjectOutputStream(s)
+      o.writeObject(f)
+      s.toString("ASCII")
+    }
+
+    def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: (Rep[A1],Rep[A2])=>Rep[B]) = {
+      val can = canonicalize1(f)
+      topfunTable.get(can) match {
+        case Some(funSym) =>
+          funSym.asInstanceOf[Exp[(A1,A2)=>B]]
+        case _ =>
+          val funSym = fresh[(A1,A2)=>B]
+          topfunTable += can->funSym.asInstanceOf[Sym[Any]]
+          val s1 = fresh[A1]
+          val s2 = fresh[A2]
+          val b = reifyEffects(f(s1,s2))
+          functionList2 += (funSym.asInstanceOf[Sym[Any]] -> (s1,s2,b))
+          funSym
+      }
+    }
+    def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], b: Block[B]) = {
+      // val l = reflectEffect(UninlinedFunc2(s1,s2,b), Pure())
+      // functionList2 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,b))
+      // l
+      ???
+    }
+
+    def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]) = {
+      // val s1 = fresh[A1]
+      // val s2 = fresh[A2]
+      // val s3 = fresh[A3]
+      // val b = reifyEffects(f(s1,s2,s3))
+      // uninlinedFunc3(s1,s2,s3,b)
+      ???
+    }
+    def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], s3: Sym[A3], b: Block[B]) = {
+      // val l = reflectEffect(UninlinedFunc3(s1,s2,s3,b), Pure())
+      // functionList3 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,s3,b))
+      // l
+      ???
+    }
+    override def doLambdaDef[A:Typ,B:Typ](f: Exp[A] => Exp[B]) : Def[A => B] = {
+      val x = unboxedFresh[A]
+      val y = reifyEffects(f(x)) // unfold completely at the definition site.
+      ???
+
+      Lambda(f, x, y)
+    }
 }
 
 // TODO: currently part of this is specific to the query tests. generalize? move?
 trait DslGenC extends CGenNumericOps
-    with CGenPrimitiveOps with CGenBooleanOps with CGenIfThenElse
-    with CGenEqual with CGenRangeOps with CGenOrderingOps
-    with CGenMiscOps with CGenArrayOps with CGenStringOps
-    with CGenSeqOps with CGenFunctions with CGenWhile
-    with CGenStaticData with CGenVariables
-    with CGenObjectOps with CGenUncheckedOps with CLikeGenMathOps
-    with CGenTupledFunctions {
+with CGenPrimitiveOps with CGenBooleanOps with CGenIfThenElse
+with CGenEqual with CGenRangeOps with CGenOrderingOps
+with CGenMiscOps with CGenArrayOps with CGenStringOps
+with CGenSeqOps with CGenFunctions with CGenWhile
+with CGenStaticData with CGenVariables
+with CGenObjectOps with CGenUncheckedOps with CLikeGenMathOps
+with CGenTupledFunctions {
   val IR: DslExp
   import IR._
 
   def getMemoryAllocString(count: String, memType: String): String = {
-      "(" + memType + "*)malloc(" + count + " * sizeof(" + memType + "));"
+    "(" + memType + "*)malloc(" + count + " * sizeof(" + memType + "));"
   }
   override def remap[A](m: Typ[A]): String = m.toString match {
     case "java.lang.String" => "char*"
@@ -221,14 +340,15 @@ trait DslGenC extends CGenNumericOps
     case StringCharAt(s,i) => emitValDef(sym, "%s[%s]".format(quote(s), quote(i)))
     case Comment(s, verbose, b) =>
       stream.println("//#" + s)
-      if (verbose) {
-        stream.println("// generated code for " + s.replace('_', ' '))
-      } else {
-        stream.println("// generated code")
-      }
-      emitBlock(b)
-      emitValDef(sym, quote(getBlockResult(b)))
-      stream.println("//#" + s)
+        if (verbose) {
+          stream.println("// generated code for " + s.replace('_', ' '))
+          } else {
+            stream.println("// generated code")
+          }
+          emitBlock(b)
+          emitValDef(sym, quote(getBlockResult(b)))
+          stream.println("//#" + s)
+    case UninlinedFunc2(_, _, _) => {}
     case _ => super.emitNode(sym,rhs)
   }
   override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: java.io.PrintWriter) = {
@@ -242,6 +362,8 @@ trait DslGenC extends CGenNumericOps
        |#include <stdint.h>
        |using namespace std;""".stripMargin)
 
+      emitFunctions()
+
       stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
       emitBlock(body)
 
@@ -251,50 +373,95 @@ trait DslGenC extends CGenNumericOps
 
       stream.println("}")
       stream.println("/*******************************************/")
-      }
-      Nil
     }
+    Nil
+  }
+  def emitFunctions() = {
+    // Output prototypes to resolve dependencies
+    functionList0.foreach(f=>stream.println(remap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
+    functionList1.foreach(f=>stream.println(remap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
+    functionList2.foreach(f=>stream.println(remap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
+    functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
+    // Output actual functions
+    functionList0.foreach(func => {
+      stream.println(remap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
+      emitBlock(func._2)
+      stream.println("return " + quote(getBlockResult(func._2)) + ";")
+      stream.println("}\n")
+    })
+    functionList1.foreach(func => {
+      stream.print(remap(getBlockResult(func._2._2).tp) + " " + quote(func._1) + "(")
+      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1))
+      stream.println(") {")
+      emitBlock(func._2._2)
+      stream.println("return " + quote(getBlockResult(func._2._2)) + ";")
+      stream.println("}\n")
+    })
+    functionList2.foreach(func => {
+      stream.print(remap(getBlockResult(func._2._3).tp) + " " + quote(func._1) + "(")
+      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+      stream.print(remap(func._2._2.tp) + " " + quote(func._2._2))
+      stream.println(") {")
+      emitBlock(func._2._3)
+      stream.println("return " + quote(getBlockResult(func._2._3)) + ";")
+      stream.println("}\n")
+    })
+    functionList3.foreach(func => {
+      stream.print(remap(getBlockResult(func._2._4).tp) + " " + quote(func._1) + "(")
+      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+      stream.print(remap(func._2._2.tp) + " " + quote(func._2._2) + ", ")
+      stream.print(remap(func._2._3.tp) + " " + quote(func._2._3))
+      stream.println(") {")
+      emitBlock(func._2._4)
+      stream.println("return " + quote(getBlockResult(func._2._4)) + ";")
+      stream.println("}\n")
+    })
+    functionList0.clear
+    functionList1.clear
+    functionList2.clear
+    functionList3.clear
+  }
+}
+
+
+abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
+  def snippet(x: Rep[A]): Rep[B]
+}
+
+abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with DslExp { q =>
+  val codegen = new DslGenC {
+    val IR: q.type = q
   }
 
-
-  abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
-    def snippet(x: Rep[A]): Rep[B]
+  def indent(str: String) = {
+    val strLines = str.split("\n")
+    val res = new StringBuilder
+    var level: Int = 0
+    for (line <- strLines) {
+      if(line.contains("}")) level -= 1
+      res ++= (("  " * level) + line + "\n")
+    if(line.contains("{")) level += 1
+    }
+    res.toString
   }
 
-  abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with DslExp { q =>
-    val codegen = new DslGenC {
-      val IR: q.type = q
-    }
+  lazy val code: String = {
+    implicit val mA = manifestTyp[A]
+    implicit val mB = manifestTyp[B]
+    val source = new java.io.StringWriter()
+    codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
 
-    def indent(str: String) = {
-      val strLines = str.split("\n")
-      val res = new StringBuilder
-      var level: Int = 0
-      for (line <- strLines) {
-        if(line.contains("}")) level -= 1
-        res ++= (("  " * level) + line + "\n")
-      if(line.contains("{")) level += 1
-      }
-      res.toString
-    }
-
-    lazy val code: String = {
-      implicit val mA = manifestTyp[A]
-      implicit val mB = manifestTyp[B]
-      val source = new java.io.StringWriter()
-      codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
-
-      indent(source.toString)
-    }
-    def eval(a:A): Unit = { // TBD: should read result of type B?
-      val out = new java.io.PrintWriter("/tmp/snippet.c")
-      out.println(code)
-      out.close
-      //TODO: use precompile
-      (new java.io.File("/tmp/snippet")).delete
-      import scala.sys.process._
-      (s"gcc -std=c99 -O3 /tmp/snippet.c -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
-      (s"/tmp/snippet $a":ProcessBuilder).lines.foreach(Console.println _)
-    }
+    indent(source.toString)
   }
+  def eval(a:A): Unit = { // TBD: should read result of type B?
+    val out = new java.io.PrintWriter("/tmp/snippet.c")
+    out.println(code)
+    out.close
+    //TODO: use precompile
+    (new java.io.File("/tmp/snippet")).delete
+    import scala.sys.process._
+    (s"gcc -std=c99 -O3 /tmp/snippet.c -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
+    (s"/tmp/snippet $a":ProcessBuilder).lines.foreach(Console.println _)
+  }
+}
 
