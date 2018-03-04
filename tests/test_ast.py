@@ -11,7 +11,7 @@ def test_power():
     assert(power(2,3) == 8)
 
 def test_power_code():
-    assert(power.code == """(def power (b x) ((if (== x 0) (return 1) (return (* b (power b (- x 1))))))) (power 4 2)""")
+    assert(power.code == """(def power (b x) ((if (== x 0) (return 1) (return (* b (power b (- x 1)))))))""")
 
 def test_power_Ccode():
     sol = """/*****************************************/
