@@ -33,3 +33,32 @@ def power2(b, x):
         return (b * power2(b, (x - 1)))
     return vIf((x == 0), then$1, else$1, {})
 """)
+
+
+# FIXE: this is wrong!
+
+@lms
+def foobar1(x):
+    if (x == 0): 
+        print('yes')
+    else: 
+        print('no')
+    return x
+
+# FIXME: currently returns None
+# def test_foobar1():
+#     assert(foobar1(7) == 7)
+
+def test_foobar1_rewrite():
+    assert(foobar1.src == """
+
+def foobar1(x):
+
+    def then$2():
+        print('yes')
+
+    def else$2():
+        print('no')
+    return vIf((x == 0), then$2, else$2, {})
+    return x
+""")
