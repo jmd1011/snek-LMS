@@ -24,7 +24,7 @@ class AstVisitor(ast.NodeVisitor):
 	if(len(node.body) > 1):
 		self._print("(")
 		flag = 1
-	y = node.body.pop() 
+	y = node.body.pop()
 	while(1):
 		self.visit(y)
 		if( len(node.body) == 0):
@@ -42,7 +42,7 @@ class AstVisitor(ast.NodeVisitor):
 		if(len(node.orelse) ==0):
 			break
 		y = node.orelse.pop()
-	if flag == 1: 
+	if flag == 1:
 		self._print(")")
 	self._print(")\n")
 
@@ -79,7 +79,7 @@ class AstVisitor(ast.NodeVisitor):
 
     def visit_Str(self,node):
 	self._print('"{0}"'.format(node.s))
-	
+
     def visit_Arg(self, node):
 	self._print("def {0} ".format(node.arg))
 
@@ -87,7 +87,7 @@ class AstVisitor(ast.NodeVisitor):
 	self._print("(return ")
 	self.generic_visit(node)
 	self._print(')')
-    
+
     def visit_Num(self,node):
 	z = str(node.n)
 	self._print(' {0}'.format(z))
@@ -134,7 +134,7 @@ class AstVisitor(ast.NodeVisitor):
     def visit_Attribute(self,node):
 	self.visit(node.value)
 	self._print("{0}".format(node.attr))
-    
+
     def visit_Call(self, node):
 	self._print('(call ')
 	self.generic_visit(node)
@@ -176,13 +176,13 @@ def power(b, x):
 """
 @sexp
 def test(x):
-	model.eval()    
-	if x == 0: 
+	model.eval()
+	if x == 0:
 		print("Hello")
-	else: 
+	else:
 		print("world!")
 	return x
-    
+
 
 """
 """

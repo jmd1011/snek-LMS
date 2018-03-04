@@ -171,7 +171,7 @@ else:
 
 class PyGenIRReturn(object):
     def gen(self, irret):
-        print(irret.val)
+        print("ret:{0}\n".format(irret.val))
         val = PyCodeGen(irret.val).gen()
         return "return {0}".format(val)
 
@@ -376,21 +376,22 @@ def lms(obj):
 
         # GW: do you want to compare unfix/fix version of new_mod_ast?
         #     rather than mod_ast vs new_mod_ast
-        print("before modding, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
-        print("========================================================")
+        # print("before modding, ast looks like this:\n\n{0}".format(ast.dump(mod_ast)))
+        # print("========================================================")
 
         # for node in ast.walk(mod_ast):
-        print("\n{0}\n".format(ast.dump(mod_ast)))
+        # print("\n{0}\n".format(ast.dump(mod_ast)))
             # for child in ast.iter_child_nodes(node):
             #     child.parent = node
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
 
-        print("===========================AFTER==================\n\n")
+        # print("===========================AFTER==================\n\n")
 
         # for node in ast.walk(mod_ast):
-        print("\n{0}\n".format(ast.dump(mod_ast)))
+        # print("\n{0}\n".format(ast.dump(mod_ast)))
+        # print("\n{0}\n".format(ast.dump(new_mod_ast)))
 
         # print("after modding, ast looks like this:\n\n{0}\n\n".format(ast.dump(new_mod_ast)))
 
@@ -399,13 +400,6 @@ def lms(obj):
     elif isinstance(obj, types.MethodType):
         return NotImplemented
     else: return NotImplemented
-
-def __return(valueNode):
-    # idea: we evaluate whatever is being returned down to a single statement (e.g., b * b * ...)
-    # note that because this is wrapped inside this __return function, it *should* (might)
-    # handle control flow issues because only the first return is transformed
-    ret = exec(compile(valueNode, filename="<ast>", mode="exec"), globals())
-    return ret
 
 @parameterized
 def Specalize(f, Codegen, *args, **kwargs):
