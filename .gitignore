@@ -1,2 +1,4 @@
+.pytest_cache
+__pycache__
 compiler/target
-compiler/project
+compiler/project/target

@@ -14,4 +14,4 @@ cache:
     - $HOME/.sbt/boot
 
 script:
-  - python3 test.py
+  - make test
