@@ -35,7 +35,8 @@ trait Compiler extends Dsl {
 
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = exp match {
     case x: Int => unit(x)
-    case x: String => env getOrElse (x, Literal(unit(-42)))
+    case x: String => env(x)
+    case Str(x) => Literal(unit(x))
     case x::Nil => compile(x)
     case "*"::n::m =>
       compile[Int,Int](n, m)(_ * _)
@@ -53,8 +54,13 @@ trait Compiler extends Dsl {
     case "let"::(x: String)::a::b =>
       compile(b)(env + (x -> compile(a)))
     case "return"::x =>
-      val Literal(rx: Rep[Int]) = compile(x)
+      val Literal(rx: Rep[Any]) = compile(x)
       return rx
+    case "print"::(x: List[Str]) =>
+      assert(x.length == 1)
+      val args = x map(compile(_) match { case Literal(x: Rep[String]) => x })
+      printf("%s\\n", args.head)
+      unit(1)
     case "def"::(f: String)::(args: List[String])::body::r =>
       val func = args match {
         case x1::Nil =>

@@ -7,11 +7,11 @@ object Main {
   import Matches._
 
   def main(args: Array[String]) = {
-    val code = compile(args(0))
+    val code = compileMain(args(0))
     println(code)
   }
 
-  def compile(arg: String) = {
+  def compileMain(arg: String) = {
     val prog_val = parseExp(arg)
     println(prog_val)
 
