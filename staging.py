@@ -24,30 +24,33 @@ class ConditionRepChecker(ast.NodeVisitor):
         super()
 
     def visit_Name(self, node):
-        print("-------Name-------")
+        # print("-------Name-------")
         if node.id == "RepString" or node.id == "RepInt":
             self.hasRep = True
 
 def vIf(test, body, orelse, reps):
-    print("----------IF----------")
+    # print("----------IF----------")
     if(isinstance(test, bool)):
-        print("No rep")
+        # print("No rep")
         if(test):
             # print(ast.dump(body()))
-            print("True")
+            # print("True")
             res = body()
             return res
         else:
             # print(type(orelse))
             # print(ast.dump(orelse()))
-            print("False")
+            # print("False")
             # print(orelse())
             res = orelse()
             return res
             # return orelse()
     else:
         return IRIf(test, body, orelse)
-    print("--------End IF--------")
+    # print("--------End IF--------")
+
+def __ret(value):
+    return IRRet(value)
 
 def parameterized(dec):
     def layer(*args, **kwargs):
@@ -97,6 +100,11 @@ class IRInt(IR):
         self.n = n
 
 class IRIntAdd(IR):
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+class IRIntSub(IR):
     def __init__(self, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
@@ -160,19 +168,25 @@ class PyGenIRIntAdd(object):
         rhscode = PyCodeGen(iradd.rhs).gen()
         return "{0} + {1}".format(lhscode, rhscode)
 
+class PyGenIRIntSub(object):
+    def gen(self, irsub):
+        lhscode = PyCodeGen(irsub.lhs).gen()
+        rhscode = PyCodeGen(irsub.rhs).gen()
+        return "{0} - {1}".format(lhscode, rhscode)
+
 class PyGenIRIntMul(object):
     def gen(self, irmul):
-        print(irmul.lhs)
-        print(irmul.rhs)
+        # print(irmul.lhs)
+        # print(irmul.rhs)
         lhscode = PyCodeGen(irmul.lhs).gen()
         rhscode = PyCodeGen(irmul.rhs).gen()
         return "{0} * {1}".format(lhscode, rhscode)
 
 class PyGenIRIf(object):
     def gen(self, irif):
-        print(irif.cnd)
-        print(irif.thn)
-        print(irif.els)
+        # print(irif.cnd)
+        # print(irif.thn)
+        # print(irif.els)
         cond = PyCodeGen(irif.cnd).gen()
         thn = PyCodeGen(irif.thn()).gen()
         els = PyCodeGen(irif.els()).gen()
@@ -185,7 +199,7 @@ else:
 
 class PyGenIRReturn(object):
     def gen(self, irret):
-        print("ret:{0}\n".format(irret.val))
+        # print("ret:{0}\n".format(irret.val))
         val = PyCodeGen(irret.val).gen()
         return "return {0}".format(val)
 
@@ -198,7 +212,7 @@ class PyGenIRIntEq(object):
 class PyCodeGen(CodeGen):
     def __init__(self, ir):
         self.ir = ir
-        print("self.ir = {0}".format(self.ir))
+        # print("self.ir = {0}".format(self.ir))
 
     def gen(self):
         n = type(self.ir).__name__
@@ -262,6 +276,9 @@ class RepInt(RepTyp):
     def __add__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntAdd(self.__IR__(), m)
+    def __sub__(self, m):
+        if isinstance(m, RepTyp): m = m.__IR__()
+        return IRIntSub(self.__IR__(), m)
     def __mul__(self, m):
         if isinstance(m, RepTyp): m = m.__IR__()
         return IRIntMul(self.__IR__(), m)
@@ -362,6 +379,7 @@ class StagingRewriter(ast.NodeTransformer):
         self.reps = getFunRepAnno(node)
         self.generic_visit(node)
         node.decorator_list = [] # Drop the decorator
+        # print(node.name)
         return node
 
     def visit_Return(self, node):
@@ -418,7 +436,7 @@ def lms(obj):
 
         new_mod_ast = StagingRewriter().visit(mod_ast)
         ast.fix_missing_locations(new_mod_ast)
-        print(astunparse.dump(new_mod_ast))
+        # print(astunparse.dump(new_mod_ast))
         # print("===========================AFTER==================\n\n")
 
         # for node in ast.walk(mod_ast):
@@ -434,9 +452,9 @@ def lms(obj):
     else: return NotImplemented
 
 @parameterized
-def Specalize(f, Codegen, *args, **kwargs):
+def Specialize(f, Codegen, *args, **kwargs):
     """
-    Specalize transforms the annotated IR to target language.
+    Specialize transforms the annotated IR to target language.
     Note: f must be a named function
     TODO: f's argument names may different with variables in the inner body
     """
@@ -461,45 +479,10 @@ TODO: User can provide return type.
 TODO: User can even provide return type as union;
       eg, power(b: RepInt, x) -> RepInt | RepStr
 """
-# @lms
+@lms
 def power(b : RepInt, x) -> RepInt:
     if (x == 0): return 1
     else: return b * power(b, x-1)
-
-"""
-@lms
-def power(b : RepInt, x):
-    __if(x == 0, __return([1]), __return(b * power(b, x - 1)))
-
-def __if(cond, body, orelse):
-    #look at cond
-    if (cond is staged): #if cond has an operand with Rep[T]
-        generate if () ...
-    else:
-        if (cond):
-            ret = visit(body) #generate code for then branch (maybe)
-            if isinstance(ret, ast.Return):
-                return eval(ret)
-            else:
-                return ret
-        else:
-            visit(orelse)
-
-"""
-
-"""
-Explaination: intuitively, the instrumented AST of `power` looks like `stagedPower`.
-`if` is a current-stage expression, so it is not virtualized, and will be executed as normal code.
-But `b` is a next-stage variable, so it became `RepInt(b)`. `1` also lifted to `RepInt(1)`
-because we (implicitly) require that the types of both branches should same.
-`*` __mul__ operator should be overloaded by RepInt.
-By running `stagedPower`, we obtain the IR that will be used later by code generator.
-"""
-def stagedPower(b, x):
-    if (x == 0): return RepInt(1)
-    else: return b * stagedPower(b, x - 1)
-
-################################################
 
 @lms
 def zero(x):
@@ -507,18 +490,9 @@ def zero(x):
     else: return 0
 
 @lms
-def power1(x : RepInt, n) -> RepInt:
-    if n == 0: return 1
-    else: return x * power1(x, n - 1)
-
-@lms
-def even(x : RepInt, n) -> RepInt:
-    if (n > 2):
-        return x + 2
-    else:
-        n = 4
-
-    return n
+def multiply(x : RepInt, n) -> RepInt:
+    if n == 1: return x
+    else: return x + multiply(x, n - 1)
 
 @lms
 def test(x : RepInt) -> RepInt:
@@ -531,20 +505,16 @@ def test(x : RepInt) -> RepInt:
 Ideally, user could specify different code generators for different targer languages.
 The code generator translates IR to string representation of target language.
 """
-@Specalize(PyCodeGen)
-def snippet(b: RepInt):
-    # return even(b, 3)
-    return test(b)
-    # return power1(3, 3)
-    # return zero(0)
-    # return power(b, 3)
+# @Specialize(PyCodeGen)
+# def snippet1(b: RepInt):
+#     return multiply(b, 3)
 
 # assert(snippet(3) == 27) # Here we can just use snippet
 
 # """
-# Explaination: decorating `snippet` with @Specalize is equivalent to:
+# Explaination: decorating `snippet` with @Specialize is equivalent to:
 # """
 # def snippet2(b : RepInt): return stagedPower(b, 3)
-# power3 = Specalize(PyCodeGen)(snippet2)
+# power3 = Specialize(PyCodeGen)(snippet2)
 # assert(power3(3) == 27)
 
