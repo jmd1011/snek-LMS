@@ -74,7 +74,7 @@ following IR:
 
 By executing the recursive calls at generation time,
 the function `power` has self-specialized to the 
-known arguments.
+known argument 3.
 
 
 
