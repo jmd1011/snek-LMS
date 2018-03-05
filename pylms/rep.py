@@ -1,5 +1,5 @@
 __all__ = [
-    'reflect', 'reify', 'Rep', 'NonLocalReturnValue', 
+    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 
     '__if', '__while', '__return', '__print',
     '__var', '__assign', '__read'
 ]

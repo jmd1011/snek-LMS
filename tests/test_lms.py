@@ -1,6 +1,6 @@
 import pytest
 
-from pylms import lms
+from pylms import lms, lmscompile
 from pylms.rep import *
 
 # power doesn't need virtualization
@@ -20,9 +20,9 @@ def test_power():
     assert(power2(2,3) == 8)
 
 def test_power_staged():
-    assert(str(reify(lambda: power1(Rep("in"),3))) == 
+    assert(lmscompile(lambda x: power1(x,3)).code == 
         "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
-    assert(str(reify(lambda: power2(Rep("in"),3))) == 
+    assert(lmscompile(lambda x: power2(x,3)).code == 
         "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
 
 def test_power_rewrite():
@@ -51,10 +51,10 @@ def foobar1(x):
 
 # @pytest.mark.skip(reason="careful: print is now lifted!")
 def test_foobar1():
-   assert(str(reify(lambda: foobar1(7))) == "[['val', x0, ['print', 'no']], 7]")
+   assert(lmscompile(lambda _: foobar1(7)).code == "[['val', x0, ['print', 'no']], 7]")
 
 def test_foobar1_staged():
-    assert(str(reify(lambda: foobar1(Rep("in")))) == 
+    assert(lmscompile(foobar1).code == 
 """
 [['val', x0, ['==', in, 0]], 
  ['val', x1, ['if', x0, 
@@ -92,7 +92,7 @@ def test_foobar2():
     assert(foobar2(7) == "no")
 
 def test_foobar2_staged():
-    assert(str(reify(lambda: foobar2(Rep("in")))) == 
+    assert(lmscompile(foobar2).code == 
         "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, ['yes'], ['no']]], x1]")
 
 def test_foobar2_rewrite():
@@ -124,7 +124,7 @@ def test_loop1():
 
 # NOTE: this is still losing side effects (expected!)
 def test_loop1_staged():
-    assert(str(reify(lambda: loop1(Rep("in")))) == 
+    assert(lmscompile(loop1).code == 
 """
 [['val', x5, ['new']], 
  ['val', x6, ['set', x5, 0]], 

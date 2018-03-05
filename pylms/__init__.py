@@ -1,1 +1,1 @@
-from .decorators import lms, ast
+from .decorators import lms, ast, lmscompile

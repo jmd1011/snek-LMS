@@ -63,3 +63,21 @@ def lms(func):
 
     return Snippet()
 
+def lmscompile(func):
+    """
+    Compile LMS function
+    """
+    # if not isinstance(func, types.FunctionType):
+    #     return NotImplemented
+
+    class Snippet(object):
+        def __init__(self):
+            self.original = func
+            self.code = str(reify(lambda: func(Rep("in"))))
+            # obtain sexpr via .replace("[","(").replace("]",")")
+
+        def __call__(self,*args):
+            return self.func(*args)
+
+    return Snippet()
+
