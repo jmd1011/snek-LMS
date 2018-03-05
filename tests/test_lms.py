@@ -47,7 +47,6 @@ def foobar1(x):
         print('no')
     return x
 
-# FIXME: currently returns None
 def test_foobar1():
     assert(foobar1(7) == 7)
 
