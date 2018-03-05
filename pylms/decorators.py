@@ -64,6 +64,39 @@ def lms(func):
 
     return Snippet()
 
+def stage(func):
+    if not isinstance(func, types.FunctionType):
+        return NotImplemented
+
+    class Snippet(object):
+        def __init__(self):
+            self.original = func
+            self.original_src = inspect.getsource(func)
+            self.original_ast = py_ast.parse(self.original_src)
+            scope = ScopeAnalysis()
+            scope.visit(self.original_ast)
+            visitor = StagingRewriter()
+            self.ast = visitor.visit(self.original_ast)
+            py_ast.fix_missing_locations(self.ast)
+            self.src = astunparse.unparse(self.ast)
+            exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
+            self.func = eval(func.__name__)
+
+            self.original = self.func
+            self.ast = py_ast.parse(inspect.getsource(func))
+            visitor = AstVisitor()
+            visitor.visit(self.ast)
+            self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
+            self.gateway = JavaGateway()
+            self.moduleName = func.__name__
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+
+        def __call__(self, *args):
+            exec("import {} as foo".format(self.moduleName))
+            foo.x1(*args)
+
+    return Snippet()
+
 def lmscompile(func):
     """
     Compile LMS function
