@@ -5,9 +5,9 @@ import py4j.GatewayServer;
 
 public class ServerApplication {
 
-    public String compile(String src) {
-        return Main.compileMain(src);
-    }
+    // public String gen(String src) {
+    //     return Main.gen(src);
+    // }
 
     public static void main(String[] args) {
         ServerApplication app = new ServerApplication();

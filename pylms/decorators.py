@@ -12,6 +12,8 @@ from .lms_tree_rewriter import ScopeAnalysis, StagingRewriter
 
 from .rep import *
 
+sys.path.insert(0, 'gen')
+
 def ast(func):
     """
     Export a function AST to S-Expressions
@@ -27,7 +29,7 @@ def ast(func):
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
             self.gateway = JavaGateway()
-            self.Ccode = self.gateway.jvm.sneklms.Main.compileMain(self.code)
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen")
 
         def __call__(self,*args):
             return func(*args)

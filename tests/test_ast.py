@@ -18,9 +18,8 @@ def test_power_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "snek.h"
 using namespace std;
-int32_t x1(int32_t x2, int32_t x3);
-
 int32_t x1(int32_t x2, int32_t x3) {
   int32_t x5 = x3 - 1;
   int32_t x7 = x1(x2,x5);
@@ -41,7 +40,13 @@ int32_t entrypoint(int32_t  x0) {
 /*******************************************/
 """
 
-    #assert(power.Ccode == sol)
+    assert(power.Ccode == sol)
+
+# def test_power_bin():
+#     import snek
+#     assert(snek.x1(2,3) == 8)
+
+
 
 @ast
 def ifelse(x):

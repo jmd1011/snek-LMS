@@ -6,6 +6,8 @@ import Base._
 import scala.lms.common._
 import scala.reflect.SourceContext
 
+import java.io.{PrintWriter, File}
+
 
 trait Compiler extends Dsl {
 
@@ -358,7 +360,7 @@ with CGenTupledFunctions {
     case UninlinedFunc2(_, _, _) => {}
     case _ => super.emitNode(sym,rhs)
   }
-  override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: java.io.PrintWriter) = {
+  override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
 
     val sA = remap(typ[A])
 
@@ -367,6 +369,7 @@ with CGenTupledFunctions {
        |#include <stdio.h>
        |#include <stdlib.h>
        |#include <stdint.h>
+       |#include "snek.h"
        |using namespace std;""".stripMargin)
 
       emitFunctions()
@@ -386,10 +389,15 @@ with CGenTupledFunctions {
   }
   def emitFunctions() = {
     // Output prototypes to resolve dependencies
-    functionList0.foreach(f=>stream.println(remap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
-    functionList1.foreach(f=>stream.println(remap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
-    functionList2.foreach(f=>stream.println(remap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
-    functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
+    withStream(new PrintWriter(new File("gen/snek.h"))) {
+      stream.println("#ifndef _code")
+      stream.println("#define _code")
+      functionList0.foreach(f=>stream.println(remap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
+      functionList1.foreach(f=>stream.println(remap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
+      functionList2.foreach(f=>stream.println(remap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
+      functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
+      stream.println("#endif")
+    }
     // Output actual functions
     functionList0.foreach(func => {
       stream.println(remap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
@@ -457,10 +465,25 @@ abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with Ds
     implicit val mA = manifestTyp[A]
     implicit val mB = manifestTyp[B]
     val source = new java.io.StringWriter()
-    codegen.emitSource(snippet, "entrypoint", new java.io.PrintWriter(source))
+    codegen.emitSource(snippet, "entrypoint", new PrintWriter(source))
 
     indent(source.toString)
   }
+
+  def gen(dir: String) = {
+    val file = new PrintWriter(s"$dir/snek.cpp")
+    file.println(code)
+    file.flush
+    file.close
+    import scala.sys.process._
+    try {
+      (s"/usr/bin/make -C $dir":ProcessBuilder).lines.foreach(Console.println _)
+      true
+    } catch {
+      case _ => false
+    }
+  }
+
   def eval(a:A): Unit = { // TBD: should read result of type B?
     val out = new java.io.PrintWriter("/tmp/snippet.c")
     out.println(code)

@@ -7,22 +7,25 @@ object Main {
   import Matches._
 
   def main(args: Array[String]) = {
-    val code = compileMain(args(0))
+    val code = gen(args(0), "gen")
     println(code)
   }
 
-  def compileMain(arg: String) = {
+  def gen(arg: String, dir: String) = {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    val code = new DslDriverC[Int,Int] with Compiler {
+    val driver = new DslDriverC[Int,Int] with Compiler {
       def snippet(n: Rep[Int]): Rep[Int] = {
         compile(prog_val)(Map("arg" -> Literal(n))) match {
           case Literal(n: Rep[Int]) => n
         }
       }
-    }.code
+    }
 
-    code
+    if (driver.gen(dir))
+      driver.code
+    else
+      "Error"
   }
 }
