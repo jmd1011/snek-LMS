@@ -19,7 +19,8 @@ before_script:
   - wget https://github.com/sbt/sbt/releases/download/v1.0.3/sbt-1.0.3.zip -O $HOME/tmp/sbt-1.0.3.zip
   - unzip $HOME/tmp/sbt-1.0.3.zip -d $HOME/tmp
   - mkdir -p $HOME/.sbt/launchers/1.0.3/
-  - find $HOME/tmp -name sbt-launcher.jar -exec cp {} $HOME/.sbt/launchers/1.0.3/ \;
+  - ls -l $HOME/tmp/sbt/bin/
+  - cp $HOME/tmp/sbt/bin/sbt-launcher.jar $HOME/.sbt/launchers/1.0.3/
   - ls -l $HOME/.sbt/launchers/1.0.3/
 
 script:
