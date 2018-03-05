@@ -30,8 +30,10 @@ Will be converted (roughly) to:
 
         return __read(x)
 
-Executing this transformed version will *build* an IR (i.e., a 
-computation graph) that represents its computation:
+Function like `__while` are overloaded to construct graph
+nodes for each operation. Hence, *executing* this transformed 
+version will *build* an IR (i.e., a computation graph) that 
+represents its computation:
 
 	[['val', x5, ['new_var']],
 	 ['val', x6, ['assign', x5, 0]],
@@ -49,11 +51,12 @@ From here, we can translate further: either directly to C code
 or to a system like TensorFlow.
 
 
-# Multi-Stage Programming: Mixing Static and Dynamic Computation
+# Multi-Stage Programming
 
 The power of LMS over systems like Cython and Numba that work
 directly on Python syntax comes through interleaving
 generation-time computation with IR construction.
+
 For example:
 
 	@lms
@@ -74,8 +77,9 @@ known arguments.
 
 # How to Build and Run
 
-Snek-LMS requires a working installation of Swig to load
+Snek-LMS requires a working installation of Swig to load generated C code.
 
     make build_compiler             # compile the compiler
     java -jars compiler/target/scala-2.11/sneklms.jar &    # start the server (maybe better to do it in an other shell rather than in background)
+    make test                       # run testsuite
     python3 compiler/pipeline.py    # simple python script calling the compiler
