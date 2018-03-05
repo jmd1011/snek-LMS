@@ -68,7 +68,7 @@ class AstVisitor(ast.NodeVisitor):
         self._print("(def {0} (".format(node.name))
         for y in node.args.args:
             self._print(" {0} ".format(y.arg))
-        self._print(") (\n")
+        self._print(") (begin \n")
             #visit all child nodes using self.generic_visit(child nodes...)
         self.generic_visit(node)
         self._print("\n))")

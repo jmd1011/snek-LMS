@@ -28,47 +28,48 @@ trait Compiler extends Dsl {
   }
 
   implicit def repToValue[T](x: Rep[T]) = Literal(x)
+  val debug = false
+  def printDebug(s: String) = if (debug) System.out.println(s)
 
   def printEnv(implicit env: Env) = {
-    System.out.println("====== Env =======")
-    env foreach { case (k, v) => System.out.println(s"$k -> $v") }
-    System.out.println("==================")
+    printDebug("====== Env =======")
+    env foreach { case (k, v) => printDebug(s"$k -> $v") }
+    printDebug("==================")
   }
 
-  def compile(exp: Any)(implicit env: Env = Map.empty): Value = exp match {
+  def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
     case x: Int => unit(x)
     case x: String => env(x)
     case Str(x) => Literal(unit(x))
-    case x::Nil => compile(x)
-    case "*"::n::m =>
+    case "*"::n::m::Nil =>
       compile[Int,Int](n, m)(_ * _)
-    case "+"::n::m =>
+    case "+"::n::m::Nil =>
       compile[Int,Int](n, m)(_ + _)
-    case "-"::n::m =>
+    case "-"::n::m::Nil =>
       compile[Int,Int](n, m)(_ - _)
-    case "=="::n::m =>
+    case "=="::n::m::Nil =>
       compile[Int,Boolean](n, m)(_ == _)
-    case "if"::c::t::e =>
+    case "if"::c::t::e::Nil =>
       val Literal(rc: Rep[Boolean]) = compile(c)
       Literal(if (rc) compile(t) match { case Literal(t: Rep[Int]) => t } else compile(e) match { case Literal(e: Rep[Int]) => e })
     case "let"::(x: String)::a::b =>
       compile(b)(env + (x -> compile(a)))
-    case "return"::x =>
+    case "return"::x::Nil =>
       val Literal(rx: Rep[Any]) = compile(x)
       return rx
-    case "print"::(x: List[Str]) =>
-      assert(x.length == 1)
-      val args = x map(compile(_) match { case Literal(x: Rep[String]) => x })
-      printf("%s\\n", args.head)
+    case "print"::x::Nil =>
+      val arg = compile(x) match { case Literal(x: Rep[String]) => x }
+      printf("%s\\n", arg)
       unit(1)
     case "call"::t =>
       t match {
-        case "numpy"::"zeros"::x =>
+        case "numpy"::"zeros"::x::Nil =>
           compile(x) match {
             case Literal(x: Rep[Int]) => NewArray[Int](x)
           }
       }
-    case "def"::(f: String)::(args: List[String])::body::r =>
+    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
+      printDebug(s"body >> $body")
       val func = args match {
         case x1::Nil =>
           lazy val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
@@ -86,16 +87,27 @@ trait Compiler extends Dsl {
           Literal(fptr)
       }
       compile(r)(env + (f -> func))
-    case "lambda"::(f: String)::(x: String)::e =>
+    case "lambda"::(f: String)::(x: String)::e::Nil =>
       lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
         compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
           case Literal(n: Rep[Int]) => n
         }
       }
       Literal(fptr)
+    case "begin"::seq =>
+      printDebug(s"seq >> $seq")
+      val res = ((None: Option[Value]) /: seq) {
+        case (agg, exp) => Some(compile(exp))
+      }
+      res.get
     case f::(x: List[Any]) =>
+      printDebug(s"f >> $f")
+      printDebug(s"x >> $x")
       val args = x map(compile(_) match { case Literal(x: Rep[Int]) => x })
-      (compile(f).get, args) match {
+      printDebug(s"args >> $args")
+      val nf = compile(f).get
+      printDebug(s"nf >> $nf")
+      (nf, args) match {
         case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
         case (Literal(f: Rep[((Int, Int)) => Int]), x1::x2::Nil) => f((x1, x2))
       }
