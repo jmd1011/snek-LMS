@@ -1,6 +1,6 @@
 NAME=snek
 CXX=g++
-INCLUDE=-I/usr/include/python3.5 -I/usr/lib/python3.5
+INCLUDE=`python3-config --includes`
 
 all:
 	swig3.0 -c++ -python ${NAME}.i
