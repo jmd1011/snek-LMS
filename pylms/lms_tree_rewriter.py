@@ -53,6 +53,34 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         mod = [tBranch, eBranch, new_node]
         return mod
+        
+    def visit_While(self, node):
+        self.generic_visit(node)
+
+        tFun_name = self.freshName("cond")
+        bFun_name = self.freshName("body")
+        tFun = ast.FunctionDef(name=tFun_name,
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=[ast.Return(node.test)],
+                                  decorator_list=[])
+        bFun = ast.FunctionDef(name=bFun_name,
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.body,
+                                  decorator_list=[])
+        ast.fix_missing_locations(tFun)
+        ast.fix_missing_locations(bFun)
+
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='__while', ctx=ast.Load()),
+            args=[ast.Name(id=tFun_name, ctx=ast.Load()),
+                  ast.Name(id=bFun_name, ctx=ast.Load()),
+                 ],
+            keywords=[]
+        ))
+
+        ast.fix_missing_locations(new_node)
+        mod = [tFun, bFun, new_node]
+        return mod
 
     def visit_FunctionDef(self, node):
         self.generic_visit(node)

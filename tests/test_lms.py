@@ -99,3 +99,38 @@ def foobar2(x):
     except NonLocalReturnValue as r:
         return r.value
 """)
+
+
+@lms
+def loop1(n):
+    x = 0
+    while x < n: 
+        x = n #x + 1  XXX variable moved into nested fun!!!
+    return x
+
+@pytest.mark.skip(reason="broken: need to deal with variables")
+def test_loop1():
+    assert(loop1(7) == 7)
+
+@pytest.mark.skip(reason="broken: need to deal with variables")
+def test_loop1_staged():
+    assert(str(loop1(Rep("in"))) == "['if', ['==', in, 0], 'yes', 'no']")
+
+def test_loop1_rewrite(): ## FIXME: need to lift (selected?) variables
+    assert(loop1.src == """
+
+def loop1(n):
+    try:
+        x = 0
+
+        def cond$1():
+            return (x < n)
+
+        def body$1():
+            x = n
+        __while(cond$1, body$1)
+        __return(x)
+    except NonLocalReturnValue as r:
+        return r.value
+""")        
+

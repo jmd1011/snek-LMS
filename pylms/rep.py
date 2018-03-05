@@ -1,4 +1,4 @@
-__all__ = ['reflect', 'Rep', 'NonLocalReturnValue', '__if', '__return']
+__all__ = ['reflect', 'Rep', 'NonLocalReturnValue', '__if', '__while', '__return']
 
 def reflect(s):
     return Rep(s)
@@ -18,6 +18,10 @@ class Rep(object):
         return reflect(["<=",self,m])
     def __lt__(self, m):
         return reflect(["<",self,m])
+    def __ge__(self, m):
+        return reflect([">=",self,m])
+    def __gt__(self, m):
+        return reflect([">",self,m])
     def __repr__(self):
         return str(self.n)
 
@@ -29,8 +33,8 @@ def __return(value):
     raise NonLocalReturnValue(value)
 
 def __if(test, body, orelse):
-    if(isinstance(test, bool)):
-        if(test):
+    if isinstance(test, bool):
+        if test:
             return body()
         else:
             return orelse()
@@ -52,3 +56,24 @@ def __if(test, body, orelse):
         else:
             raise Exception("if/else: branches must either both return or none of them")
 	
+def __while(test, body):
+    if isinstance(test, bool):
+        if test:
+            return body()
+        else:
+            return orelse()
+    else:
+        print("Rep")
+        # We don't currently support return inside while
+        def capture(f):
+            try: return (False, f())
+            except NonLocalReturnValue as e:
+                return (True, e.value)
+        testret, testp = capture(test)
+        bodyret, bodyp = capture(body)
+        rval = reflect(["while", test, body])
+        if (not testret) & (not bodyret):
+            return rval
+        else:
+            raise Exception("while: return in body not allowed")
+
