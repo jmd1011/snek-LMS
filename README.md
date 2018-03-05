@@ -1,7 +1,7 @@
 # snek-LMS
 LMS in Python
 
-[![Build Status](https://travis-ci.com/jmd1011/snek-LMS.svg?token=knahrezbbwMobs1Ghyvh&branch=master)](https://travis-ci.com/jmd1011/snek-LMS)
+[![Build Status](https://travis-ci.org/jmd1011/snek-LMS.svg?branch=master)](https://travis-ci.org/jmd1011/snek-LMS)
 
 # Compile and run the S-expr to C compiler
 
