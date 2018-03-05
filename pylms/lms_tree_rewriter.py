@@ -7,6 +7,33 @@ import builtins
 import astunparse
 
 
+class ScopeAnalysis(ast.NodeVisitor):
+    """
+    Find single-assigment variables. These correspond to
+    'val x = ...' in Scala and don't need to be lifted.
+    """
+    def __init__(self):
+        self.fundef = None
+        super()
+
+    def visit_Assign(self, node):
+        assert(len(node.targets) == 1) # FIXME
+        id = node.targets[0].id # TODO: brittle, should look at shadowing, etc.
+
+        locals = self.fundef.locals
+
+        if not locals.get(id): locals[id] = 0
+        locals[id] += 1
+
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        node.parent = self.fundef
+        self.fundef = node
+        node.locals = {}
+        self.generic_visit(node)
+        self.fundef = node.parent
+
 
 class StagingRewriter(ast.NodeTransformer):
     """
