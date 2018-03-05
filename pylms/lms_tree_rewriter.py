@@ -185,12 +185,28 @@ class StagingRewriter(ast.NodeTransformer):
         mod = [tFun, bFun, new_node]
         return mod
 
+    def visit_Call(self, node):
+        self.generic_visit(node)
+
+        if not isinstance(node.func, ast.Name):
+            return node
+
+        if not node.func.id == 'print':
+            return node
+
+        new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
+                                          args=node.args,
+                                          keywords=[])
+        ast.copy_location(new_node, node)
+        ast.fix_missing_locations(new_node)
+        return new_node
 
     def visit_Return(self, node):
         self.generic_visit(node)
         new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()),
                                           args=[node.value],
                                           keywords=[]))
+        ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
         return new_node
 

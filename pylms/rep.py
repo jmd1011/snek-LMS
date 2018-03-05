@@ -1,6 +1,6 @@
 __all__ = [
     'reflect', 'reify', 'Rep', 'NonLocalReturnValue', 
-    '__if', '__while', '__return',
+    '__if', '__while', '__return', '__print',
     '__var', '__assign', '__read'
 ]
 
@@ -37,8 +37,11 @@ def reify(f):
     def f1():
         global stBlock
         stBlock = []
-        last = f()
-        return stBlock + [last]
+        try:
+            last = f()
+            return stBlock + [last]
+        except NonLocalReturnValue as e:
+            raise NonLocalReturnValue(stBlock + [e.value]) # propagate exception ...
     return run(f1)
 
 def reflect(s):
@@ -77,6 +80,9 @@ class NonLocalReturnValue(Exception):
 
 def __return(value):
     raise NonLocalReturnValue(value)
+
+def __print(value):
+    return reflect(["print", value])
 
 def __var():
     return reflect(["new"])

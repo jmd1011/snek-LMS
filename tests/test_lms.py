@@ -49,16 +49,19 @@ def foobar1(x):
         print('no')
     return x
 
+# @pytest.mark.skip(reason="careful: print is now lifted!")
 def test_foobar1():
-    assert(foobar1(7) == 7)
+   assert(str(reify(lambda: foobar1(7))) == "[['val', x0, ['print', 'no']], 7]")
 
-#@pytest.mark.skip(reason="not virtualizing print yet. also requires side effects")
 def test_foobar1_staged():
     assert(str(reify(lambda: foobar1(Rep("in")))) == 
 """
 [['val', x0, ['==', in, 0]], 
- ['val', x1, ['if', x0, [None], [None]]], in]
-""".replace('\n','').replace('  ',' '))
+ ['val', x1, ['if', x0, 
+  [['val', x1, ['print', 'yes']], None], 
+  [['val', x1, ['print', 'no']], None]]], in]
+""".replace('\n','').replace('  ',' ').replace('  ',' '))
+
 #        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
 
 def test_foobar1_rewrite():
@@ -68,10 +71,10 @@ def foobar1(x):
     try:
 
         def then$1():
-            print('yes')
+            __print('yes')
 
         def else$1():
-            print('no')
+            __print('no')
         __if((x == 0), then$1, else$1)
         __return(x)
     except NonLocalReturnValue as r:
@@ -86,11 +89,11 @@ def foobar2(x):
         return "no"
 
 def test_foobar2():
-    assert(foobar1(7) == 7)
+    assert(foobar2(7) == "no")
 
 def test_foobar2_staged():
     assert(str(reify(lambda: foobar2(Rep("in")))) == 
-        "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, 'yes', 'no']], x1]")
+        "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, ['yes'], ['no']]], x1]")
 
 def test_foobar2_rewrite():
     assert(foobar2.src == """
