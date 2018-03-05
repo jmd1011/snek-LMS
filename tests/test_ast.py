@@ -21,17 +21,17 @@ def test_power_Ccode():
 #include "snek.h"
 using namespace std;
 int32_t x1(int32_t x2, int32_t x3) {
-  int32_t x5 = x3 - 1;
-  int32_t x7 = x1(x2,x5);
   bool x4 = x3 == 0;
-  int32_t x9;
+  int32_t x10;
   if (x4) {
-    x9 = 1;
+    x10 = 1;
   } else {
+    int32_t x5 = x3 - 1;
+    int32_t x7 = x1(x2,x5);
     int32_t x8 = x2 * x7;
-    x9 = x8;
+    x10 = x8;
   }
-  return x9;
+  return x10;
 }
 
 int32_t entrypoint(int32_t  x0) {

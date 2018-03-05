@@ -50,9 +50,7 @@ trait Compiler extends Dsl {
       compile[Int,Boolean](n, m)(_ == _)
     case "if"::c::t::e =>
       val Literal(rc: Rep[Boolean]) = compile(c)
-      compile[Int,Int](t, e) { (t: Rep[Int], e: Rep[Int]) =>
-        if (rc) t else e
-      }
+      Literal(if (rc) compile(t) match { case Literal(t: Rep[Int]) => t } else compile(e) match { case Literal(e: Rep[Int]) => e })
     case "let"::(x: String)::a::b =>
       compile(b)(env + (x -> compile(a)))
     case "return"::x =>
