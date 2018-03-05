@@ -108,7 +108,6 @@ def loop1(n):
         x = n #x + 1  XXX variable moved into nested fun!!!
     return x
 
-@pytest.mark.skip(reason="broken: need to deal with variables")
 def test_loop1():
     assert(loop1(7) == 7)
 
