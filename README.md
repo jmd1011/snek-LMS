@@ -67,7 +67,10 @@ For example:
 Invoking `lmscompile(lambda x: power(x,3))` produces the
 following IR:
 
-	[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]
+	[['val', x0, ['*', in, 1]], 
+	 ['val', x1, ['*', in, x0]], 
+	 ['val', x2, ['*', in, x1]], 
+	 x2]
 
 By executing the recursive calls at generation time,
 the function `power` has self-specialized to the 
