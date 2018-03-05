@@ -1,4 +1,16 @@
-__all__ = ['reflect', 'Rep', 'NonLocalReturnValue', '__if', '__while', '__return']
+__all__ = [
+    'reflect', 'Rep', 'NonLocalReturnValue', 
+    '__if', '__while', '__return',
+    '__var', '__assign', '__read'
+]
+
+var_counter = 0
+
+def freshName(): # for generate AST
+    global var_counter
+    n_var = var_counter
+    var_counter += 1
+    return "x" + str(n_var)
 
 def reflect(s):
     return Rep(s)
@@ -31,6 +43,15 @@ class NonLocalReturnValue(Exception):
 
 def __return(value):
     raise NonLocalReturnValue(value)
+
+def __var():
+    return reflect(freshName())
+
+def __assign(name, value):
+    return reflect(["set", name, value])
+    
+def __read(name):
+    return reflect(["get", name])
 
 def __if(test, body, orelse):
     if isinstance(test, bool):
