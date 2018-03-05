@@ -39,9 +39,10 @@ class StagingRewriter(ast.NodeTransformer):
     """
     StagingRewriter does two things:
     1) virtualize primitives such as `if`, `while`, `for` and etc
+    2) virtualize var accesses for non-single-assignment vars
     """
     def __init__(self):
-        # XXX self.reps = reps
+        self.fundef = None # keep track of the current function we're in
         super()
 
     var_names = {}
@@ -58,6 +59,8 @@ class StagingRewriter(ast.NodeTransformer):
         return True
 
     def visit_FunctionDef(self, node):
+        node.parent = self.fundef
+        self.fundef = node
         self.generic_visit(node)
         new_node = ast.copy_location(ast.FunctionDef(name=node.name,
                                          args=node.args,
@@ -71,6 +74,7 @@ class StagingRewriter(ast.NodeTransformer):
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
+        self.fundef = node.parent
         return new_node
 
     def visit_Assign(self, node):
