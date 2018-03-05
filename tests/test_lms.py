@@ -120,6 +120,7 @@ def test_loop1_rewrite(): ## FIXME: need to lift (selected?) variables
 
 def loop1(n):
     try:
+        x = __var()
         __assign(x, 0)
 
         def cond$1():

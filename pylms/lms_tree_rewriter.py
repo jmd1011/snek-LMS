@@ -63,9 +63,15 @@ class StagingRewriter(ast.NodeTransformer):
         node.parent = self.fundef
         self.fundef = node
         self.generic_visit(node)
+
+        # generate code to pre-initialize staged vars
+        # we stage all vars that are written to more than once
+        inits = (ast.Assign(targets=[ast.Name(id=id, ctx=ast.Store())], 
+           value=ast.Call(func=ast.Name(id='__var', ctx=ast.Load()), args=[], keywords=[])) for id in node.locals if node.locals[id] > 1)
+
         new_node = ast.copy_location(ast.FunctionDef(name=node.name,
                                          args=node.args,
-                                         body=[ast.Try(body=node.body,
+                                         body=[ast.Try(body=list(inits) + node.body,
                                                       handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()), 
                                                                                        name='r', 
                                                                                        body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
