@@ -54,9 +54,10 @@ class StagingRewriter(ast.NodeTransformer):
         return "{0}${1}".format(s, self.var_names[s])
 
     def shouldLiftVar(self, id):
-        # lift all vars that are assigned 
-        # this is really excessive!!
-        return True
+        # lift a var if it's assigned more than once
+        # TODO: need to check super scopes?
+        return ((self.fundef.locals.get(id)) &
+               (self.fundef.locals[id] > 1))
 
     def visit_FunctionDef(self, node):
         node.parent = self.fundef
