@@ -19,32 +19,33 @@ def test_power_Ccode():
 #include <stdlib.h>
 #include <stdint.h>
 using namespace std;
-int32_t entrypoint(int32_t  x0) {
-  function<int32_t(int32_t,int32_t)> x1 = [&](int32_t x2,int32_t x3) {
-    int32_t x4 = x2;
-    int32_t x5 = x3;
-    int32_t x7 = x5 - 1;
-    int32_t x9 = x1(x4,x7);
-    bool x6 = x5 == 0;
-    int32_t x11;
-    if (x6) {
-      x11 = 1;
-    } else {
-      int32_t x10 = x4 * x9;
-      x11 = x10;
-    }
-    return x11;
-  };
-  int32_t x14 = x1(4,2);
-  return x14;
+int32_t x1(int32_t x2, int32_t x3);
+
+int32_t x1(int32_t x2, int32_t x3) {
+  int32_t x5 = x3 - 1;
+  int32_t x7 = x1(x2,x5);
+  bool x4 = x3 == 0;
+  int32_t x9;
+  if (x4) {
+    x9 = 1;
+  } else {
+    int32_t x8 = x2 * x7;
+    x9 = x8;
+  }
+  return x9;
 }
-/*******************************************/"""
+
+int32_t entrypoint(int32_t  x0) {
+  return 0;
+}
+/*******************************************/
+"""
 
     #assert(power.Ccode == sol)
 
 @ast
 def ifelse(x):
-    #numpy.zeros(5)
+    numpy.zeros(5)
     if x == 0:
         print("Hello")
     else:
@@ -52,6 +53,5 @@ def ifelse(x):
     return x
 
 def test_ifelse_code():
-    #assert(ifelse.code == """(def ifelse (x) ((call model eval) (if (== x 0) (print "Hello") (print "world!")) (return x)))""")
-    assert(ifelse.code == """(def ifelse (x) ((if (== x 0) (print "Hello") (print "world!")) (return x)))""")
+    assert(ifelse.code == """(def ifelse (x) ((call numpy zeros 5) (if (== x 0) (print "Hello") (print "world!")) (return x)))""")
 

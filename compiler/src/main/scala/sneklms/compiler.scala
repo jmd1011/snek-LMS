@@ -61,6 +61,13 @@ trait Compiler extends Dsl {
       val args = x map(compile(_) match { case Literal(x: Rep[String]) => x })
       printf("%s\\n", args.head)
       unit(1)
+    case "call"::t =>
+      t match {
+        case "numpy"::"zeros"::x =>
+          compile(x) match {
+            case Literal(x: Rep[Int]) => NewArray[Int](x)
+          }
+      }
     case "def"::(f: String)::(args: List[String])::body::r =>
       val func = args match {
         case x1::Nil =>
@@ -92,7 +99,7 @@ trait Compiler extends Dsl {
         case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
         case (Literal(f: Rep[((Int, Int)) => Int]), x1::x2::Nil) => f((x1, x2))
       }
-    case Nil =>
+    case Nil => // no main
       val x = unit(0)
       return x
   }
@@ -365,6 +372,7 @@ with CGenTupledFunctions {
       emitFunctions()
 
       stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
+
       emitBlock(body)
 
       val y = getBlockResult(body)
