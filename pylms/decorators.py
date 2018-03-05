@@ -29,7 +29,8 @@ def ast(func):
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
             self.gateway = JavaGateway()
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen")
+            self.moduleName = func.__name__
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self,*args):
             return func(*args)

@@ -374,19 +374,23 @@ with CGenTupledFunctions {
     case UninlinedFunc2(_, _, _) => {}
     case _ => super.emitNode(sym,rhs)
   }
+
+  var dir: String = _
+  var moduleName: String = _
+
   override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
 
     val sA = remap(typ[A])
 
     withStream(out) {
-      stream.println("""/*****************************************/
+      stream.println(s"""/*****************************************/
        |#include <stdio.h>
        |#include <stdlib.h>
        |#include <stdint.h>
-       |#include "snek.h"
+       |#include "$moduleName.h"
        |using namespace std;""".stripMargin)
 
-      emitFunctions()
+      emitFunctions(dir, moduleName)
 
       stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
 
@@ -401,9 +405,9 @@ with CGenTupledFunctions {
     }
     Nil
   }
-  def emitFunctions() = {
+  def emitFunctions(dir: String, moduleName: String) = {
     // Output prototypes to resolve dependencies
-    withStream(new PrintWriter(new File("gen/snek.h"))) {
+    withStream(new PrintWriter(s"$dir/$moduleName.h")) {
       stream.println("#ifndef _code")
       stream.println("#define _code")
       functionList0.foreach(f=>stream.println(tmpremap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
@@ -412,6 +416,17 @@ with CGenTupledFunctions {
       functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
       stream.println("#endif")
     }
+    withStream(new PrintWriter(s"$dir/$moduleName.i")) {
+      stream.println(s"%module $moduleName")
+      stream.println("%{")
+      stream.println(s"""#include "$moduleName.h"""")
+      stream.println("  #include <stdlib.h>")
+      stream.println("  #include <stdio.h>")
+      stream.println("  #include <stdint.h>")
+      stream.println("%}")
+      stream.println(s"""%include "$moduleName.h"""")
+    }
+
     // Output actual functions
     functionList0.foreach(func => {
       stream.println(tmpremap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
@@ -458,10 +473,13 @@ abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
   def snippet(x: Rep[A]): Rep[B]
 }
 
-abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with DslExp { q =>
+abstract class DslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: String) extends DslSnippet[A,B] with DslExp { q =>
   val codegen = new DslGenC {
     val IR: q.type = q
   }
+
+  codegen.dir = ddir
+  codegen.moduleName = mmoduleName
 
   def indent(str: String) = {
     val strLines = str.split("\n")
@@ -484,14 +502,14 @@ abstract class DslDriverC[A:Manifest,B:Manifest] extends DslSnippet[A,B] with Ds
     indent(source.toString)
   }
 
-  def gen(dir: String) = {
-    val file = new PrintWriter(s"$dir/snek.cpp")
+  def gen = {
+    val file = new PrintWriter(s"$ddir/$mmoduleName.cpp")
     file.println(code)
     file.flush
     file.close
     import scala.sys.process._
     try {
-      (s"/usr/bin/make -C $dir":ProcessBuilder).lines.foreach(Console.println _)
+      (s"make MODULE_NAME=$mmoduleName -C $ddir":ProcessBuilder).lines.foreach(Console.println _)
       true
     } catch {
       case _ => false
