@@ -71,7 +71,19 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_Name(self, node):
         self.generic_visit(node)
-        return node
+
+        if not self.shouldLiftVar(id):
+            return node
+
+        new_node = ast.Call(
+            func=ast.Name(id='__read', ctx=ast.Load()),
+            args=[ast.Name(id=node.id, ctx=ast.Load())],
+            keywords=[]
+        )
+        ast.copy_location(new_node, node)
+        ast.fix_missing_locations(new_node)
+
+        return new_node
 
     def visit_If(self, node):
         self.generic_visit(node)
