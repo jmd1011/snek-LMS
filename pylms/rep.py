@@ -1,5 +1,5 @@
 __all__ = [
-    'reflect', 'Rep', 'NonLocalReturnValue', 
+    'reflect', 'reify', 'Rep', 'NonLocalReturnValue', 
     '__if', '__while', '__return',
     '__var', '__assign', '__read'
 ]
@@ -10,10 +10,44 @@ def freshName(): # for generate AST
     global var_counter
     n_var = var_counter
     var_counter += 1
-    return "x" + str(n_var)
+    return "v" + str(n_var)
+
+
+stFresh = 0
+stBlock = []
+stFun   = []
+def run(f): 
+    global stFresh, stBlock, stFun
+    sF = stFresh
+    sB = stBlock
+    sN = stFun
+    try: 
+        return f() 
+    finally: 
+        stFresh = sF
+        stBlock = sB
+        stFun = sN
+
+def fresh():
+    global stFresh
+    stFresh += 1
+    return Rep("x"+str(stFresh-1))
+
+def reify(f):
+    def f1():
+        global stBlock
+        stBlock = []
+        last = f()
+        return stBlock + [last]
+    return run(f1)
 
 def reflect(s):
-    return Rep(s)
+    global stBlock
+    id = fresh()
+    stBlock += [["val", id, s]]
+    return id
+
+
 
 class Rep(object): 
     def __init__(self, n):
@@ -45,7 +79,7 @@ def __return(value):
     raise NonLocalReturnValue(value)
 
 def __var():
-    return reflect(freshName())
+    return reflect(["new"])
 
 def __assign(name, value):
     return reflect(["set", name, value])
@@ -64,7 +98,7 @@ def __if(test, body, orelse):
         # __return: we currently require that either both
         # of the if branches __return, or none of them.
         def capture(f):
-            try: return (False, f())
+            try: return (False, reify(f))
             except NonLocalReturnValue as e:
                 return (True, e.value)
         thenret, thenp = capture(body)
@@ -87,12 +121,12 @@ def __while(test, body):
         print("Rep")
         # We don't currently support return inside while
         def capture(f):
-            try: return (False, f())
+            try: return (False, reify(f))
             except NonLocalReturnValue as e:
                 return (True, e.value)
         testret, testp = capture(test)
         bodyret, bodyp = capture(body)
-        rval = reflect(["while", test, body])
+        rval = reflect(["while", testp, bodyp])
         if (not testret) & (not bodyret):
             return rval
         else:

@@ -20,8 +20,10 @@ def test_power():
     assert(power2(2,3) == 8)
 
 def test_power_staged():
-    assert(str(power1(Rep("in"),3)) == "['*', in, ['*', in, ['*', in, 1]]]")
-    assert(str(power2(Rep("in"),3)) == "['*', in, ['*', in, ['*', in, 1]]]")
+    assert(str(reify(lambda: power1(Rep("in"),3))) == 
+        "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
+    assert(str(reify(lambda: power2(Rep("in"),3))) == 
+        "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
 
 def test_power_rewrite():
     assert(power2.src == """
@@ -82,7 +84,8 @@ def test_foobar2():
     assert(foobar1(7) == 7)
 
 def test_foobar2_staged():
-    assert(str(foobar2(Rep("in"))) == "['if', ['==', in, 0], 'yes', 'no']")
+    assert(str(reify(lambda: foobar2(Rep("in")))) == 
+        "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, 'yes', 'no']], x1]")
 
 def test_foobar2_rewrite():
     assert(foobar2.src == """
@@ -113,7 +116,20 @@ def test_loop1():
 
 # NOTE: this is still losing side effects (expected!)
 def test_loop1_staged():
-    assert(str(loop1(Rep("in"))) == "['get', x1]")
+    assert(str(reify(lambda: loop1(Rep("in")))) == 
+"""
+[['val', x5, ['new']], 
+ ['val', x6, ['set', x5, 0]], 
+ ['val', x7, ['while', 
+    [['val', x7, ['get', x5]], 
+     ['val', x8, ['<', x7, in]], 
+     x8], 
+    [['val', x7, ['get', x5]], 
+     ['val', x8, ['+', x7, 1]], 
+     ['val', x9, ['set', x5, x8]], 
+     None]]], 
+ ['val', x8, ['get', x5]], x8]
+""".replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
 def test_loop1_rewrite(): ## FIXME: need to lift (selected?) variables
     assert(loop1.src == """
