@@ -43,9 +43,9 @@ class StagingRewriter(ast.NodeTransformer):
     """
     def __init__(self):
         self.fundef = None # keep track of the current function we're in
+        self.var_names = {}
         super()
 
-    var_names = {}
 
     def freshName(self,s = ""):
         if s not in self.var_names:

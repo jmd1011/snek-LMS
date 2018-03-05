@@ -60,12 +60,12 @@ def test_foobar1_rewrite():
 def foobar1(x):
     try:
 
-        def then$2():
+        def then$1():
             print('yes')
 
-        def else$2():
+        def else$1():
             print('no')
-        __if((x == 0), then$2, else$2)
+        __if((x == 0), then$1, else$1)
         __return(x)
     except NonLocalReturnValue as r:
         return r.value
@@ -90,12 +90,12 @@ def test_foobar2_rewrite():
 def foobar2(x):
     try:
 
-        def then$3():
+        def then$1():
             __return('yes')
 
-        def else$3():
+        def else$1():
             __return('no')
-        __if((x == 0), then$3, else$3)
+        __if((x == 0), then$1, else$1)
     except NonLocalReturnValue as r:
         return r.value
 """)
