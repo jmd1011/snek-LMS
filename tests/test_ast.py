@@ -17,7 +17,7 @@ def test_power_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "power.h"
+""" + "#include \"{0}.h\"".format(power.moduleName) + """
 using namespace std;
 int x1(int x2, int x3) {
   bool x4 = x3 == 0;
@@ -42,8 +42,8 @@ int32_t entrypoint(int32_t  x0) {
     assert(power.Ccode == sol)
 
 def test_power_bin(): # TODO create name
-    import power as powermod
-    assert(powermod.x1(2,3) == 8)
+    import module_power
+    assert(module_power.x1(2,3) == 8)
 
 
 
@@ -64,7 +64,7 @@ def test_ifelse_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "ifelse.h"
+""" + "#include \"{0}.h\"".format(ifelse.moduleName) + """
 using namespace std;
 int x1(int x2) {
   int32_t* x3 = (int32_t*)malloc(5 * sizeof(int32_t));
@@ -89,5 +89,5 @@ int32_t entrypoint(int32_t  x0) {
     assert(ifelse.Ccode == sol)
 
 def test_ifelse_bin(): # TODO
-    import ifelse as ifelsemod
-    assert(ifelsemod.x1(8) == 8)
+    import module_ifelse
+    assert(module_ifelse.x1(8) == 8)
