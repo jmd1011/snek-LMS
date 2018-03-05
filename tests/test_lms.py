@@ -1,3 +1,5 @@
+import pytest
+
 from pylms import lms
 from pylms.rep import *
 
@@ -37,8 +39,6 @@ def power2(b, x):
         return r.value
 """)
 
-# FIXE: this is wrong!
-
 @lms
 def foobar1(x):
     if (x == 0):
@@ -49,6 +49,10 @@ def foobar1(x):
 
 def test_foobar1():
     assert(foobar1(7) == 7)
+
+@pytest.mark.skip(reason="not virtualizing print yet. also requires side effects")
+def test_foobar1_staged():
+    assert(str(foobar1(Rep("in"))) == "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
 
 def test_foobar1_rewrite():
     assert(foobar1.src == """
@@ -67,3 +71,31 @@ def foobar1(x):
         return r.value
 """)
 
+@lms
+def foobar2(x):
+    if x == 0:
+        return "yes"
+    else:
+        return "no"
+
+def test_foobar2():
+    assert(foobar1(7) == 7)
+
+def test_foobar2_staged():
+    assert(str(foobar2(Rep("in"))) == "['if', ['==', in, 0], 'yes', 'no']")
+
+def test_foobar2_rewrite():
+    assert(foobar2.src == """
+
+def foobar2(x):
+    try:
+
+        def then$3():
+            __return('yes')
+
+        def else$3():
+            __return('no')
+        __if((x == 0), then$3, else$3)
+    except NonLocalReturnValue as r:
+        return r.value
+""")

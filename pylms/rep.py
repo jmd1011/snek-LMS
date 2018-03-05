@@ -31,12 +31,24 @@ def __return(value):
 def __if(test, body, orelse):
     if(isinstance(test, bool)):
         if(test):
-            res = body()
-            return res
+            return body()
         else:
-            res = orelse()
-            return res
+            return orelse()
     else:
-        # fixme: use irif?
-        return irif(test, body, orelse)
+        # There's a little bit of complication dealing with
+        # __return: we currently require that either both
+        # of the if branches __return, or none of them.
+        def capture(f):
+            try: return (False, f())
+            except NonLocalReturnValue as e:
+                return (True, e.value)
+        thenret, thenp = capture(body)
+        elseret, elsep = capture(orelse)
+        rval = reflect(["if", test, thenp, elsep])
+        if thenret & elseret:
+            raise NonLocalReturnValue(rval) # proper return
+        elif (not thenret) & (not elseret):
+            return rval
+        else:
+            raise Exception("if/else: branches must either both return or none of them")
 	
