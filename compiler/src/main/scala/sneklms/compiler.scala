@@ -316,6 +316,10 @@ with CGenTupledFunctions {
     case "Char" => "char"
     case _ => super.remap(m)
   }
+  def tmpremap[A](m: Typ[A]): String = m.toString match {
+    case "Int" => "int"
+    case _ => remap(m)
+  }
   override def format(s: Exp[Any]): String = {
     remap(s.tp) match {
       case "uint16_t" => "%c"
@@ -402,41 +406,41 @@ with CGenTupledFunctions {
     withStream(new PrintWriter(new File("gen/snek.h"))) {
       stream.println("#ifndef _code")
       stream.println("#define _code")
-      functionList0.foreach(f=>stream.println(remap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
-      functionList1.foreach(f=>stream.println(remap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
-      functionList2.foreach(f=>stream.println(remap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
+      functionList0.foreach(f=>stream.println(tmpremap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
+      functionList1.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
+      functionList2.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ", " + tmpremap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
       functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
       stream.println("#endif")
     }
     // Output actual functions
     functionList0.foreach(func => {
-      stream.println(remap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
+      stream.println(tmpremap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
       emitBlock(func._2)
       stream.println("return " + quote(getBlockResult(func._2)) + ";")
       stream.println("}\n")
     })
     functionList1.foreach(func => {
-      stream.print(remap(getBlockResult(func._2._2).tp) + " " + quote(func._1) + "(")
-      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1))
+      stream.print(tmpremap(getBlockResult(func._2._2).tp) + " " + quote(func._1) + "(")
+      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1))
       stream.println(") {")
       emitBlock(func._2._2)
       stream.println("return " + quote(getBlockResult(func._2._2)) + ";")
       stream.println("}\n")
     })
     functionList2.foreach(func => {
-      stream.print(remap(getBlockResult(func._2._3).tp) + " " + quote(func._1) + "(")
-      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
-      stream.print(remap(func._2._2.tp) + " " + quote(func._2._2))
+      stream.print(tmpremap(getBlockResult(func._2._3).tp) + " " + quote(func._1) + "(")
+      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+      stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2))
       stream.println(") {")
       emitBlock(func._2._3)
       stream.println("return " + quote(getBlockResult(func._2._3)) + ";")
       stream.println("}\n")
     })
     functionList3.foreach(func => {
-      stream.print(remap(getBlockResult(func._2._4).tp) + " " + quote(func._1) + "(")
-      stream.print(remap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
-      stream.print(remap(func._2._2.tp) + " " + quote(func._2._2) + ", ")
-      stream.print(remap(func._2._3.tp) + " " + quote(func._2._3))
+      stream.print(tmpremap(getBlockResult(func._2._4).tp) + " " + quote(func._1) + "(")
+      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+      stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2) + ", ")
+      stream.print(tmpremap(func._2._3.tp) + " " + quote(func._2._3))
       stream.println(") {")
       emitBlock(func._2._4)
       stream.println("return " + quote(getBlockResult(func._2._4)) + ";")

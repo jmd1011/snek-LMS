@@ -1,6 +1,5 @@
 from pylms import ast
 
-
 @ast
 def power(b, x):
     if (x == 0): return 1
@@ -20,7 +19,7 @@ def test_power_Ccode():
 #include <stdint.h>
 #include "snek.h"
 using namespace std;
-int32_t x1(int32_t x2, int32_t x3) {
+int x1(int x2, int x3) {
   bool x4 = x3 == 0;
   int32_t x10;
   if (x4) {
@@ -42,7 +41,7 @@ int32_t entrypoint(int32_t  x0) {
 
     assert(power.Ccode == sol)
 
-# def test_power_bin():
+# def test_power_bin(): # TODO create name
 #     import snek
 #     assert(snek.x1(2,3) == 8)
 
@@ -67,7 +66,7 @@ def test_ifelse_Ccode():
 #include <stdint.h>
 #include "snek.h"
 using namespace std;
-int32_t x1(int32_t x2) {
+int x1(int x2) {
   int32_t* x3 = (int32_t*)malloc(5 * sizeof(int32_t));
   bool x4 = x2 == 0;
   int32_t x9;
@@ -88,3 +87,7 @@ int32_t entrypoint(int32_t  x0) {
 """
 
     assert(ifelse.Ccode == sol)
+
+def test_ifelse_bin(): # TODO
+    import snek
+    assert(snek.x1(8) == 8)
