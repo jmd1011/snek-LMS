@@ -6,6 +6,8 @@ import inspect
 import builtins
 import astunparse
 
+
+
 class StagingRewriter(ast.NodeTransformer):
     """
     StagingRewriter does two things:
@@ -22,6 +24,54 @@ class StagingRewriter(ast.NodeTransformer):
             self.var_names[s] = 0
         self.var_names[s] += 1
         return "{0}${1}".format(s, self.var_names[s])
+
+    def shouldLiftVar(self, id):
+        # lift all vars that are assigned 
+        # this is really excessive!!
+        return True
+
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        new_node = ast.copy_location(ast.FunctionDef(name=node.name,
+                                         args=node.args,
+                                         body=[ast.Try(body=node.body,
+                                                      handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()), 
+                                                                                       name='r', 
+                                                                                       body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
+                                                      orelse=[],
+                                                      finalbody=[])],
+                                         decorator_list=[], # TODO: is it overzealous to remove *all* decorators?
+                                         returns=node.returns),
+                          node)
+        ast.fix_missing_locations(new_node)
+        return new_node
+
+    def visit_Assign(self, node):
+
+        assert(len(node.targets) == 1) # FIXME
+        id = node.targets[0].id
+
+        # NOTE: grab id before -- recursive call will replace lhs with __read!!
+        self.generic_visit(node)
+
+        if not self.shouldLiftVar(id):
+            return node
+
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='__assign', ctx=ast.Load()),
+            args=[ast.Name(id=id, ctx=ast.Load()),
+                  node.value
+                 ],
+            keywords=[]
+        ))
+        ast.copy_location(new_node, node)
+        ast.fix_missing_locations(new_node)
+
+        return [new_node]
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        return node
 
     def visit_If(self, node):
         self.generic_visit(node)
@@ -53,7 +103,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         mod = [tBranch, eBranch, new_node]
         return mod
-        
+
     def visit_While(self, node):
         self.generic_visit(node)
 
@@ -82,21 +132,6 @@ class StagingRewriter(ast.NodeTransformer):
         mod = [tFun, bFun, new_node]
         return mod
 
-    def visit_FunctionDef(self, node):
-        self.generic_visit(node)
-        new_node = ast.copy_location(ast.FunctionDef(name=node.name,
-                                         args=node.args,
-                                         body=[ast.Try(body=node.body,
-                                                      handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()), 
-                                                                                       name='r', 
-                                                                                       body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
-                                                      orelse=[],
-                                                      finalbody=[])],
-                                         decorator_list=[], # TODO: is it overzealous to remove *all* decorators?
-                                         returns=node.returns),
-                          node)
-        ast.fix_missing_locations(new_node)
-        return new_node
 
     def visit_Return(self, node):
         self.generic_visit(node)
@@ -106,13 +141,3 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         return new_node
 
-    def visit_Name(self, node):
-        self.generic_visit(node)
-        ## XXX do this differently
-        # if node.id in self.reps:
-        #     nnode = ast.copy_location(ast.Call(func=ast.Name(id=self.reps[node.id], ctx=ast.Load()),
-        #                                       args=[ast.Str(s=node.id)],
-        #                                       keywords=[]),
-        #                             node)
-        #     return nnode
-        return node

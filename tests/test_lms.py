@@ -121,13 +121,13 @@ def test_loop1_rewrite(): ## FIXME: need to lift (selected?) variables
 
 def loop1(n):
     try:
-        x = 0
+        __assign(x, 0)
 
         def cond$1():
             return (x < n)
 
         def body$1():
-            x = n
+            __assign(x, n)
         __while(cond$1, body$1)
         __return(x)
     except NonLocalReturnValue as r:
