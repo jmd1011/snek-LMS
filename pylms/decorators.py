@@ -8,7 +8,7 @@ import astunparse
 from py4j.java_gateway import JavaGateway
 
 from .py_to_sexpr import AstVisitor
-from .lms_tree_rewriter import StagingRewriter
+from .lms_tree_rewriter import ScopeAnalysis, StagingRewriter
 
 from .rep import *
 
@@ -46,6 +46,8 @@ def lms(func):
             self.original = func
             self.original_src = inspect.getsource(func)
             self.original_ast = py_ast.parse(self.original_src)
+            scope = ScopeAnalysis()
+            scope.visit(self.original_ast)
             visitor = StagingRewriter()
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
