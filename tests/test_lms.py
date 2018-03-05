@@ -122,7 +122,6 @@ def loop1(n):
 def test_loop1():
     assert(loop1(7) == 7)
 
-# NOTE: this is still losing side effects (expected!)
 def test_loop1_staged():
     assert(lmscompile(loop1).code ==
 """
@@ -139,7 +138,7 @@ def test_loop1_staged():
  ['val', x8, ['get', x5]], x8]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
-def test_loop1_rewrite(): ## FIXME: need to lift (selected?) variables
+def test_loop1_rewrite(): 
     assert(loop1.src == """
 
 def loop1(n):
