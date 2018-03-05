@@ -4,9 +4,6 @@ init:
 build_compiler:
 	(cd compiler; sbt assembly)
 
-run_server:
-	java -jar jars/sneklms.jar &
-
 test:
 	{ java -jar compiler/target/scala-2.11/sneklms.jar & }; \
 	pid=$$!; \
