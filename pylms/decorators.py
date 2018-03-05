@@ -88,12 +88,12 @@ def stage(func):
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
             self.gateway = JavaGateway()
-            self.moduleName = func.__name__
+            self.moduleName = 'module_{}'.format(func.__name__)
             self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args):
-            exec("import {} as foo".format(self.moduleName))
-            foo.x1(*args)
+            exec("import {} as foo".format(self.moduleName), globals())
+            return foo.x1(*args)
 
     return Snippet()
 

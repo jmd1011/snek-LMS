@@ -100,12 +100,15 @@ trait Compiler extends Dsl {
         case (agg, exp) => Some(compile(exp))
       }
       res.get
+    case x::Nil =>
+      compile(x)
     case f::(x: List[Any]) =>
       printDebug(s"f >> $f")
       printDebug(s"x >> $x")
       val args = x map(compile(_) match { case Literal(x: Rep[Int]) => x })
       printDebug(s"args >> $args")
       val nf = compile(f).get
+      printEnv
       printDebug(s"nf >> $nf")
       (nf, args) match {
         case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
