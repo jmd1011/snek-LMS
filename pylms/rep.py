@@ -1,4 +1,4 @@
-__all__ = ['reflect', 'Rep', 'NonLocalReturnValue', '__if']
+__all__ = ['reflect', 'Rep', 'NonLocalReturnValue', '__if', '__return']
 
 def reflect(s):
     return Rep(s)
@@ -25,7 +25,10 @@ class NonLocalReturnValue(Exception):
     def __init__(self, value):
         self.value = value
 
-def __if(test, body, orelse, reps):
+def __return(value):
+    raise NonLocalReturnValue(value)
+
+def __if(test, body, orelse):
     if(isinstance(test, bool)):
         if(test):
             res = body()

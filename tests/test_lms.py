@@ -28,11 +28,11 @@ def power2(b, x):
     try:
 
         def then$1():
-            raise NonLocalReturnValue(1)
+            __return(1)
 
         def else$1():
-            raise NonLocalReturnValue((b * power2(b, (x - 1))))
-        __if((x == 0), then$1, else$1, {})
+            __return((b * power2(b, (x - 1))))
+        __if((x == 0), then$1, else$1)
     except NonLocalReturnValue as r:
         return r.value
 """)
@@ -61,8 +61,8 @@ def foobar1(x):
 
         def else$2():
             print('no')
-        __if((x == 0), then$2, else$2, {})
-        raise NonLocalReturnValue(x)
+        __if((x == 0), then$2, else$2)
+        __return(x)
     except NonLocalReturnValue as r:
         return r.value
 """)
