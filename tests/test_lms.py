@@ -52,9 +52,14 @@ def foobar1(x):
 def test_foobar1():
     assert(foobar1(7) == 7)
 
-@pytest.mark.skip(reason="not virtualizing print yet. also requires side effects")
+#@pytest.mark.skip(reason="not virtualizing print yet. also requires side effects")
 def test_foobar1_staged():
-    assert(str(foobar1(Rep("in"))) == "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
+    assert(str(reify(lambda: foobar1(Rep("in")))) == 
+"""
+[['val', x0, ['==', in, 0]], 
+ ['val', x1, ['if', x0, [None], [None]]], in]
+""".replace('\n','').replace('  ',' '))
+#        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
 
 def test_foobar1_rewrite():
     assert(foobar1.src == """
