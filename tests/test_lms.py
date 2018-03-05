@@ -20,9 +20,9 @@ def test_power():
     assert(power2(2,3) == 8)
 
 def test_power_staged():
-    assert(lmscompile(lambda x: power1(x,3)).code == 
+    assert(lmscompile(lambda x: power1(x,3)).code ==
         "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
-    assert(lmscompile(lambda x: power2(x,3)).code == 
+    assert(lmscompile(lambda x: power2(x,3)).code ==
         "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
 
 def test_power_rewrite():
@@ -54,11 +54,11 @@ def test_foobar1():
    assert(lmscompile(lambda _: foobar1(7)).code == "[['val', x0, ['print', 'no']], 7]")
 
 def test_foobar1_staged():
-    assert(lmscompile(foobar1).code == 
+    assert(lmscompile(foobar1).code ==
 """
-[['val', x0, ['==', in, 0]], 
- ['val', x1, ['if', x0, 
-  [['val', x1, ['print', 'yes']], None], 
+[['val', x0, ['==', in, 0]],
+ ['val', x1, ['if', x0,
+  [['val', x1, ['print', 'yes']], None],
   [['val', x1, ['print', 'no']], None]]], in]
 """.replace('\n','').replace('  ',' ').replace('  ',' '))
 
@@ -92,7 +92,7 @@ def test_foobar2():
     assert(foobar2(7) == "no")
 
 def test_foobar2_staged():
-    assert(lmscompile(foobar2).code == 
+    assert(lmscompile(foobar2).code ==
         "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, ['yes'], ['no']]], x1]")
 
 def test_foobar2_rewrite():
@@ -115,7 +115,7 @@ def foobar2(x):
 @lms
 def loop1(n):
     x = 0
-    while x < n: 
+    while x < n:
         x = x + 1
     return x
 
@@ -124,18 +124,18 @@ def test_loop1():
 
 # NOTE: this is still losing side effects (expected!)
 def test_loop1_staged():
-    assert(lmscompile(loop1).code == 
+    assert(lmscompile(loop1).code ==
 """
-[['val', x5, ['new']], 
- ['val', x6, ['set', x5, 0]], 
- ['val', x7, ['while', 
-    [['val', x7, ['get', x5]], 
-     ['val', x8, ['<', x7, in]], 
-     x8], 
-    [['val', x7, ['get', x5]], 
-     ['val', x8, ['+', x7, 1]], 
-     ['val', x9, ['set', x5, x8]], 
-     None]]], 
+[['val', x5, ['new']],
+ ['val', x6, ['set', x5, 0]],
+ ['val', x7, ['while',
+    [['val', x7, ['get', x5]],
+     ['val', x8, ['<', x7, in]],
+     x8],
+    [['val', x7, ['get', x5]],
+     ['val', x8, ['+', x7, 1]],
+     ['val', x9, ['set', x5, x8]],
+     None]]],
  ['val', x8, ['get', x5]], x8]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
@@ -156,5 +156,5 @@ def loop1(n):
         __return(__read(x))
     except NonLocalReturnValue as r:
         return r.value
-""")        
+""")
 

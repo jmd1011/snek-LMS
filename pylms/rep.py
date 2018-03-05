@@ -1,5 +1,5 @@
 __all__ = [
-    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 
+    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue',
     '__if', '__while', '__return', '__print',
     '__var', '__assign', '__read'
 ]
@@ -16,14 +16,14 @@ def freshName(): # for generate AST
 stFresh = 0
 stBlock = []
 stFun   = []
-def run(f): 
+def run(f):
     global stFresh, stBlock, stFun
     sF = stFresh
     sB = stBlock
     sN = stFun
-    try: 
-        return f() 
-    finally: 
+    try:
+        return f()
+    finally:
         stFresh = sF
         stBlock = sB
         stFun = sN
@@ -52,7 +52,7 @@ def reflect(s):
 
 
 
-class Rep(object): 
+class Rep(object):
     def __init__(self, n):
         self.n = n
     def __add__(self, m):
@@ -89,7 +89,7 @@ def __var():
 
 def __assign(name, value):
     return reflect(["set", name, value])
-    
+
 def __read(name):
     return reflect(["get", name])
 
@@ -116,7 +116,7 @@ def __if(test, body, orelse):
             return rval
         else:
             raise Exception("if/else: branches must either both return or none of them")
-	
+
 def __while(test, body):
     if isinstance(test, bool):
         if test:

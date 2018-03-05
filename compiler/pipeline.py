@@ -6,7 +6,7 @@ class SexpToC():
     self.gateway = JavaGateway()
 
   def compile(self, code):
-    ccode = self.gateway.jvm.sneklms.Main.compile(code)
+    ccode = self.gateway.jvm.sneklms.Main.gen(code, "gen")
 
     print(ccode)
 
