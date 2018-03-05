@@ -47,7 +47,7 @@ def reify(f):
 def reflect(s):
     global stBlock
     id = fresh()
-    stBlock += [["val", id, s]]
+    stBlock += [["let", id, s]]
     return id
 
 

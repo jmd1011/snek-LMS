@@ -64,6 +64,17 @@ def lms(func):
 
     return Snippet()
 
+def toSexpr(stms, start):
+    if len(stms) > start:
+        stm = stms[start]
+        if isinstance(stm, list) and len(stm) > 1 and stm[0] == 'let':
+            (body, idx) = toSexpr(stms, start + 1)
+            return (['let', stm[1], stm[2], body], idx + 1)
+        else:
+            return (stm, start + 1)
+    else:
+        return (None, None)
+
 def stage(func):
     if not isinstance(func, types.FunctionType):
         return NotImplemented
@@ -71,27 +82,13 @@ def stage(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.original_src = inspect.getsource(func)
-            self.original_ast = py_ast.parse(self.original_src)
-            scope = ScopeAnalysis()
-            scope.visit(self.original_ast)
-            visitor = StagingRewriter()
-            self.ast = visitor.visit(self.original_ast)
-            py_ast.fix_missing_locations(self.ast)
-            self.src = astunparse.unparse(self.ast)
-            exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
-            self.func = eval(func.__name__)
-
-            self.original = self.func
-            self.ast = py_ast.parse(inspect.getsource(func))
-            visitor = AstVisitor()
-            visitor.visit(self.ast)
-            self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
+            self.pcode = str(toSexpr(reify(lambda: func(Rep("in"))), 0)[0])
+            self.code = "(def {} (in) {})".format(func.__name__, self.pcode.replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
             self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
-        def __call__(self, *args):
+        def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
             return foo.x1(*args)
 

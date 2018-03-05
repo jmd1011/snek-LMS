@@ -21,9 +21,9 @@ def test_power():
 
 def test_power_staged():
     assert(lmscompile(lambda x: power1(x,3)).code ==
-        "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
+        "[['let', x0, ['*', in, 1]], ['let', x1, ['*', in, x0]], ['let', x2, ['*', in, x1]], x2]")
     assert(lmscompile(lambda x: power2(x,3)).code ==
-        "[['val', x0, ['*', in, 1]], ['val', x1, ['*', in, x0]], ['val', x2, ['*', in, x1]], x2]")
+        "[['let', x0, ['*', in, 1]], ['let', x1, ['*', in, x0]], ['let', x2, ['*', in, x1]], x2]")
 
 def test_power_rewrite():
     assert(power2.src == """
@@ -51,15 +51,15 @@ def foobar1(x):
 
 # @pytest.mark.skip(reason="careful: print is now lifted!")
 def test_foobar1():
-   assert(lmscompile(lambda _: foobar1(7)).code == "[['val', x0, ['print', 'no']], 7]")
+   assert(lmscompile(lambda _: foobar1(7)).code == "[['let', x0, ['print', 'no']], 7]")
 
 def test_foobar1_staged():
     assert(lmscompile(foobar1).code ==
 """
-[['val', x0, ['==', in, 0]],
- ['val', x1, ['if', x0,
-  [['val', x1, ['print', 'yes']], None],
-  [['val', x1, ['print', 'no']], None]]], in]
+[['let', x0, ['==', in, 0]],
+ ['let', x1, ['if', x0,
+  [['let', x1, ['print', 'yes']], None],
+  [['let', x1, ['print', 'no']], None]]], in]
 """.replace('\n','').replace('  ',' ').replace('  ',' '))
 
 #        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
@@ -93,7 +93,7 @@ def test_foobar2():
 
 def test_foobar2_staged():
     assert(lmscompile(foobar2).code ==
-        "[['val', x0, ['==', in, 0]], ['val', x1, ['if', x0, ['yes'], ['no']]], x1]")
+        "[['let', x0, ['==', in, 0]], ['let', x1, ['if', x0, ['yes'], ['no']]], x1]")
 
 def test_foobar2_rewrite():
     assert(foobar2.src == """
@@ -125,17 +125,17 @@ def test_loop1():
 def test_loop1_staged():
     assert(lmscompile(loop1).code ==
 """
-[['val', x5, ['new']],
- ['val', x6, ['set', x5, 0]],
- ['val', x7, ['while',
-    [['val', x7, ['get', x5]],
-     ['val', x8, ['<', x7, in]],
+[['let', x5, ['new']],
+ ['let', x6, ['set', x5, 0]],
+ ['let', x7, ['while',
+    [['let', x7, ['get', x5]],
+     ['let', x8, ['<', x7, in]],
      x8],
-    [['val', x7, ['get', x5]],
-     ['val', x8, ['+', x7, 1]],
-     ['val', x9, ['set', x5, x8]],
+    [['let', x7, ['get', x5]],
+     ['let', x8, ['+', x7, 1]],
+     ['let', x9, ['set', x5, x8]],
      None]]],
- ['val', x8, ['get', x5]], x8]
+ ['let', x8, ['get', x5]], x8]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
 def test_loop1_rewrite(): 
