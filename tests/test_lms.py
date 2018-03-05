@@ -124,12 +124,12 @@ def loop1(n):
         __assign(x, 0)
 
         def cond$1():
-            return (x < n)
+            return (__read(x) < n)
 
         def body$1():
             __assign(x, n)
         __while(cond$1, body$1)
-        __return(x)
+        __return(__read(x))
     except NonLocalReturnValue as r:
         return r.value
 """)        
