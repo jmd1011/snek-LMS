@@ -20,7 +20,7 @@ before_script:
   - unzip $HOME/tmp/sbt-1.0.3.zip -d $HOME/tmp
   - mkdir -p $HOME/.sbt/launchers/1.0.3/
   - ls -l $HOME/tmp/sbt/bin/
-  - cp $HOME/tmp/sbt/bin/sbt-launcher.jar $HOME/.sbt/launchers/1.0.3/
+  - cp $HOME/tmp/sbt/bin/sbt-launch.jar $HOME/.sbt/launchers/1.0.3/
   - ls -l $HOME/.sbt/launchers/1.0.3/
 
 script:
