@@ -56,7 +56,7 @@ class StagingRewriter(ast.NodeTransformer):
     def shouldLiftVar(self, id):
         # lift a var if it's assigned more than once
         # TODO: need to check super scopes?
-        return ((self.fundef.locals.get(id)) &
+        return ((self.fundef.locals.get(id)) and
                (self.fundef.locals[id] > 1))
 
     def visit_FunctionDef(self, node):
@@ -75,6 +75,9 @@ class StagingRewriter(ast.NodeTransformer):
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
+        # note: we're losing parent links and locals here. ok?
+        # new_node.parent = node.parent
+        # new_node.locals = node.locals
         self.fundef = node.parent
         return new_node
 
@@ -104,7 +107,7 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Name(self, node):
         self.generic_visit(node)
 
-        if not self.shouldLiftVar(id):
+        if not self.shouldLiftVar(node.id):
             return node
 
         new_node = ast.Call(
