@@ -16,6 +16,7 @@ trait Compiler extends Dsl {
     def get = this
   }
   case class Literal[T](v: Rep[T]) extends Value
+  case class Mut[T](v: Var[T]) extends Value
   case class Wrap(var v: Value) extends Value {
     override def get = v.get
   }
@@ -38,6 +39,19 @@ trait Compiler extends Dsl {
   }
 
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
+    case "None" => unit(-1)
+    case "new" => Mut(var_new(0))
+    case "set"::(x: String)::a::Nil =>
+      val Mut(vx: Var[Int]) = env(x)
+      var_assign(vx, compile(a) match { case Literal(a: Rep[Int]) => a })
+      unit(())
+    case "get"::(x: String)::Nil =>
+      val Mut(vx: Var[Int]) = env(x)
+      Literal(readVar(vx))
+    case "while"::t::body::Nil =>
+      while (compile(t) match { case Literal(t: Rep[Boolean]) => t })
+        compile(body) match { case Literal(b: Rep[Unit]) => b }
+      unit(())
     case x: Int => unit(x)
     case x: String => env(x)
     case Str(x) => Literal(unit(x))
@@ -49,6 +63,8 @@ trait Compiler extends Dsl {
       compile[Int,Int](n, m)(_ - _)
     case "=="::n::m::Nil =>
       compile[Int,Boolean](n, m)(_ == _)
+    case "<"::n::m::Nil =>
+      compile[Int,Boolean](n, m)(_ < _)
     case "if"::c::t::e::Nil =>
       val Literal(rc: Rep[Boolean]) = compile(c)
       Literal(if (rc) compile(t) match { case Literal(t: Rep[Int]) => t } else compile(e) match { case Literal(e: Rep[Int]) => e })

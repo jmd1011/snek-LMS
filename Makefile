@@ -5,6 +5,7 @@ build_compiler:
 	(cd compiler; sbt assembly)
 
 test:
+	make -C gen/ clean; \
 	{ java -jar compiler/target/scala-2.11/sneklms.jar & }; \
 	pid=$$!; \
 	sleep 1; \

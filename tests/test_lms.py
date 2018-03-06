@@ -51,15 +51,15 @@ def foobar1(x):
 
 # @pytest.mark.skip(reason="careful: print is now lifted!")
 def test_foobar1():
-   assert(lmscompile(lambda _: foobar1(7)).code == "[['let', x0, ['print', 'no']], 7]")
+   assert(lmscompile(lambda _: foobar1(7)).code == """[['let', x0, ['print', '"no"']], 7]""")
 
 def test_foobar1_staged():
     assert(lmscompile(foobar1).code ==
 """
 [['let', x0, ['==', in, 0]],
  ['let', x1, ['if', x0,
-  [['let', x1, ['print', 'yes']], None],
-  [['let', x1, ['print', 'no']], None]]], in]
+  ['begin', ['let', x1, ['print', '"yes"']], None],
+  ['begin', ['let', x1, ['print', '"no"']], None]]], in]
 """.replace('\n','').replace('  ',' ').replace('  ',' '))
 
 #        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
@@ -93,7 +93,7 @@ def test_foobar2():
 
 def test_foobar2_staged():
     assert(lmscompile(foobar2).code ==
-        "[['let', x0, ['==', in, 0]], ['let', x1, ['if', x0, ['yes'], ['no']]], x1]")
+        """[['let', x0, ['==', in, 0]], ['let', x1, ['if', x0, ['yes'], ['no']]], x1]""")
 
 def test_foobar2_rewrite():
     assert(foobar2.src == """
@@ -138,7 +138,7 @@ def test_loop1_staged():
  ['let', x8, ['get', x5]], x8]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
-def test_loop1_rewrite(): 
+def test_loop1_rewrite():
     assert(loop1.src == """
 
 def loop1(n):

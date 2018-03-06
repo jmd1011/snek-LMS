@@ -64,16 +64,34 @@ def lms(func):
 
     return Snippet()
 
-def toSexpr(stms, start):
-    if len(stms) > start:
-        stm = stms[start]
-        if isinstance(stm, list) and len(stm) > 1 and stm[0] == 'let':
-            (body, idx) = toSexpr(stms, start + 1)
-            return (['let', stm[1], stm[2], body], idx + 1)
+def toSexpr(l):
+    if not isinstance(l, list):
+        return l
+    if len(l) > 0 and isinstance(l[0], list):
+        stm = l[0]
+        if stm[0] == 'let':
+            rhs = toSexpr(stm[2])
+            body = toSexpr(l[1:])
+            return ['let', stm[1], rhs, body]
         else:
-            return (stm, start + 1)
+            raise Exception()
+    elif len(l) > 2 and l[0] == 'while':
+        cond = toSexpr(l[1])
+        body = toSexpr(l[2])
+        return ['while', cond, body]
+    elif len(l) > 1 and str(l[0]) == 'begin':
+        print("begin {}".format(l[1:]))
+        return ['begin'] + [toSexpr(l[1:])]
+    elif len(l) > 3 and str(l[0]) == 'if':
+        print("if")
+        cond = toSexpr(l[1])
+        then = toSexpr(l[2])
+        oelse = toSexpr(l[3])
+        return ['if', cond, then, oelse]
+    elif len(l) == 1:
+        return l[0]
     else:
-        return (None, None)
+        return l
 
 def stage(func):
     if not isinstance(func, types.FunctionType):
@@ -82,8 +100,8 @@ def stage(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.pcode = str(toSexpr(reify(lambda: func(Rep("in"))), 0)[0])
-            self.code = "(def {} (in) {})".format(func.__name__, self.pcode.replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
+            self.code = "(def {} (in) {})".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
             self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
