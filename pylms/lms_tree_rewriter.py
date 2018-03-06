@@ -77,7 +77,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                                                        body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                                                       orelse=[],
                                                       finalbody=[])],
-                                         decorator_list=[], # TODO: is it overzealous to remove *all* decorators?
+                                         decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)), 
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
