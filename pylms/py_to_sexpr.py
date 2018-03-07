@@ -7,19 +7,24 @@ import builtins
 import os
 
 class AstVisitor(ast.NodeVisitor):
+
     def __init__(self):
-        self.f = open("test.out", "w")
+        self.res = ""
+        # self.f = open("test.out", "w")
+        pass
 #        super()
 
     def _print(self, s):
-        self.f.write(s)
+        # self.f.write(s)
+        self.res += s
+        pass
 
     def result(self):
-    	self.f.flush()
-    	f = open("test.out","r")
-    	res = f.read()
-    	f.close()
-    	return res
+        # self.f.flush()
+        # f = open("test.out","r")
+        # res = f.read()
+        # f.close()
+        return self.res
 
     def visit_If(self, node):
         self._print("\n(if (")
