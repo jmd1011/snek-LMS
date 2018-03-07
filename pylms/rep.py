@@ -128,7 +128,6 @@ def __while(test, body):
         else:
             return orelse()
     else:
-        print("Rep")
         # We don't currently support return inside while
         def capture(f):
             try: return (False, reify(f))
