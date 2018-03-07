@@ -80,10 +80,8 @@ def toSexpr(l):
         body = toSexpr(l[2])
         return ['while', cond, body]
     elif len(l) > 1 and str(l[0]) == 'begin':
-        print("begin {}".format(l[1:]))
         return ['begin'] + [toSexpr(l[1:])]
     elif len(l) > 3 and str(l[0]) == 'if':
-        print("if")
         cond = toSexpr(l[1])
         then = toSexpr(l[2])
         oelse = toSexpr(l[3])

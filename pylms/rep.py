@@ -81,7 +81,7 @@ class NonLocalReturnValue(Exception):
 def __return(value):
     raise NonLocalReturnValue(value)
 
-def __print(value):
+def __print(value): # TODO HACK!
     return reflect(["print", '"{}"'.format(value)])
 
 def __var():
