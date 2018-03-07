@@ -4,12 +4,9 @@ init:
 build_compiler:
 	(cd compiler; sbt assembly)
 
+kill_server:
+	pkill -f sneklms.jar
+
 test:
 	make -C gen/ clean; \
-	{ java -jar compiler/target/scala-2.11/sneklms.jar & }; \
-	pid=$$!; \
-	sleep 1; \
-	py.test -vv; \
-	r=$$?; \
-	 kill $$pid; \
-	exit $$r
+	py.test -vv

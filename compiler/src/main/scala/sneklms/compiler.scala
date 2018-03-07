@@ -527,8 +527,10 @@ abstract class DslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: Stri
     file.flush
     file.close
     import scala.sys.process._
+    System.out.println(s"======= Compile module $mmoduleName ============")
     try {
       (s"make MODULE_NAME=$mmoduleName -C $ddir":ProcessBuilder).lines.foreach(Console.println _)
+      System.out.println(s"========================================")
       true
     } catch {
       case _ => false
