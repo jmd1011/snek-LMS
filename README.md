@@ -109,7 +109,7 @@ The C/C++ code produced is the following:
 
 Snek-LMS requires a working installation of Swig to load generated C code.
 
-    make init                       # install python dependencies
+    make init                       # install python dependencies (may need sudo)
     make build_compiler             # compile the compiler
     make test                       # run testsuite
 
