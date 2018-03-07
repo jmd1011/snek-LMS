@@ -78,13 +78,13 @@ known argument 3.
 
 # Generating C/C++ code
 
-If we want to generate C/C++ code, we provide an other decorator `@stage`.
+If one wants to generate C/C++ code, we provide another decorator `@stage`.
 
 	@stage
 	def power3(x):
 	    return power(x, 3)
 
-The decorator is generating a module called `module_power` implemented in C/C++. The decorator also overloads the call to `power3` by a call to a C/C++ function.
+The decorator generates a module called `module_power3` implemented in C/C++. The decorator also overloads the call to `power3` by a call to a C/C++ function.
 
 The C/C++ code produced is the following:
 
