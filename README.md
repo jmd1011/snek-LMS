@@ -35,17 +35,17 @@ nodes for each operation. Hence, *executing* this transformed
 version will *build* an IR (i.e., a computation graph) that
 represents its computation:
 
-	[['val', x5, ['new_var']],
-	 ['val', x6, ['assign', x5, 0]],
-	 ['val', x7, ['while',
-	    [['val', x7, ['read', x5]],
-	     ['val', x8, ['<', x7, in]],
+	[['let', x5, ['new_var']],
+	 ['let', x6, ['assign', x5, 0]],
+	 ['let', x7, ['while',
+	    [['let', x7, ['read', x5]],
+	     ['let', x8, ['<', x7, in]],
 	     x8],
-	    [['val', x7, ['read', x5]],
-	     ['val', x8, ['+', x7, 1]],
-	     ['val', x9, ['assign', x5, x8]],
+	    [['let', x7, ['read', x5]],
+	     ['let', x8, ['+', x7, 1]],
+	     ['let', x9, ['assign', x5, x8]],
 	     None]]],
-	 ['val', x8, ['read', x5]], x8]
+	 ['let', x8, ['read', x5]], x8]
 
 From here, we can translate further: either directly to C code
 or to a system like TensorFlow.
@@ -67,9 +67,9 @@ For example:
 Invoking `lmscompile(lambda x: power(x,3))` produces the
 following IR:
 
-	[['val', x0, ['*', in, 1]],
-	 ['val', x1, ['*', in, x0]],
-	 ['val', x2, ['*', in, x1]],
+	[['let', x0, ['*', in, 1]],
+	 ['let', x1, ['*', in, x0]],
+	 ['let', x2, ['*', in, x1]],
 	 x2]
 
 By executing the recursive calls at generation time,
