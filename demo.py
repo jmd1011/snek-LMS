@@ -12,11 +12,37 @@ def power(x, n):
 def power3(x):
     return power(x, 3)
 
-print("======= Power converted code ========")
-print(power.src)
-print("\n")
-print("======= Power3 IR ========")
-print(power3.code)
-print("\n")
-print("======= Power3 C/C++ code ========")
-print(power3.Ccode)
+@lms
+def loop(x):
+    y = 0
+    while y < x:
+      print(y)
+      y = y + 1
+    return y
+
+@stage
+def loopX(x):
+    return loop(x)
+
+# print("======= Power converted code ========")
+# print(power.src)
+# print("\n")
+# print("======= Power3 IR ========")
+# print(power3.code)
+# print("\n")
+# print("======= Power3 C/C++ code ========")
+# print(power3.Ccode)
+
+
+
+print("======= Loop converted code ========")
+print(loop.src)
+
+print("======= LoopX IR ========")
+print(loopX.code)
+
+print("running loop(5)")
+print(loop(5))
+
+print("running loopX(5)")
+print(loopX(5))

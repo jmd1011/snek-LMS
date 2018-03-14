@@ -1,7 +1,7 @@
 __all__ = [
-    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue',
+    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__return', '__print',
-    '__var', '__assign', '__read'
+    '__var', '__assign', '__read', '__break', '__continue'
 ]
 
 var_counter = 0
@@ -57,6 +57,8 @@ class Rep(object):
         self.n = n
     def __add__(self, m):
         return reflect(["+",self,m])
+    def __sub__(self, m):
+        return reflect(["-",self,m])
     def __mul__(self, m):
         return reflect(["*",self,m])
     def __eq__(self, m):
@@ -80,6 +82,12 @@ class NonLocalReturnValue(Exception):
 
 def __return(value):
     raise NonLocalReturnValue(value)
+
+class NonLocalBreak(Exception): pass
+class NonLocalContinue(Exception): pass
+
+def __break(): raise NonLocalBreak()
+def __continue(): raise NonLocalContinue()
 
 def __print(value): # TODO HACK!
     return reflect(["print", '"{}"'.format(value)])
@@ -123,21 +131,26 @@ def __if(test, body, orelse):
 
 def __while(test, body):
     if isinstance(test, bool):
-        if test:
-            return body()
-        else:
-            return orelse()
-    else:
-        # We don't currently support return inside while
-        def capture(f):
-            try: return (False, reify(f))
+        while test: #is this evaluating correctly? I don't think it is -- might need to pass this as a function as well
+            try: body()
+            except NonLocalBreak as e: #Need to add this
+                return None
             except NonLocalReturnValue as e:
-                return (True, e.value)
-        testret, testp = capture(test)
-        bodyret, bodyp = capture(body)
-        rval = reflect(["while", testp, bodyp])
-        if (not testret) & (not bodyret):
-            return rval
-        else:
-            raise Exception("while: return in body not allowed")
+                return e.value
+            except NonLocalContinue as e:
+                pass
+        pass
+
+    # We don't currently support return inside while
+    def capture(f):
+        try: return (False, reify(f))
+        except NonLocalReturnValue as e:
+            return (True, e.value)
+    testret, testp = capture(test)
+    bodyret, bodyp = capture(body)
+    rval = reflect(["while", testp, bodyp])
+    if (not testret) & (not bodyret):
+        return rval
+    else:
+        raise Exception("while: return in body not allowed")
 

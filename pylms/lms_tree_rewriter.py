@@ -77,7 +77,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                                                        body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                                                       orelse=[],
                                                       finalbody=[])],
-                                         decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)), 
+                                         decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)),
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
@@ -184,6 +184,30 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         mod = [tFun, bFun, new_node]
         return mod
+
+    def visit_Continue(self, node):
+      self.generic_visit(node)
+
+      new_node = ast.Expr(ast.Call(
+          func=ast.Name(id='__continue', ctx=ast.Load()),
+          args=[],
+          keywords=[]
+      ))
+
+      ast.fix_missing_locations(new_node)
+      return new_node
+
+    def visit_Break(self, node):
+      self.generic_visit(node)
+
+      new_node = ast.Expr(ast.Call(
+          func=ast.Name(id='__break', ctx=ast.Load()),
+          args=[],
+          keywords=[]
+      ))
+
+      ast.fix_missing_locations(new_node)
+      return new_node
 
     def visit_Call(self, node):
         self.generic_visit(node)

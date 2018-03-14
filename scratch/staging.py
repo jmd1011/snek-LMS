@@ -411,6 +411,10 @@ class StagingRewriter(ast.NodeTransformer):
             return nnode
         return node
 
+    def visit_Continue(self, node):
+        print("Cont: {}".format(ast.dump(node)))
+        self.generic_visit(node)
+
 def lms(obj):
     """
     Rep transforms the AST to annotated AST with Rep(s).
@@ -423,6 +427,8 @@ def lms(obj):
     if isinstance(obj, types.FunctionType):
         func = obj
         mod_ast = ast.parse(inspect.getsource(func))
+
+        print(ast.dump(mod_ast))
 
         # GW: do you want to compare unfix/fix version of new_mod_ast?
         #     rather than mod_ast vs new_mod_ast
@@ -483,27 +489,32 @@ TODO: User can provide return type.
 TODO: User can even provide return type as union;
       eg, power(b: RepInt, x) -> RepInt | RepStr
 """
-@lms
-def power(b : RepInt, x) -> RepInt:
-    if (x == 0): return 1
-    else: return b * power(b, x-1)
+# @lms
+# def power(b : RepInt, x) -> RepInt:
+#     if (x == 0): return 1
+#     else: return b * power(b, x-1)
+
+# @lms
+# def zero(x):
+#     if (x == 0): return 1
+#     else: return 0
+
+# @lms
+# def multiply(x : RepInt, n) -> RepInt:
+#     if n == 1: return x
+#     else: return x + multiply(x, n - 1)
+
+# @lms
+# def test(x : RepInt) -> RepInt:
+#     if (x == 2):
+#         return x + 1
+#     else:
+#         return x + 2
 
 @lms
-def zero(x):
-    if (x == 0): return 1
-    else: return 0
-
-@lms
-def multiply(x : RepInt, n) -> RepInt:
-    if n == 1: return x
-    else: return x + multiply(x, n - 1)
-
-@lms
-def test(x : RepInt) -> RepInt:
-    if (x == 2):
-        return x + 1
-    else:
-        return x + 2
+def test(x: RepInt) -> RepInt:
+    while(True):
+        continue
 
 """
 Ideally, user could specify different code generators for different targer languages.
