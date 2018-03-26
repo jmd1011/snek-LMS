@@ -18,6 +18,7 @@ def loop(x):
     while y < x:
       print(y)
       y = y + 1
+      continue
     return y
 
 @stage
