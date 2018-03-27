@@ -2,7 +2,7 @@ CXX=g++
 INCLUDE=-I/usr/include/python2.7 -I/usr/lib/python2.7
 
 all:
-	swig -c++ -python ${MODULE_NAME}.i
+	swig3.0 -c++ -python ${MODULE_NAME}.i
 	g++ -std=c++0x -c -fPIC ${MODULE_NAME}.cpp
 	g++ -c -fPIC ${MODULE_NAME}_wrap.cxx ${INCLUDE}
 	g++ -shared -Wl,-soname,_${MODULE_NAME}.so -o _${MODULE_NAME}.so ${MODULE_NAME}.o ${MODULE_NAME}_wrap.o
