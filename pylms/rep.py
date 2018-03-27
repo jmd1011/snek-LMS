@@ -50,8 +50,6 @@ def reflect(s):
     stBlock += [["let", id, s]]
     return id
 
-
-
 class Rep(object):
     def __init__(self, n):
         self.n = n

@@ -11,6 +11,7 @@ from .py_to_sexpr import AstVisitor
 from .lms_tree_rewriter import ScopeAnalysis, StagingRewriter
 
 from .rep import *
+from .nn_staging import *
 
 sys.path.insert(0, 'gen')
 

@@ -212,6 +212,17 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
 
+        if isinstance(node.func, ast.Attribute):
+          if node.func.value.id is 'nn':
+            new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
+                                              args=node.args,
+                                              keywords=[])
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+          else:
+            return node
+
         if not isinstance(node.func, ast.Name):
             return node
 
