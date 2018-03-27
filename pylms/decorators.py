@@ -105,6 +105,7 @@ def stage(func):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
             self.code = "(def {} (in) {})".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            print("stage.code = {}".format(self.code))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
             self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)

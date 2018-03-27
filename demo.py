@@ -1,30 +1,43 @@
 from pylms import lms, lmscompile, stage
 from pylms.rep import *
+# import numpy
+
+# @lms
+# def power(x, n):
+#     if n == 0:
+#         return 1
+#     else:
+#         return x * power(x, n - 1)
+
+# @stage
+# def power3(x):
+#     return power(x, 3)
+
+# @lms
+# def loop(x):
+#     y = 0
+#     while y < x:
+#         print(y)
+#         y = y + 1
+#     # continue
+#     return y
+
+# @stage
+# def loopX(x):
+#     return loop(x)
 
 @lms
-def power(x, n):
-    if n == 0:
-        return 1
-    else:
-        return x * power(x, n - 1)
+def lib(x):
+    optim.SGD(1, 2, 3)
+    # if x == 0:
+    #     print("Hello")
+    # else:
+    #     print("world!")
+    return x
 
 @stage
-def power3(x):
-    return power(x, 3)
-
-@lms
-def loop(x):
-    y = 0
-    while y < x:
-        print(y)
-        y = y + 1
-    # continue
-    return y
-
-@stage
-def loopX(x):
-    return loop(x)
-
+def libX(x):
+    return lib(x)
 
 # @lms
 # def floop(x):
@@ -48,20 +61,32 @@ def loopX(x):
 # print("======= Power3 C/C++ code ========")
 # print(power3.Ccode)
 
+# print("======= Loop converted code ========")
+# print(loop.src)
 
+# print("======= LoopX IR ========")
+# print(loopX.code)
 
-print("======= Loop converted code ========")
-print(loop.src)
+# print("running loop(5)")
+# print(loop(5))
 
-print("======= LoopX IR ========")
-print(loopX.code)
+# print("running loopX(5)")
+# print(loopX(5))
 
-print("running loop(5)")
-print(loop(5))
+print("======= lib converted code ========")
+print(lib.src)
 
-print("running loopX(5)")
-print(loopX(5))
+print("======= libX IR ========")
+print(libX.code)
 
+print("running lib(0)")
+print(lib(0))
+
+print("running libX(0)")
+print(libX(0))
+
+# print("running loopX(5)")
+# print(loopX(5))
 
 # print("======= Floop converted code ========")
 # print(floop.src)

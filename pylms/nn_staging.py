@@ -2,7 +2,7 @@
 from .rep import *
 import torch
 
-__all__ = ['nn_linear', 'RepTensor']
+__all__ = ['nn_linear', 'RepTensor', 'optim_SGD']
 
 stFresh = 0
 
@@ -37,3 +37,11 @@ def nn_linear(hlsize, outsize):
                 return self.weight * tensor + self.bias
 
     return RepLinear()
+
+def optim_SGD(lr, momentum):
+    class RepSGD(Rep):
+        def __init__(self, n):
+            super().__init__(n)
+
+        def zero_grad(self):
+            return reflect(["call", self, "zero_grad"])

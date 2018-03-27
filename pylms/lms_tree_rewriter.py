@@ -210,15 +210,23 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
 
         if isinstance(node.func, ast.Attribute):
-          if node.func.value.id is 'nn':
-            new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
-                                              args=node.args,
-                                              keywords=[])
-            ast.copy_location(new_node, node)
-            ast.fix_missing_locations(new_node)
-            return new_node
-          else:
-            return node
+            if node.func.value.id is 'nn':
+                if node.func.value.attr is 'Linear':
+                    new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
+                                                      args=node.args,
+                                                      keywords=[])
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+            elif node.func.value.id is 'optim':
+                print("{}".format(ast.dump(node)))
+                if node.func.attr is 'SGD':
+                    new_node = ast.Call(func=ast.Name(id='optim_SGD', ctx=ast.Load()),
+                                                      args=node.args[1:],
+                                                      keywords=[])
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
 
         if not isinstance(node.func, ast.Name):
             return node

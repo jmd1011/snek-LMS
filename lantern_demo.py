@@ -11,13 +11,8 @@ from pylms import *
 from pylms.rep import *
 
 @ast
-def test(lst):
-  for l in lst:
-    print(l)
-  pass
-
-@lms
 def f(x):
+  optimizer = optim.SGD(None, lr=None, momentum=None)
   fc1 = nn.Linear(320, 50)
   return fc1(x)
 
