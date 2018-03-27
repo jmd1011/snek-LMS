@@ -211,7 +211,7 @@ class StagingRewriter(ast.NodeTransformer):
 
         if isinstance(node.func, ast.Attribute):
             if node.func.value.id is 'nn':
-                if node.func.value.attr is 'Linear':
+                if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
                                                       args=node.args,
                                                       keywords=[])
