@@ -81,9 +81,6 @@ class StagingRewriter(ast.NodeTransformer):
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
-        # note: we're losing parent links and locals here. ok?
-        # new_node.parent = node.parent # JD: there aren't parent links by default, so that's ok
-        # new_node.locals = node.locals
         self.fundef = node.parent
         return new_node
 
@@ -246,10 +243,10 @@ class StagingRewriter(ast.NodeTransformer):
         return new_node
 
     def visit_For(self, node):
-      self.generic_visit(node)
-      new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
-                                                 args=[node.target,node.iter,node.body],
-                                                 keywords=[]))
-      ast.copy_location(new_node, node)
-      ast.fix_missing_locations(new_node)
-      return new_node
+        self.generic_visit(node)
+        new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
+                                                   args=[node.target,node.iter,node.body],
+                                                   keywords=[]))
+        ast.copy_location(new_node, node)
+        ast.fix_missing_locations(new_node)
+        return new_node

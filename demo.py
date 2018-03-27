@@ -16,14 +16,28 @@ def power3(x):
 def loop(x):
     y = 0
     while y < x:
-      print(y)
-      y = y + 1
-      # continue
+        print(y)
+        y = y + 1
+    # continue
     return y
 
 @stage
 def loopX(x):
     return loop(x)
+
+
+# @lms
+# def floop(x):
+#     y = 0
+#     for i in x:
+#         print(y)
+#         y = y + 1
+#     return y
+
+# @stage
+# def floopX(x):
+#     return floop(x)
+
 
 # print("======= Power converted code ========")
 # print(power.src)
@@ -47,3 +61,16 @@ print(loop(5))
 
 print("running loopX(5)")
 print(loopX(5))
+
+
+# print("======= Floop converted code ========")
+# print(floop.src)
+
+# print("======= FloopX IR ========")
+# print(floopX.code)
+
+# print("running floop(5)")
+# print(floop(5))
+
+# print("running floopX(5)")
+# print(floopX(5))
