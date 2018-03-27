@@ -16,5 +16,10 @@ def f(x):
   fc1 = nn.Linear(320, 50)
   return fc1(x)
 
+@stage
+def fX(x):
+  return f(x)
+
 print(f.src)
-print(reify(lambda: f(Rep("in"))))
+# print(reify(lambda: f(Rep("in"))))
+print(fX.code)
