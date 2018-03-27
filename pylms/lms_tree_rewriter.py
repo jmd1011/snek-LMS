@@ -219,10 +219,17 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.fix_missing_locations(new_node)
                     return new_node
             elif node.func.value.id is 'optim':
-                print("{}".format(ast.dump(node)))
                 if node.func.attr is 'SGD':
                     new_node = ast.Call(func=ast.Name(id='optim_SGD', ctx=ast.Load()),
-                                                      args=node.args[1:],
+                                                      args=node.args,
+                                                      keywords=[])
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+            elif node.func.value.id is 'F':
+                if node.func.attr is 'nll_loss':
+                    new_node = ast.Call(func=ast.Name(id='F_nll_loss', ctx=ast.Load()),
+                                                      args=node.args,
                                                       keywords=[])
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)

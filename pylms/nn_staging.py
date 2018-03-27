@@ -38,10 +38,26 @@ def nn_linear(hlsize, outsize):
 
     return RepLinear()
 
-def optim_SGD(lr, momentum):
+def optim_SGD(params, lr, momentum):
     class RepSGD(Rep):
         def __init__(self, n):
             super().__init__(n)
+            if isinstance(params, list):
+                self.staged = False
+                self.optim = optim.SGD(params, lr, momentum)
+            else:
+                self.staged = True
+                self.optim = reflect([self, [lr, momentum]])
 
         def zero_grad(self):
-            return reflect(["call", self, "zero_grad"])
+            if self.staged:
+                return reflect(["call", self, "zero_grad"])
+            else:
+                return self.optim.zero_grad()
+
+        # def __repr__(self):
+        #     return
+
+    return RepSGD("SGD")
+
+# def F_nll_loss(output, target, size_average):
