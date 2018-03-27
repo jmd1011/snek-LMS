@@ -1,5 +1,5 @@
 CXX=g++
-INCLUDE=-I/usr/include/python2.7 -I/usr/lib/python2.7
+INCLUDE=`python3-config --includes`
 
 all:
 	swig3.0 -c++ -python ${MODULE_NAME}.i
