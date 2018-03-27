@@ -26,6 +26,7 @@ def ast(func):
         def __init__(self):
             self.original = func
             self.ast = py_ast.parse(inspect.getsource(func))
+            print("ast:\n{}".format(py_ast.dump(self.ast)))
             visitor = AstVisitor()
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
@@ -34,6 +35,7 @@ def ast(func):
             self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self,*args):
+            # return None
             return func(*args)
 
     return Snippet()

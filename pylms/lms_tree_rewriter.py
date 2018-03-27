@@ -186,28 +186,28 @@ class StagingRewriter(ast.NodeTransformer):
         return mod
 
     def visit_Continue(self, node):
-      self.generic_visit(node)
+        self.generic_visit(node)
 
-      new_node = ast.Expr(ast.Call(
-          func=ast.Name(id='__continue', ctx=ast.Load()),
-          args=[],
-          keywords=[]
-      ))
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='__continue', ctx=ast.Load()),
+            args=[],
+            keywords=[]
+        ))
 
-      ast.fix_missing_locations(new_node)
-      return new_node
+        ast.fix_missing_locations(new_node)
+        return new_node
 
     def visit_Break(self, node):
-      self.generic_visit(node)
+        self.generic_visit(node)
 
-      new_node = ast.Expr(ast.Call(
-          func=ast.Name(id='__break', ctx=ast.Load()),
-          args=[],
-          keywords=[]
-      ))
+        new_node = ast.Expr(ast.Call(
+            func=ast.Name(id='__break', ctx=ast.Load()),
+            args=[],
+            keywords=[]
+        ))
 
-      ast.fix_missing_locations(new_node)
-      return new_node
+        ast.fix_missing_locations(new_node)
+        return new_node
 
     def visit_Call(self, node):
         self.generic_visit(node)
@@ -239,9 +239,17 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Return(self, node):
         self.generic_visit(node)
         new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()),
-                                          args=[node.value],
-                                          keywords=[]))
+                                                   args=[node.value],
+                                                   keywords=[]))
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
         return new_node
 
+    def visit_For(self, node):
+      self.generic_visit(node)
+      new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
+                                                 args=[node.target,node.iter,node.body],
+                                                 keywords=[]))
+      ast.copy_location(new_node, node)
+      ast.fix_missing_locations(new_node)
+      return new_node
