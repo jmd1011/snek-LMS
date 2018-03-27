@@ -130,16 +130,16 @@ def __if(test, body, orelse):
             raise Exception("if/else: branches must either both return or none of them")
 
 def __while(test, body):
-    z = test()
+    # z = test()
 
-    if isinstance(z, bool):
-        while z:
-            try:
-                body()
-                z = test()
+    # if isinstance(z, bool):
+    #     while z:
+    #         try:
+    #             body()
+    #             z = test()
             #do other stuff
 
-    if isinstance(z, bool): #test = x < 3
+    if isinstance(test, bool): #test = x < 3
         while test: #is this evaluating correctly? I don't think it is -- might need to pass this as a function as well
             try: body()
             except NonLocalBreak as e:
