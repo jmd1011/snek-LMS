@@ -17,6 +17,7 @@ def test_power_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "lantern.h"
 """ + "#include \"{0}.h\"".format(power.moduleName) + """
 using namespace std;
 int x1(int x2, int x3) {
@@ -64,10 +65,11 @@ def test_ifelse_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "lantern.h"
 """ + "#include \"{0}.h\"".format(ifelse.moduleName) + """
 using namespace std;
 int x1(int x2) {
-  int32_t* x3 = (int32_t*)malloc(5 * sizeof(int32_t));
+  int32_t* x3 = (int32_t*)myMalloc(5 * sizeof(int32_t));
   bool x4 = x2 == 0;
   int32_t x9;
   if (x4) {

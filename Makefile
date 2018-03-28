@@ -1,7 +1,7 @@
 init:
 	pip3 install -r requirements.txt
 
-build_compiler:
+build_compiler: kill_server
 	(cd compiler; sbt assembly)
 
 kill_server:

@@ -148,9 +148,9 @@ trait UninlinedFunctionOps { this: Dsl =>
   def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]): Rep[Unit=>B]
   def uninlinedFunc1[A:Typ,B:Typ](f: Rep[A]=>Rep[B])(implicit pos: SourceContext): Rep[A => B]
   def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: Function2[Rep[A1],Rep[A2],Rep[B]]): Rep[(A1,A2)=>B]
-  implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B]
+  // implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B]
   def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]): Rep[(A1,A2,A3)=>B]
-  implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B]
+  // implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B]
 }
 
 @virtualize
@@ -168,18 +168,18 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
     val mA2 = typ[A2]
     val mB = typ[B]
   }
-  implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B] = {
-    manifestTyp
-  }
+  // implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B] = {
+  //   manifestTyp
+  // }
   case class UninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], s3:Sym[A3], b: Block[B]) extends Def[(A1,A2,A3) => B] {
     val mA1 = typ[A1]
     val mA2 = typ[A2]
     val mA3 = typ[A3]
     val mB = typ[B]
   }
-  implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B] = {
-    manifestTyp
-  }
+  //implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B] = {
+  //  manifestTyp
+  //}
   // override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
   //   case Const(false) => rhs
   //   case _ => super.boolean_or(lhs, rhs)
@@ -332,6 +332,7 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
          |#include <stdio.h>
          |#include <stdlib.h>
          |#include <stdint.h>
+         |#include "lantern.h"
          |#include "$moduleName.h"
          |using namespace std;""".stripMargin)
 
