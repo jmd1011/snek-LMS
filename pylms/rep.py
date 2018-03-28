@@ -1,7 +1,8 @@
 __all__ = [
     'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__return', '__print',
-    '__var', '__assign', '__read', '__break', '__continue'
+    '__var', '__assign', '__read', '__break', '__continue',
+    '__for_dataloader', '__for'
 ]
 
 var_counter = 0
@@ -159,6 +160,23 @@ def __while(test, body):
     bodyret, bodyp = capture(body)
     rval = reflect(["while", testp, bodyp])
     if (not testret) & (not bodyret):
+        return rval
+    else:
+        raise Exception("while: return in body not allowed")
+
+def __for_dataloader(src_file, bdfun):
+    var_idx = fresh()
+    var_data = reflect(freshTensor())
+    var_target = fresh()
+
+    def capture(f):
+        try: return (False, reify(f))
+        except NonLocalReturnValue as e:
+            return e.value
+
+    bodyret, bodyp = capture(bdfun(var_idx, var_data, var_target))
+    rval = reflect(["for_dataloader", src_file, [var_idx, var_data, var_target], bodyp])
+    if not bodyret:
         return rval
     else:
         raise Exception("while: return in body not allowed")

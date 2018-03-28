@@ -5,7 +5,7 @@ import parser
 import inspect
 import builtins
 import astunparse
-
+import collections
 
 class ScopeAnalysis(ast.NodeVisitor):
     """
@@ -330,9 +330,63 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_For(self, node):
         self.generic_visit(node)
-        new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
-                                                   args=[node.target,node.iter,node.body],
-                                                   keywords=[]))
-        ast.copy_location(new_node, node)
-        ast.fix_missing_locations(new_node)
-        return new_node
+        #| recognize the pattern of PyTorch's DataLoader |#
+        def isPyTorchDataLoader(tgt, iter):
+            return isinstance(tgt, ast.Tuple) and \
+            len(tgt.elts) == 2 and \
+            isinstance(tgt.elts[0], ast.Name) and \
+            isinstance(tgt.elts[1], ast.Tuple) and \
+            len(tgt.elts[1].elts) == 2 and \
+            isinstance(tgt.elts[1].elts[0], ast.Name) and \
+            isinstance(tgt.elts[1].elts[1], ast.Name) and \
+            isinstance(iter, ast.Call) and \
+            iter.func.id == 'enumerate' and \
+            'loader' in iter.args[0].id
+        
+        #| Transforms the target names to list of strings |#
+        def targetToList(tgt):
+            def extract(x):
+                if isinstance(x, ast.Name): return x.id
+                elif isinstance(x, ast.Tuple): return targetToList(x.elts)
+                else: raise NotImplementedError
+            return list(map(extract, tgt))
+
+        def targetToFlatList(tgt):
+            res = []
+            for item in targetToList(tgt):
+                if isinstance(item, list): res.extend(item)
+                else: res.append(item)
+            return res
+
+        if isPyTorchDataLoader(node.target, node.iter):
+            inner_fun_name = self.freshName("forinner")
+            inner_fun = ast.FunctionDef(name=inner_fun_name,
+                                      args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                      body=node.body,
+                                      decorator_list=[])
+            ast.fix_missing_locations(inner_fun)
+
+            outer_fun_name = self.freshName("forouter")
+            outer_fun = ast.FunctionDef(name=outer_fun_name,
+                                        args=ast.arguments(args=list(map(lambda x: ast.arg(arg=x, annotation=None), 
+                                                                         targetToFlatList(node.target.elts))),
+                                                           vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                      body=[inner_fun, ast.Return(ast.Name(id=inner_fun_name, ctx=ast.Load()))],
+                                      decorator_list=[])
+            ast.fix_missing_locations(outer_fun)
+
+            new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
+                                         args=[ast.Str('DATA_SRC_FILE_FIXME'), 
+                                               ast.Name(id=outer_fun_name, ctx=ast.Load())],
+                                         keywords=[]))
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return [outer_fun, new_node]
+        else:
+            # FIXME target are just names
+            new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
+                                         args=[node.target, node.iter, node.body],
+                                         keywords=[]))
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node

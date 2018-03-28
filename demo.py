@@ -3,6 +3,19 @@ from pylms.rep import *
 # import numpy
 
 @lms
+def test_for(train_loader):
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data = Variable(data)
+        target = Variable(target)
+
+@stage
+def test_for2(x):
+    return test_for(x)
+
+print(test_for2.code)
+exit()
+
+@lms
 def power(x, n):
     if n == 0:
         return 1
@@ -25,6 +38,7 @@ def loop(x):
 @stage
 def loopX(x):
     return loop(x)
+
 
 # @lms
 # def lib(x):
