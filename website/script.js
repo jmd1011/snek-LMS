@@ -1,13 +1,33 @@
 //fill in people's details here
 const people = [
     {
-        name:"FirstName Lastname",
+        name:"Tiark Rompf",
+        image:"person.jpg"
+    },
+    {
+        name:"Fei Wang",
         image: "person.jpg" //images will need to be in website/images/people
     },
     {
-        name: "First Lastname",
+        name: "Xilun Wu",
         image: "person.jpg"
     },
+    {
+        name: "Gregory Essertel",
+        image: "person.jpg"
+    },
+    {
+        name: "James Decker",
+        image: "jamesdecker.jpg"
+    },
+    {
+        name: "Guannan Wei",
+        image: "person.jpg"
+    },
+    {
+        name: "Vritant Bhardwaj",
+        image: "person.jpg"
+    }
     //...
 ];
 

@@ -48,7 +48,7 @@ a:focus, a:active {
 }
 
 .orange-text {
-    color: #ee8d06; 
+    color: #ee8d06;
 }
 
 .blue-text {
@@ -121,7 +121,7 @@ a:focus, a:active {
 
 .demos {
     text-align: center;
-    margin-top: 40px; 
+    margin-top: 40px;
     padding: 20px;
     height: 200px;
 }
@@ -175,7 +175,7 @@ footer {
     text-align: center;
 }
 
-@media (max-width: 900px) { 
+@media (max-width: 900px) {
     html,body {
         font-size: 12px;
     }
