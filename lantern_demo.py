@@ -126,6 +126,7 @@ def run(train_loader):
     def train(epoch):
         # model.train()
         tloss = 0.0
+        counter = 0
         for batch_idx, (data, target) in enumerate(train_loader):
         # if args.cuda:
         #     data, target = data.cuda(), target.cuda()
@@ -141,7 +142,7 @@ def run(train_loader):
         # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
         #     epoch, batch_idx * len(data), len(train_loader.dataset),
         #     100. * batch_idx / len(train_loader), tloss / (batch_idx)))
-        return tloss #/ counter
+        return tloss / counter
 
     asdf = train(4)
 
