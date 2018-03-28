@@ -5,3 +5,4 @@ compiler/project/target
 .*.sw*
 *.pyc
 gen/
+.snek*.log
