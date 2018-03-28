@@ -4,7 +4,7 @@ import os
 import psutil
 import time
 
-cmdline = ["java", "-jar", "compiler/target/scala-2.11/sneklms.jar"]
+cmdline = ["java", "-jar", "compiler/target/scala-2.12/sneklms.jar"]
 for pid in psutil.pids():
     p = psutil.Process(pid)
     if "java" in p.name() and p.cmdline() == cmdline:
