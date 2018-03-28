@@ -1,0 +1,3 @@
+[submodule "compiler/Lantern"]
+	path = compiler/Lantern
+	url = https://github.com/feiwang3311/Lantern.git
