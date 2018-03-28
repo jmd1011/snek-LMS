@@ -95,51 +95,63 @@ def run(train_loader):
     #    batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
-    class Net(nn.Module):
-        def __init__(self):
-            super(Net, self).__init__()
-            self.conv1 = nn.Conv2d(1, 10, kernel_size=5, bias=False)
-            self.conv2 = nn.Conv2d(10, 20, kernel_size=5, bias = False)
-            self.fc1 = nn.Linear(320, 50)
-            self.fc2 = nn.Linear(50, 10)
+    # class Net(object):
+    #     def __init__(self):
+    #         super(Net, self).__init__()
+    #         self.conv1 = nn.Conv2d(1, 10, kernel_size=5, bias=False)
+    #         self.conv2 = nn.Conv2d(10, 20, kernel_size=5, bias = False)
+    #         self.fc1 = nn.Linear(320, 50)
+    #         self.fc2 = nn.Linear(50, 10)
 
-        def forward(self, x):
-            x = F.relu(F.max_pool2d(self.conv1(x), 2))
-            x = F.relu(F.max_pool2d(self.conv2(x), 2))
-            x = x.view(-1, 320)
-            x = F.relu(self.fc1(x))
-            x = F.dropout(x, training=self.training)
-            x = self.fc2(x)
-            return F.log_softmax(x, dim=1)
+        # def forward(self, x):
+            # x = F.relu(F.max_pool2d(self.conv1(x), 2))
+            # x = F.relu(F.max_pool2d(self.conv2(x), 2))
+            # x = x.view(-1, 320)
+            # x = F.relu(self.fc1(x))
+            # x = F.dropout(x, training=self.training)
+            # x = self.fc2(x)
+            # return F.log_softmax(x, dim=1)
 
-    model = Net()
+    # model = Net()
     # if args.cuda:
     #     model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    conv1 = nn.Conv2d(1, 10, kernel_size=5, bias=False)
+    conv2 = nn.Conv2d(10, 20, kernel_size=5, bias = False)
+    fc1 = nn.Linear(320, 50)
+    fc2 = nn.Linear(50, 10)
+    optimizer = optim.SGD(None, lr=args.lr, momentum=args.momentum)
+
+    def forward(x):
+        x1 = F.relu(F.max_pool2d(conv1(x), 2))
+        x2 = F.relu(F.max_pool2d(conv2(x1), 2))
+        x3 = x2.view(-1, 320)
+        x4 = F.relu(fc1(x3))
+        x5 = F.dropout(x4)#, training=training)
+        x6 = fc2(x5)
+        return F.log_softmax(x6, dim=1)
 
     def train(epoch):
-        model.train()
+        # model.train()
         tloss = 0.0
-        batch_idx = 0
-        # data = rep_train_loader_tensor() #train_loader[0]
-        # target = rep_train_loader_fresh()
+        counter = 0
         for batch_idx, (data, target) in enumerate(train_loader):
         # if args.cuda:
         #     data, target = data.cuda(), target.cuda()
-            data = Variable(data)
-            target = Variable(target)
+            data1 = Variable(data)
+            target1 = Variable(target)
             optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            tloss += loss.data[0]
+            output = forward(data1)
+            loss = F.nll_loss(output, target1)
+            tloss = tloss + loss.data[0]
             loss.backward()
             optimizer.step()
+            counter = counter + 1
         #    if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
-        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            epoch, batch_idx * len(data), len(train_loader.dataset),
-            100. * batch_idx / len(train_loader), tloss / (batch_idx)))
-        return tloss / (batch_idx)
+        # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #     epoch, batch_idx * len(data), len(train_loader.dataset),
+        #     100. * batch_idx / len(train_loader), tloss / (batch_idx)))
+        return tloss #/ counter
 
     asdf = train(4)
 

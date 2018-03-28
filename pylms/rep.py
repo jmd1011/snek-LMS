@@ -59,6 +59,8 @@ class Rep(object):
         return reflect(["-",self,m])
     def __mul__(self, m):
         return reflect(["*",self,m])
+    def __div__(self, m):
+        return reflect(["/",self,m])
     def __eq__(self, m):
         return reflect(["==",self,m])
     def __ne__(self, m):

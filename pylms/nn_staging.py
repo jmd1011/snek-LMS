@@ -19,15 +19,20 @@ class RepTensor(Rep):
         super().__init__(n)
         self.dims = [i for i in dims]
     def __mul__(self, m):
-        return reflect(["dot",self,m])
+        rep = reflect(["dot",self,m])
+        return RepTensor(rep.n, None)
     def __repr__(self):
+        if len(self.dims) is 0 or self.dims[0] is None:
+            return self.n
         return "[tensor, [{}]]".format(", ".join(list(map(str, self.dims))))
 
     def data_get(self, i):
-        return reflect(["array-get", self.n, "data", i])
+        rep = reflect(["array-get", self.n, "data", i])
+        return RepTensor(rep.n, None)
 
     def backward(self):
-        return reflect(["call", self.n, "backward"])
+        rep = reflect(["call", self.n, "backward"])
+        return RepTensor(rep.n, None)
 
     def conv2d(self, kernel):
         rep = reflect(["call", self.n, "conv2d", kernel.n])
@@ -77,8 +82,7 @@ def nn_conv2d(outSize, inSize, kernel_size, bias):
 
                 return self.conv2d(tensor)
             else: #staged
-                return tensor.conv2d(self.kernel)
-
+                return (RepTensor(tensor.n, None)).conv2d(self.kernel)
     return Conv2d()
 
 def optim_SGD(params, lr, momentum):
@@ -118,28 +122,29 @@ def F_relu(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.relu(tensor)
     else:
-        tmp = reflect(["call", "relu", [tensor]])
-        return RepTensor(tmp.n, None)
+        tmp = reflect(["call", "relu", [tensor.n]])
+        ret = RepTensor(tmp.n, None)
+        return ret
 
-def F_dropout(tensor, training):
+def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
-        return F.dropout(tensor, training=training)
+        return F.dropout(tensor)
     else:
-        tmp = reflect(["call", "dropout", [tensor, training]])
+        tmp = reflect(["call", "dropout", [tensor.n]])
         return RepTensor(tmp.n, None)
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
         return F.max_pool2d(tensor, x)
     else:
-        tmp = reflect(["call", "max_pool2d", [tensor]])
+        tmp = reflect(["call", "max_pool2d", [tensor.n]])
         return RepTensor(tmp.n, None)
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        tmp = reflect(["call", "log_softmax", [tensor, dim]])
+        tmp = reflect(["call", "log_softmax", [tensor.n, dim]])
         return RepTensor(tmp.n, None)
 
 def __variable(tensor):
@@ -147,7 +152,7 @@ def __variable(tensor):
 
 def __for_dataloader(src_file, bdfun):
     var_idx = fresh()
-    var_data = reflect(freshTensor())
+    var_data = RepTensor(reflect(freshTensor()).n, None)
     var_target = fresh()
 
     def capture(f):
@@ -158,7 +163,7 @@ def __for_dataloader(src_file, bdfun):
     bodyret, bodyp = capture(bdfun)
     rval = reflect(["for_dataloader", src_file, [var_idx, var_data, var_target], bodyp])
     if not bodyret:
-        return rval
+        return RepTensor(rval.n, None)
     else:
         raise Exception("while: return in body not allowed")
 
