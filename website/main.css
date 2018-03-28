@@ -72,8 +72,15 @@ a:focus, a:active {
 
 .section {
     background: #eee;
+    background: url("./images/geometry.png");
+    background-repeat: repeat;
     color: #222;
     padding: 20px;
+}
+
+.section-title {
+    font-size: 3rem;
+    width: 800px;
 }
 
 .section-p {
@@ -142,9 +149,8 @@ a:focus, a:active {
     color: #eee;
 }
 
-.team-title {
+.text-center {
     text-align: center;
-    font-size: 3rem;
 }
 
 .people {
@@ -153,7 +159,6 @@ a:focus, a:active {
 }
 
 .person {
-    background: #eee;
     margin: 10px 5px;
 }
 
@@ -182,6 +187,10 @@ footer {
 
     .masthead-img {
         width: 150px;
+    }
+
+    .section-title {
+        width: 80%;
     }
 
     .section-p {

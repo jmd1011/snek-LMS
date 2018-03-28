@@ -26,7 +26,7 @@ const people = [
     },
     {
         name: "Vritant Bhardwaj",
-        image: "person.jpg"
+        image: "vritantbhardwaj.jpg"
     }
     //...
 ];
