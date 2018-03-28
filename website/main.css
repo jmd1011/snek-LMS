@@ -106,12 +106,13 @@ a:focus, a:active {
     border:none;
 }
 
-.small-text {
-    font-size: 1rem;
-}
-
 .link {
     margin: 5px;
+    font-size: 1.7rem;
+}
+
+.small-text {
+    font-size: 1.4rem;
 }
 
 .demos {
