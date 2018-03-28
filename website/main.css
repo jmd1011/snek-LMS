@@ -1,0 +1,27 @@
+html, body {
+    min-height: 100vh;
+    width: 100vw;
+    background: #eee;
+}
+.masthead {
+    color: #222;
+    display: flex;
+    min-height: 80vh;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+}
+
+.title {
+    text-align: center;
+
+}
+
+.demos {
+    text-align: center;
+}
+
+.demos-list {
+    list-style-type: none;
+    padding: 0;
+}
