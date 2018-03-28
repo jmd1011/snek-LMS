@@ -29,8 +29,12 @@ class RepTensor(Rep):
     def backward(self):
         return reflect(["call", self, ""])
 
+    def conv2d(self, kernel, stride):
+        rep = reflect(["call", self.n, kernel.n, stride])
+        return RepTensor(self.n)
+
 def nn_linear(hlsize, outsize):
-    class RepLinear(object):
+    class Linear(object):
         def __init__(self):
             self.weight = reflect(freshTensor(outsize, hlsize))
             self.bias = reflect(freshTensor(outsize))
@@ -45,7 +49,25 @@ def nn_linear(hlsize, outsize):
             else: #staged
                 return self.weight * tensor + self.bias
 
-    return RepLinear()
+    return Linear()
+
+def nn_conv2d(outSize, inSize, kernelSize):
+    class Conv2d(object):
+        def __init__(self):
+            tmp = reflect(freshTensor(outSize, inSize, kernelSize, kernelSize))
+            self.kernel = RepTensor(tmp.n, outSize, inSize, kernelSize, kernelSize)
+            self.cond2d = None
+
+        def __call__(self, tensor, stride):
+            if isinstance(tensor, torch.Tensor): #unstaged
+                if self.cond2d is None:
+                    self.conv2d = nn.Conv2d(hlsize, outsize)
+
+                return self.conv2d(tensor)
+            else: #staged
+                return tensor.conv2d(self.kernel, stride)
+
+    return Conv2d()
 
 def optim_SGD(params, lr, momentum):
     class RepSGD(Rep):
