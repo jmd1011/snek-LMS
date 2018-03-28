@@ -14,7 +14,7 @@ const people = [
     },
     {
         name: "Gregory Essertel",
-        image: "person.jpg"
+        image: "gregoryessertel.jpg"
     },
     {
         name: "James Decker",
