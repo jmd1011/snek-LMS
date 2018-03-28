@@ -9,6 +9,9 @@ html, body {
     padding: 0;
     margin: 0;
     color: #eee;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -21,7 +24,7 @@ main * {
 }
 
 a {
-    color: #333;
+    color: #222;
     font-size: 1.5rem;
     text-decoration: none;
 }
@@ -44,6 +47,15 @@ a:focus, a:active {
     flex-direction: column;
 }
 
+.orange-text {
+    color: #ee8d06; 
+}
+
+.blue-text {
+    color: #00827e;
+}
+
+
 .masthead {
     color: white;
     min-height: 80vh;
@@ -62,9 +74,9 @@ a:focus, a:active {
 
 .section-p {
     color: #222;
-    font-size: 1.3rem;
-    width: 50%;
-    min-width: 900px;
+    font-size: 1.4rem;
+    width: 800px;
+    text-align: justify;
 }
 
 .display-row {
@@ -79,7 +91,7 @@ a:focus, a:active {
     padding: 10px 15px;
     border-radius: 5px;
     cursor: pointer;
-    margin: 20px;
+    margin: 30px;
 }
 
 .github-button:hover {
@@ -110,7 +122,6 @@ a:focus, a:active {
 }
 
 .demos-title {
-    color: #ee8d06;
     font-size: 2rem;
     padding: 0;
     margin: 0;
@@ -133,5 +144,13 @@ footer {
 }
 
 @media (max-width: 900px) { 
+    .section-p {
+        padding: 0 10px;
+        width: 80%;
+        min-width: 80%;
 
+    }
+    html,body {
+        font-size: 12px;
+    }
 }
