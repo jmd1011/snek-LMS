@@ -5,42 +5,41 @@ import torch.nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'nn_conv2d', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader_tensor', 'rep_train_loader_fresh', '__for_dataloader', 'F_relu', 'F_dropout', 'F_max_pool2d', 'F_log_softmax']
+__all__ = ['nn_linear', 'nn_conv2d', 'newTensor', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader_tensor', 'rep_train_loader_fresh', '__for_dataloader', 'F_relu', 'F_dropout', 'F_max_pool2d', 'F_log_softmax']
 
 stFresh = 0
 
-def freshTensor(*dims):
+def freshTensor():
     global stFresh
     stFresh += 1
-    return RepTensor("t"+str(stFresh-1), *dims)
+    return RepTensor("t"+str(stFresh-1))
+
+def newTensor(*dims):
+    rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
+    return RepTensor(rep.n)
+
+def reflectTensor(args):
+    rep = reflect(args)
+    return RepTensor(rep.n)
 
 class RepTensor(Rep):
-    def __init__(self, n, *dims):
+    def __init__(self, n):
         super().__init__(n)
-        self.dims = [i for i in dims]
+    def __add__(self, m):
+        return reflectTensor(["+",self,m])
     def __mul__(self, m):
-        rep = reflect(["dot",self,m])
-        return RepTensor(rep.n, None)
-    def __repr__(self):
-        if len(self.dims) is 0 or self.dims[0] is None:
-            return self.n
-        return "[tensor, [{}]]".format(", ".join(list(map(str, self.dims))))
+        return reflectTensor(["dot",self,m])
 
     def data_get(self, i):
-        rep = reflect(["array-get", self.n, "data", i])
-        return RepTensor(rep.n, None)
-
+        return reflectTensor(["array-get",self,"data",i]);
     def backward(self):
-        rep = reflect(["call", self.n, "backward"])
-        return RepTensor(rep.n, None)
-
+        return reflectTensor(["call",self,"backward"]);
     def conv2d(self, kernel):
-        rep = reflect(["call", self.n, "conv2d", kernel.n])
-        return RepTensor(self.n, None)
-
+        return reflectTensor(["call",self,"conv2d",kernel.n]);
     def view(self, *dims):
-        rep = reflect(["call", self.n, "view", dims])
-        return(RepTensor(self.n, dims))
+        return reflectTensor(["call",self,"view",dims]);
+    def print(self):
+        return reflectTensor(["call",self,"print"])
 
 def rep_train_loader_tensor():
     rept = reflect(freshTensor(None))
@@ -53,8 +52,8 @@ def rep_train_loader_fresh():
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
-            self.weight = reflect(freshTensor(outsize, hlsize))
-            self.bias = reflect(freshTensor(outsize))
+            self.weight = newTensor(outsize, hlsize)
+            self.bias =  newTensor(outsize)
             self.linear = None
 
         def __call__(self, tensor):
@@ -71,8 +70,7 @@ def nn_linear(hlsize, outsize):
 def nn_conv2d(outSize, inSize, kernel_size, bias):
     class Conv2d(object):
         def __init__(self):
-            tmp = reflect(freshTensor(outSize, inSize, kernel_size, kernel_size))
-            self.kernel = RepTensor(tmp.n, outSize, inSize, kernel_size, kernel_size)
+            self.kernel = newTensor(outSize, inSize, kernel_size, kernel_size)
             self.cond2d = None
 
         def __call__(self, tensor):
@@ -82,7 +80,7 @@ def nn_conv2d(outSize, inSize, kernel_size, bias):
 
                 return self.conv2d(tensor)
             else: #staged
-                return (RepTensor(tensor.n, None)).conv2d(self.kernel)
+                return tensor.conv2d(self.kernel)
     return Conv2d()
 
 def optim_SGD(params, lr, momentum):
@@ -98,14 +96,13 @@ def optim_SGD(params, lr, momentum):
 
         def zero_grad(self):
             if self.staged:
-                tmp = reflect(["call", self, "zero_grad"])
-                return RepTensor(tmp.n, None)
+                return reflectTensor(["call",self,"zero_grad"])
             else:
                 return self.optim.zero_grad()
 
         def step(self):
             if self.staged:
-                tmp = reflect(["call", self, "step"])
+                return reflectTensor(["call",self,"step"])
             else:
                 return self.optim.step()
 
@@ -115,37 +112,31 @@ def F_nll_loss(output, target, size_average=True):
     if isinstance(output, Variable):
         return F.nll_loss(output, target, size_average)
     else:
-        tmp = reflect(["call", "nll_loss", [output, target, size_average]])
-        return RepTensor(tmp.n, None)
+        return reflectTensor(["call", "nll_loss", [output, target, size_average]])
 
 def F_relu(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.relu(tensor)
     else:
-        tmp = reflect(["call", "relu", [tensor.n]])
-        ret = RepTensor(tmp.n, None)
-        return ret
+        return reflectTensor(["call", "relu", [tensor]])
 
 def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.dropout(tensor)
     else:
-        tmp = reflect(["call", "dropout", [tensor.n]])
-        return RepTensor(tmp.n, None)
+        return reflectTensor(["call", "dropout", [tensor]])
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
         return F.max_pool2d(tensor, x)
     else:
-        tmp = reflect(["call", "max_pool2d", [tensor.n]])
-        return RepTensor(tmp.n, None)
+        return reflectTensor(["call", "max_pool2d", [tensor]])
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        tmp = reflect(["call", "log_softmax", [tensor.n, dim]])
-        return RepTensor(tmp.n, None)
+        return reflectTensor(["call", "log_softmax", [tensor, dim]])
 
 def __variable(tensor):
     return tensor
@@ -161,9 +152,9 @@ def __for_dataloader(src_file, bdfun):
             return e.value
 
     bodyret, bodyp = capture(bdfun)
-    rval = reflect(["for_dataloader", src_file, [var_idx, var_data, var_target], bodyp])
+    rval = reflectTensor(["for_dataloader", src_file, [var_idx, var_data, var_target], bodyp])
     if not bodyret:
-        return RepTensor(rval.n, None)
+        return rval
     else:
         raise Exception("while: return in body not allowed")
 
