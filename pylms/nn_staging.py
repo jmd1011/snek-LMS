@@ -5,7 +5,7 @@ import torch.nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader', '__for_dataloader']
+__all__ = ['nn_linear', 'nn_conv2d', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader_tensor', 'rep_train_loader_fresh', '__for_dataloader', 'F_relu', 'F_dropout', 'F_max_pool2d', 'F_log_softmax']
 
 stFresh = 0
 
@@ -37,9 +37,13 @@ class RepTensor(Rep):
         rep = reflect(["call", self.n, "view", dims])
         return(RepTensor(self.n, dims))
 
-def rep_train_loader():
+def rep_train_loader_tensor():
     rept = reflect(freshTensor(None))
-    return (rept, fresh())
+    return rept
+
+def rep_train_loader_fresh():
+    return fresh()
+
 
 def nn_linear(hlsize, outsize):
     class Linear(object):
@@ -59,17 +63,17 @@ def nn_linear(hlsize, outsize):
 
     return Linear()
 
-def nn_conv2d(outSize, inSize, kernelSize, bias):
+def nn_conv2d(outSize, inSize, kernel_size, bias):
     class Conv2d(object):
         def __init__(self):
-            tmp = reflect(freshTensor(outSize, inSize, kernelSize, kernelSize))
-            self.kernel = RepTensor(tmp.n, outSize, inSize, kernelSize, kernelSize)
+            tmp = reflect(freshTensor(outSize, inSize, kernel_size, kernel_size))
+            self.kernel = RepTensor(tmp.n, outSize, inSize, kernel_size, kernel_size)
             self.cond2d = None
 
         def __call__(self, tensor):
             if isinstance(tensor, torch.Tensor): #unstaged
                 if self.cond2d is None:
-                    self.conv2d = nn.Conv2d(hlsize, outsize, kernelSize=kernelSize, bias=bias)
+                    self.conv2d = nn.Conv2d(hlsize, outsize, kernel_size=kernel_size, bias=bias)
 
                 return self.conv2d(tensor)
             else: #staged
@@ -94,6 +98,12 @@ def optim_SGD(params, lr, momentum):
                 return RepTensor(tmp.n, None)
             else:
                 return self.optim.zero_grad()
+
+        def step(self):
+            if self.staged:
+                tmp = reflect(["call", self, "step"])
+            else:
+                return self.optim.step()
 
     return RepSGD("SGD")
 

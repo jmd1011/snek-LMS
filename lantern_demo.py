@@ -7,29 +7,84 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 import time
-from pylms import *
-from pylms.rep import *
+from pylms import lms, stage
+from pylms.rep import Rep
+
+# if __name__ == '__main__':
+    # Training settings
+# parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+# parser.add_argument('--batch-size', type=int, default=100, metavar='N',
+#                     help='input batch size for training (default: 64)')
+# parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+#                     help='input batch size for testing (default: 1000)')
+# parser.add_argument('--epochs', type=int, default=10, metavar='N',
+#                     help='number of epochs to train (default: 10)')
+# parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
+#                     help='learning rate (default: 0.01)')
+# parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+#                     help='SGD momentum (default: 0.5)')
+# parser.add_argument('--no-cuda', action='store_true', default=False,
+#                     help='disables CUDA training')
+# parser.add_argument('--seed', type=int, default=42, metavar='S',
+#                     help='random seed (default: 1)')
+# ## Note NEED default to be the same as total data length, or 1/10 of the total data length
+# parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
+#                     help='how many batches to wait before logging training status')
+# args = parser.parse_args()
+# args.cuda = not args.no_cuda and torch.cuda.is_available()
+
+    # run("result_PyTorch"+str(args.batch_size)+".txt")
 
 @lms
-def run(arg):
+def run(train_loader):
+    import argparse
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    from torchvision import datasets, transforms
+    from torch.autograd import Variable
+    import time
+    from pylms import lms, stage
+    from pylms.rep import Rep
+
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--batch-size', type=int, default=100, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+                        help='input batch size for testing (default: 1000)')
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
+                        help='learning rate (default: 0.01)')
+    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+                        help='SGD momentum (default: 0.5)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
+    parser.add_argument('--seed', type=int, default=42, metavar='S',
+                        help='random seed (default: 1)')
+    ## Note NEED default to be the same as total data length, or 1/10 of the total data length
+    parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
+                        help='how many batches to wait before logging training status')
+    args = parser.parse_args()
+    args.cuda = not args.no_cuda and torch.cuda.is_available()
+
     startTime = time.time()
     torch.set_num_threads(1)
     torch.manual_seed(args.seed)
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
-    else:
-        pass
 
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-                       # transform=transforms.ToTensor()),
-        batch_size=args.batch_size, shuffle=False, **kwargs)
+    # train_loader = torch.utils.data.DataLoader(
+    #     datasets.MNIST('../data', train=True, download=True,
+    #                    transform=transforms.Compose([
+    #                        transforms.ToTensor(),
+    #                        transforms.Normalize((0.1307,), (0.3081,))
+    #                    ])),
+    #                    # transform=transforms.ToTensor()),
+    #     batch_size=args.batch_size, shuffle=False, **kwargs)
 
     # skip tests
     #test_loader = torch.utils.data.DataLoader(
@@ -58,8 +113,8 @@ def run(arg):
             return F.log_softmax(x, dim=1)
 
     model = Net()
-    if args.cuda:
-        model.cuda()
+    # if args.cuda:
+    #     model.cuda()
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
@@ -67,40 +122,44 @@ def run(arg):
         model.train()
         tloss = 0.0
         batch_idx = 0
-        (data, target) = rep_train_loader() #train_loader[0]
-        # for batch_idx, (data, target) in enumerate(train_loader):
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target)
-        tloss += loss.data[0]
-        loss.backward()
-        optimizer.step()
+        # data = rep_train_loader_tensor() #train_loader[0]
+        # target = rep_train_loader_fresh()
+        for batch_idx, (data, target) in enumerate(train_loader):
+        # if args.cuda:
+        #     data, target = data.cuda(), target.cuda()
+            data = Variable(data)
+            target = Variable(target)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = F.nll_loss(output, target)
+            tloss += loss.data[0]
+            loss.backward()
+            optimizer.step()
         #    if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
         print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
             epoch, batch_idx * len(data), len(train_loader.dataset),
             100. * batch_idx / len(train_loader), tloss / (batch_idx)))
         return tloss / (batch_idx)
 
-    def test():
-        model.eval()
-        test_loss = 0
-        correct = 0
-        for data, target in test_loader:
-            if args.cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data, volatile=True), Variable(target)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
-            pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-            correct += pred.eq(target.data.view_as(pred)).long().cpu().sum()
+    asdf = train(4)
 
-        test_loss /= len(test_loader.dataset)
-        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            test_loss, correct, len(test_loader.dataset),
-            100. * correct / len(test_loader.dataset)))
+    # def test():
+    #     model.eval()
+    #     test_loss = 0
+    #     correct = 0
+    #     for data, target in test_loader:
+    #         if args.cuda:
+    #             data, target = data.cuda(), target.cuda()
+    #         data, target = Variable(data, volatile=True), Variable(target)
+    #         output = model(data)
+    #         test_loss += F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
+    #         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
+    #         correct += pred.eq(target.data.view_as(pred)).long().cpu().sum()
+
+    #     test_loss /= len(test_loader.dataset)
+    #     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    #         test_loss, correct, len(test_loader.dataset),
+    #         100. * correct / len(test_loader.dataset)))
 
 
     # loopStart = time.time()
@@ -126,28 +185,10 @@ def run(arg):
     #         f.write(str(loss) + "\n")
     #     f.write("run time: " + str(prepareTime) + " " + str(timePerEpoch) + "\n")
 
+print(run.src)
 
-if __name__ == '__main__':
-    # Training settings
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=100, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
-                        help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                        help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
-                        help='learning rate (default: 0.01)')
-    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
-                        help='SGD momentum (default: 0.5)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA training')
-    parser.add_argument('--seed', type=int, default=42, metavar='S',
-                        help='random seed (default: 1)')
-    ## Note NEED default to be the same as total data length, or 1/10 of the total data length
-    parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
-                        help='how many batches to wait before logging training status')
-    args = parser.parse_args()
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
+@stage
+def runX(x):
+    return run(x)
 
-    # run("result_PyTorch"+str(args.batch_size)+".txt")
+print(runX.code)
