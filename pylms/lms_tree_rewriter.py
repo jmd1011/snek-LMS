@@ -18,12 +18,20 @@ class ScopeAnalysis(ast.NodeVisitor):
 
     def visit_Assign(self, node):
         assert(len(node.targets) == 1) # FIXME
-        id = node.targets[0].id # TODO: brittle, should look at shadowing, etc.
+
+        if isinstance(node.targets[0], ast.Attribute):
+            self.generic_visit(node)
+            return
+        elif isinstance(node.targets[0], ast.Tuple):
+            ids = list(map(lambda x: x.id, node.targets[0].elts))
+        else:
+            ids = [node.targets[0].id] # TODO: brittle, should look at shadowing, etc.
 
         locals = self.fundef.locals
 
-        if not locals.get(id): locals[id] = 0
-        locals[id] += 1
+        for id in ids:
+            if not locals.get(id): locals[id] = 0
+            locals[id] += 1
 
         self.generic_visit(node)
 
@@ -85,8 +93,15 @@ class StagingRewriter(ast.NodeTransformer):
         return new_node
 
     def visit_Assign(self, node):
+        assert(len(node.targets) == 1) # FIXME (doesn't work -- if multiple targets, it's a Tuple (single))
 
-        assert(len(node.targets) == 1) # FIXME
+        if isinstance(node.targets[0], ast.Attribute):
+            self.generic_visit(node)
+            return node
+        elif isinstance(node.targets[0], ast.Tuple):
+            self.generic_visit(node)
+            return node
+
         id = node.targets[0].id
 
         # NOTE: grab id before -- recursive call will replace lhs with __read!!
@@ -131,6 +146,10 @@ class StagingRewriter(ast.NodeTransformer):
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
                                   decorator_list=[])
+
+        if len(node.orelse) is 0:
+            node.orelse = [ast.Pass()]
+
         eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.orelse,
@@ -209,7 +228,7 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
 
-        if isinstance(node.func, ast.Attribute):
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             if node.func.value.id is 'nn':
                 if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
@@ -342,7 +361,7 @@ class StagingRewriter(ast.NodeTransformer):
             isinstance(iter, ast.Call) and \
             iter.func.id == 'enumerate' and \
             'loader' in iter.args[0].id
-        
+
         #| Transforms the target names to list of strings |#
         def targetToList(tgt):
             def extract(x):
@@ -361,7 +380,7 @@ class StagingRewriter(ast.NodeTransformer):
         if isPyTorchDataLoader(node.target, node.iter):
             outer_fun_name = self.freshName("forfunc")
             outer_fun = ast.FunctionDef(name=outer_fun_name,
-                                        args=ast.arguments(args=list(map(lambda x: ast.arg(arg=x, annotation=None), 
+                                        args=ast.arguments(args=list(map(lambda x: ast.arg(arg=x, annotation=None),
                                                                          targetToFlatList(node.target.elts))),
                                                            vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                         body=node.body,
@@ -369,7 +388,7 @@ class StagingRewriter(ast.NodeTransformer):
             ast.fix_missing_locations(outer_fun)
 
             new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
-                                         args=[ast.Str('DATA_SRC_FILE_FIXME'), 
+                                         args=[ast.Str('DATA_SRC_FILE_FIXME'),
                                                ast.Name(id=outer_fun_name, ctx=ast.Load())],
                                          keywords=[]))
             #ast.copy_location(new_node, node)

@@ -5,7 +5,7 @@ import torch.nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', '__for_dataloader']
+__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader', '__for_dataloader']
 
 stFresh = 0
 
@@ -36,6 +36,10 @@ class RepTensor(Rep):
     def view(self, *dims):
         rep = reflect(["call", self.n, "view", dims])
         return(RepTensor(self.n, dims))
+
+def rep_train_loader():
+    rept = reflect(freshTensor(None))
+    return (rept, fresh())
 
 def nn_linear(hlsize, outsize):
     class Linear(object):
