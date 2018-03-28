@@ -66,6 +66,10 @@ a:focus, a:active {
     font-size: 4rem;
 }
 
+.masthead-img {
+    width: 200px;
+}
+
 .section {
     background: #eee;
     color: #222;
@@ -151,7 +155,16 @@ footer {
         min-width: 80%;
 
     }
+    .masthead-img {
+        width: 150px;
+    }
     html,body {
         font-size: 12px;
+    }
+}
+
+@media (max-width: 500px) {
+    .masthead-img {
+        width: 100px;
     }
 }
