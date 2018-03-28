@@ -1,10 +1,60 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:400,500');
+
 html, body {
     min-height: 100vh;
     width: 100vw;
-    background: #eee;
+    background: #222;
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    padding: 0;
+    margin: 0;
 }
+
+.bg {
+    /* background: url("./images/snake.jpg"); */
+    /* background-size:100% 100%; */
+    /* background-repeat: no-repeat; */
+    background: url("./images/use_your_illusion.png");
+    background-repeat: repeat;
+    /* opacity: 0.2; */
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    z-index: 0;
+}
+
+main * {
+    z-index: 5;
+}
+
+a {
+    color: #aaa;
+    font-size: 1.5rem;
+    text-decoration: none;
+}
+
+a:hover {
+    transition: 0.3s;
+    color: #1b7b77;
+}
+
+a:focus, a:active {
+    text-decoration: underline;
+}
+
+.display-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 0;
+}
+
+.link {
+    margin: 0 10px;
+}
+
 .masthead {
-    color: #222;
+    color: white;
     display: flex;
     min-height: 80vh;
     justify-content: center;
@@ -14,14 +64,43 @@ html, body {
 
 .title {
     text-align: center;
+    font-size: 4rem;
+}
 
+.github-button {
+    background: #eee;
+    color: #333;
+    border: none;
+    font-size: 1.2rem;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.github-button:hover {
+    color: #ee8d06;
+    background: #1b7b77;
+    transition: 0.3s;
+}
+
+.demos-title {
+    color: #ee8d06;
+    font-size: 2rem;
+    padding: 0;
+    margin: 0;
 }
 
 .demos {
     text-align: center;
+    margin-top: 40px; 
+    padding: 20px;
+    width: 100vw;
+    background: rgba(0,0,0,0.5);
 }
 
 .demos-list {
     list-style-type: none;
     padding: 0;
+    margin: 0;
 }
+
