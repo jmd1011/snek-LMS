@@ -11,7 +11,7 @@ def test(x):
   from torch.autograd import Variable
   import time
 
-  z = newTensor(2, 3)
+  z = torch.Tensor(2, 3)
   y = z + z
   y.print()
 

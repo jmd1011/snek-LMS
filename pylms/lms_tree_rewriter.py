@@ -229,6 +229,15 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
 
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
+            if node.func.value.id is 'torch':
+                if node.func.attr is 'Tensor':
+                    new_node = ast.Call(func=ast.Name(id='newTensor', ctx=ast.Load()),
+                                                      args=node.args,
+                                                      keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
             if node.func.value.id is 'nn':
                 if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
