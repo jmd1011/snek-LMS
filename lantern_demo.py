@@ -134,7 +134,6 @@ def run(train_loader):
     def train(epoch):
         # model.train()
         tloss = 0.0
-        counter = 0
         for batch_idx, (data, target) in enumerate(train_loader):
         # if args.cuda:
         #     data, target = data.cuda(), target.cuda()
@@ -146,7 +145,6 @@ def run(train_loader):
             tloss = tloss + loss.data[0]
             loss.backward()
             optimizer.step()
-            counter = counter + 1
         #    if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
         # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
         #     epoch, batch_idx * len(data), len(train_loader.dataset),
