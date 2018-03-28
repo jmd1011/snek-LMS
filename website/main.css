@@ -142,24 +142,68 @@ a:focus, a:active {
     color: #eee;
 }
 
+.team-title {
+    text-align: center;
+    font-size: 3rem;
+}
+
+.people {
+    padding: 10px 20px;
+    flex-wrap: wrap;
+}
+
+.person {
+    background: #eee;
+    margin: 10px 5px;
+}
+
+.person-img {
+    height: 200px;
+    width: 200px;
+}
+
+.person-name {
+    text-align: center;
+    font-size: 1.1rem;
+}
+
 footer {
     height: 40px;
     background: #00827e;
     z-index: 5;
+    color: #eee;
+    text-align: center;
 }
 
 @media (max-width: 900px) { 
+    html,body {
+        font-size: 12px;
+    }
+
+    .masthead-img {
+        width: 150px;
+    }
+
     .section-p {
         padding: 0 10px;
         width: 80%;
         min-width: 80%;
 
     }
-    .masthead-img {
-        width: 150px;
+
+    .people {
+        padding: 10px 5px;
+        flex-wrap: wrap;
     }
-    html,body {
-        font-size: 12px;
+
+    .person {
+        background: #eee;
+        margin: 10px 5px;
+    }
+
+    .person-img {
+        height: 150px;
+        width: 150px;
     }
 }
 
