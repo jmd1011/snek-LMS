@@ -158,8 +158,8 @@ a:focus, a:active {
 }
 
 .person-img {
-    height: 200px;
-    width: 200px;
+    max-height: 200px;
+    max-width: 200px;
 }
 
 .person-name {
