@@ -148,19 +148,42 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
   }
   case class LiteralT[T](v: Rep[T]) extends ValueT
   case class TensorV(v: Tensor) extends ValueT
+  case class TensorRV(v: TensorR) extends ValueT
   type EnvT = Map[String, ValueT]
   @virtualize
   def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
+    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
+      val func = args match {
+        case x1::Nil =>
+          lazy val fptr: Rep[Int => Unit] = uninlinedFunc1 { (x1v: Rep[Int]) =>
+            compileT(body)(env + (x1 -> LiteralT(x1v)) + (f -> LiteralT(fptr))) match {
+              case _ => unit(())
+            }
+          }
+          LiteralT(fptr)
+      }
+      compileT(r)(env + (f -> func))
+    case "begin"::seq =>
+      val res = ((None: Option[ValueT]) /: seq) {
+        case (agg, exp) => Some(compileT(exp))
+      }
+      res.get
     case "tensor"::(list: List[Int])::Nil => TensorV(Tensor.rand(list:_*))
-    case "add"::n::m::Nil =>
+    case "+"::n::m::Nil =>
       (compileT(n), compileT(m)) match {
+        case (TensorV(a), TensorV(b)) => TensorV(a + b)
         case (TensorV(a), TensorV(b)) => TensorV(a + b)
       }
     case "call"::n::"print"::Nil => compileT(n) match {
         case (TensorV(a)) => a.print(); LiteralT(())
       }
-    case "let"::(x: String)::a::b =>
+    case "let"::(x: String)::a::b::Nil =>
       compileT(b)(env + (x -> compileT(a)))
+    case "None" | Nil => LiteralT(())
+    case "variable"::t::Nil =>
+      compileT(t) match {
+        case TensorV(t) => TensorRV(TensorR(t))
+      }
     case x: String => env(x)
   }
 }

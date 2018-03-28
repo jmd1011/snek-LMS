@@ -22,3 +22,5 @@ def testX(x):
   return test(x)
 
 print(testX.code)
+
+print(testX.Ccode)

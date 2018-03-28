@@ -29,6 +29,7 @@ object Main {
   }
 
   def genT(arg: String, dir: String, moduleName: String) = {
+    println(s"Input: $arg")
     val prog_val = parseExp(arg)
     println(prog_val)
 
