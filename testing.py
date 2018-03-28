@@ -1,4 +1,4 @@
-from pylms import lms, stage
+from pylms import lms, stage, stageTensor
 from pylms.rep import Rep
 
 @lms
@@ -17,7 +17,7 @@ def test(x):
 
 print(test.src)
 
-@stage
+@stageTensor
 def testX(x):
   return test(x)
 

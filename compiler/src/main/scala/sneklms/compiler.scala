@@ -22,9 +22,6 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     def get = this
   }
   case class Literal[T](v: Rep[T]) extends Value
-  case class TensorV(v: TensorR) extends Value
-  case class TensorF(f: TensorR => TensorR) extends Value
-  case class TensorF2(f: (TensorR, TensorR) => TensorR) extends Value
   case class Mut[T](v: Var[T]) extends Value
   case class Wrap(var v: Value) extends Value {
     override def get = v.get
@@ -49,13 +46,6 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
 
   @virtualize
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
-    case "tensor"::(list: List[Int])::Nil => TensorV(TensorR(Tensor.rand(list: _*)))
-    case "add"::n::m::Nil => (compile(n), compile(m)) match {
-      case (TensorV(x: TensorR), TensorV(y: TensorR)) => TensorV(x + y)
-    }
-    case "dot"::n::m::Nil => (compile(n), compile(m)) match {
-      case (TensorV(x: TensorR), TensorV(y: TensorR)) => TensorV(x.dot(y))
-    } 
     case "None" => unit(-1)
     case "new" => Mut(var_new(0))
     case "set"::(x: String)::a::Nil =>
@@ -101,7 +91,6 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
             case Literal(x: Rep[Int]) => NewArray[Int](x)
           }
       }
-    /*  
     case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
       printDebug(s"body >> $body")
       val func = args match {
@@ -119,27 +108,6 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
             }
           }
           Literal(fptr)
-      }
-      compile(r)(env + (f -> func))
-    */
-
-    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
-      printDebug(s"body >> $body")
-      val func = args match {
-        case x1::Nil =>
-          lazy val fptr: (TensorR => TensorR) = { (x1v: TensorR) =>
-            compile(body)(env + (x1 -> TensorV(x1v)) + (f -> TensorF(fptr))) match {
-              case TensorV(n: TensorR) => n
-            }
-          }
-          TensorF(fptr)
-        case x1::x2::Nil =>
-          lazy val fptr: ((TensorR, TensorR) => TensorR) = { (x1v: TensorR, x2v: TensorR) =>
-            compile(body)(env + (x1 -> TensorV(x1v)) + (x2 -> TensorV(x2v)) + (f -> TensorF2(fptr))) match {
-              case TensorV(n: TensorR) => n
-            }
-          }
-          TensorF2(fptr)
       }
       compile(r)(env + (f -> func))
 
@@ -173,6 +141,27 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     case Nil => // no main
       val x = unit(0)
       return x
+  }
+
+  abstract class ValueT {
+    def get = this
+  }
+  case class LiteralT[T](v: Rep[T]) extends ValueT
+  case class TensorV(v: Tensor) extends ValueT
+  type EnvT = Map[String, ValueT]
+  @virtualize
+  def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
+    case "tensor"::(list: List[Int])::Nil => TensorV(Tensor.rand(list:_*))
+    case "add"::n::m::Nil =>
+      (compileT(n), compileT(m)) match {
+        case (TensorV(a), TensorV(b)) => TensorV(a + b)
+      }
+    case "call"::n::"print"::Nil => compileT(n) match {
+        case (TensorV(a)) => a.print(); LiteralT(())
+      }
+    case "let"::(x: String)::a::b =>
+      compileT(b)(env + (x -> compileT(a)))
+    case x: String => env(x)
   }
 }
 
