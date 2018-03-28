@@ -139,7 +139,7 @@ def F_log_softmax(tensor, dim):
         return reflectTensor(["call", "log_softmax", [tensor, dim]])
 
 def __variable(tensor):
-    return tensor
+    return reflectTensor(["variable", tensor])
 
 def __for_dataloader(src_file, bdfun):
     var_idx = fresh()
