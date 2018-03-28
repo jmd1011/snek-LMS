@@ -3,6 +3,9 @@ package sneklms
 import Lisp._
 import Base._
 
+import scala.util.continuations._
+import scala.util.continuations
+
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 
@@ -148,7 +151,7 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
   }
   case class LiteralT[T](v: Rep[T]) extends ValueT
   case class TensorV(v: Tensor) extends ValueT
-  case class TensorRV(v: TensorR) extends ValueT
+  case class DiffV[T](v: () => T @diff) extends ValueT
   type EnvT = Map[String, ValueT]
   @virtualize
   def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
@@ -157,7 +160,9 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
         case x1::Nil =>
           lazy val fptr: Rep[Int => Unit] = uninlinedFunc1 { (x1v: Rep[Int]) =>
             compileT(body)(env + (x1 -> LiteralT(x1v)) + (f -> LiteralT(fptr))) match {
-              case _ => unit(())
+              case DiffV(a: Function0[Unit @diff]) => val r = reset { a() }; unit(r)
+              case LiteralT(()) => unit(())
+              case a => System.out.println(s"$a"); ???
             }
           }
           LiteralT(fptr)
@@ -172,17 +177,18 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     case "+"::n::m::Nil =>
       (compileT(n), compileT(m)) match {
         case (TensorV(a), TensorV(b)) => TensorV(a + b)
-        case (TensorV(a), TensorV(b)) => TensorV(a + b)
+        case (DiffV(a: Function0[TensorR @diff]), DiffV(b: Function0[TensorR @diff])) => DiffV[TensorR](() => a() + b())
       }
     case "call"::n::"print"::Nil => compileT(n) match {
         case (TensorV(a)) => a.print(); LiteralT(())
+        case (DiffV(a: Function0[TensorR @diff])) => DiffV[TensorR](() => { val r = a(); r.print(); r })
       }
     case "let"::(x: String)::a::b::Nil =>
       compileT(b)(env + (x -> compileT(a)))
     case "None" | Nil => LiteralT(())
     case "variable"::t::Nil =>
       compileT(t) match {
-        case TensorV(t) => TensorRV(TensorR(t))
+        case TensorV(t) => DiffV[TensorR](() => TensorR(t))
       }
     case x: String => env(x)
   }

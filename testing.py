@@ -11,9 +11,9 @@ def test(x):
   from torch.autograd import Variable
   import time
 
-  z = torch.Tensor(2, 3)
+  z = Variable(newTensor(2, 3))
   y = z + z
-  print(y)
+  return print(y)
 
 print(test.src)
 
