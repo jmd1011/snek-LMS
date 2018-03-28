@@ -143,7 +143,7 @@ def __variable(tensor):
 
 def __for_dataloader(src_file, bdfun):
     var_idx = fresh()
-    var_data = RepTensor(reflect(freshTensor()).n, None)
+    var_data = RepTensor(reflect(freshTensor()).n)
     var_target = fresh()
 
     def capture(f):
