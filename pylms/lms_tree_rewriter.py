@@ -359,27 +359,20 @@ class StagingRewriter(ast.NodeTransformer):
             return res
 
         if isPyTorchDataLoader(node.target, node.iter):
-            inner_fun_name = self.freshName("forinner")
-            inner_fun = ast.FunctionDef(name=inner_fun_name,
-                                      args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                      body=node.body,
-                                      decorator_list=[])
-            ast.fix_missing_locations(inner_fun)
-
-            outer_fun_name = self.freshName("forouter")
+            outer_fun_name = self.freshName("forfunc")
             outer_fun = ast.FunctionDef(name=outer_fun_name,
                                         args=ast.arguments(args=list(map(lambda x: ast.arg(arg=x, annotation=None), 
                                                                          targetToFlatList(node.target.elts))),
                                                            vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                      body=[inner_fun, ast.Return(ast.Name(id=inner_fun_name, ctx=ast.Load()))],
-                                      decorator_list=[])
+                                        body=node.body,
+                                        decorator_list=[])
             ast.fix_missing_locations(outer_fun)
 
             new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
                                          args=[ast.Str('DATA_SRC_FILE_FIXME'), 
                                                ast.Name(id=outer_fun_name, ctx=ast.Load())],
                                          keywords=[]))
-            ast.copy_location(new_node, node)
+            #ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)
             return [outer_fun, new_node]
         else:

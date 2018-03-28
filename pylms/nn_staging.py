@@ -5,7 +5,7 @@ import torch.nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable']
+__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', '__for_dataloader']
 
 stFresh = 0
 
@@ -130,3 +130,21 @@ def F_log_softmax(tensor, dim):
 
 def __variable(tensor):
     return tensor
+
+def __for_dataloader(src_file, bdfun):
+    var_idx = fresh()
+    var_data = reflect(freshTensor())
+    var_target = fresh()
+
+    def capture(f):
+        try: return (False, reify(f, var_idx, var_data, var_target))
+        except NonLocalReturnValue as e:
+            return e.value
+
+    bodyret, bodyp = capture(bdfun)
+    rval = reflect(["for_dataloader", src_file, [var_idx, var_data, var_target], bodyp])
+    if not bodyret:
+        return rval
+    else:
+        raise Exception("while: return in body not allowed")
+
