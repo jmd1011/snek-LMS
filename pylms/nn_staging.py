@@ -1,8 +1,11 @@
 # from pylms import lms, lmscompile, stage, ast
 from .rep import *
 import torch
+import torch.nn
+import torch.nn.functional as F
+from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'RepTensor', 'optim_SGD']
+__all__ = ['nn_linear', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable']
 
 stFresh = 0
 
@@ -19,6 +22,12 @@ class RepTensor(Rep):
         return reflect(["dot",self,m])
     def __repr__(self):
         return "[tensor, [{}]]".format(", ".join(list(map(str, self.dims))))
+
+    def data_get(self, i):
+        return reflect(["array-get", self.n, "data", i])
+
+    def backward(self):
+        return reflect(["call", self, ""])
 
 def nn_linear(hlsize, outsize):
     class RepLinear(object):
@@ -55,9 +64,14 @@ def optim_SGD(params, lr, momentum):
             else:
                 return self.optim.zero_grad()
 
-        # def __repr__(self):
-        #     return
-
     return RepSGD("SGD")
 
-# def F_nll_loss(output, target, size_average):
+def F_nll_loss(output, target, size_average=True):
+    if isinstance(output, Variable):
+        return F.nll_loss(output, target, size_average)
+    else:
+        tmp = reflect(["call", "nll_loss", [output, target, size_average]])
+        return RepTensor(tmp.n, None)
+
+def __variable(tensor):
+    return tensor

@@ -238,15 +238,46 @@ class StagingRewriter(ast.NodeTransformer):
         if not isinstance(node.func, ast.Name):
             return node
 
-        if not node.func.id == 'print':
-            return node
+        if node.func.id == 'Variable':
+            new_node = ast.Call(func=ast.Name(id='__variable', ctx=ast.Load()), args=node.args, keywords=[])
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
 
-        new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
-                                          args=node.args,
-                                          keywords=[])
-        ast.copy_location(new_node, node)
-        ast.fix_missing_locations(new_node)
-        return new_node
+        if node.func.id == 'print':
+            new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
+                                              args=node.args,
+                                              keywords=[])
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+
+        return node
+
+    def visit_Subscript(self, node):
+        self.generic_visit(node)
+
+        if isinstance(node.value, ast.Attribute):
+            if isinstance(node.value.value, ast.Call):
+                if node.value.attr is 'data':
+                # print("{}".format(ast.dump(node)))
+                # if node.value.value.func.value.id is 'F' and node.value.value.attr is 'data':
+                    new_node = ast.Call(func=ast.Attribute(value=node.value.value, attr='data_get', ctx=ast.Load()), args=[node.slice.value], keywords=[])
+                    # new_node.value.func.attr = 'data_get'
+
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    print("{}".format(ast.dump(new_node)))
+                    return new_node
+
+            elif node.value.attr is 'data':
+                new_node = ast.Call(func=ast.Attribute(value=node.value.value, attr='data_get', ctx=ast.Load()), args=[node.slice.value], keywords=[])
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                print("{}".format(ast.dump(new_node)))
+                return new_node
+
+        return node
 
     def visit_Return(self, node):
         self.generic_visit(node)
