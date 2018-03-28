@@ -1,21 +1,26 @@
 name := "snek-lms"
 
+version := "1.0"
+
 organization := "Purdue"
 
-scalaVersion := "2.11.2"
+scalaVersion := "2.12.4"
 
-scalaOrganization := "org.scala-lang.virtualized"
+// scalaOrganization := "org.scala-lang.virtualized"
 
 resolvers += Resolver.sonatypeRepo("snapshots")
 resolvers += Resolver.mavenLocal
 
-libraryDependencies += "org.scala-lang.lms" %% "lms-core" % "1.0.1-SNAPSHOT"
+lazy val lantern = (project in file("Lantern"))
+lazy val root = (project in file(".")).dependsOn(lantern % "compile")
 
-libraryDependencies += "org.scala-lang.virtualized" % "scala-compiler" % "2.11.2"
+libraryDependencies += "org.scala-lang.lms" %% "lms-core-macrovirt" % "0.9.0-SNAPSHOT"
 
-libraryDependencies += "org.scala-lang.virtualized" % "scala-library" % "2.11.2"
+libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile"
 
-libraryDependencies += "org.scala-lang.virtualized" % "scala-reflect" % "2.11.2"
+libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value % "compile"
+
+libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value % "compile"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.0"
 
@@ -23,7 +28,11 @@ libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.4"
 
 libraryDependencies += "net.sf.py4j" % "py4j" % "0.8.1"
 
-scalacOptions += "-Yvirtualize"
+val paradiseVersion = "2.1.0"
+
+addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
+
+// scalacOptions += "-Yvirtualize"
 
 scalacOptions += "-deprecation"
 

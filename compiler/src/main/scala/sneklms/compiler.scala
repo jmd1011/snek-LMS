@@ -3,13 +3,19 @@ package sneklms
 import Lisp._
 import Base._
 
-import scala.lms.common._
-import scala.reflect.SourceContext
+import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
+
+import scala.virtualization.lms._
+import scala.virtualization.lms.common._
 
 import java.io.{PrintWriter, File}
 
+import lantern._
 
-trait Compiler extends Dsl {
+trait Compiler extends TensorExp with UninlinedFunctionOps {
+
+  implicit val pos = implicitly[SourceContext]
 
 
   abstract class Value {
@@ -38,6 +44,7 @@ trait Compiler extends Dsl {
     printDebug("==================")
   }
 
+  @virtualize
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
     case "None" => unit(-1)
     case "new" => Mut(var_new(0))
@@ -136,13 +143,8 @@ trait Compiler extends Dsl {
   }
 }
 
-trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString with LiftPrimitives with LiftNumeric with LiftBoolean with IfThenElse with Equal with RangeOps with OrderingOps with MiscOps with ArrayOps with StringOps with SeqOps with Functions with While with StaticData with Variables with LiftVariables with ObjectOps with TupledFunctions {
-  implicit def repStrToSeqOps(a: Rep[String]) = new SeqOpsCls(a.asInstanceOf[Rep[Seq[Char]]])
-  override def infix_&&(lhs: Rep[Boolean], rhs: => Rep[Boolean])(implicit pos: scala.reflect.SourceContext): Rep[Boolean] =
-    __ifThenElse(lhs, rhs, unit(false))
-  def generate_comment(l: String): Rep[Unit]
-  def comment[A:Typ](l: String, verbose: Boolean = true)(b: => Rep[A]): Rep[A]
-
+@virtualize
+trait UninlinedFunctionOps { this: Dsl =>
   def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]): Rep[Unit=>B]
   def uninlinedFunc1[A:Typ,B:Typ](f: Rep[A]=>Rep[B])(implicit pos: SourceContext): Rep[A => B]
   def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: Function2[Rep[A1],Rep[A2],Rep[B]]): Rep[(A1,A2)=>B]
@@ -151,7 +153,8 @@ trait Dsl extends PrimitiveOps with NumericOps with BooleanOps with LiftString w
   implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B]
 }
 
-trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with BooleanOpsExp with IfThenElseExpOpt with EqualExpBridgeOpt with RangeOpsExp with OrderingOpsExp with MiscOpsExp with EffectExp with ArrayOpsExpOpt with StringOpsExp with SeqOpsExp with FunctionsRecursiveExp with WhileExp with StaticDataExp with VariablesExpOpt with ObjectOpsExpOpt with MathOpsExp with UncheckedOpsExp with TupledFunctionsExp {
+@virtualize
+trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
 
   case class UninlinedFunc0[B:Typ](b: Block[B]) extends Def[Unit => B] {
     val mB = typ[B]
@@ -166,9 +169,6 @@ trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with Bool
     val mB = typ[B]
   }
   implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B] = {
-    implicit val ManifestTyp(mA1) = typ[A1]
-    implicit val ManifestTyp(mA2) = typ[A2]
-    implicit val ManifestTyp(mB) = typ[B]
     manifestTyp
   }
   case class UninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], s3:Sym[A3], b: Block[B]) extends Def[(A1,A2,A3) => B] {
@@ -178,323 +178,243 @@ trait DslExp extends Dsl with PrimitiveOpsExpOpt with NumericOpsExpOpt with Bool
     val mB = typ[B]
   }
   implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B] = {
-    implicit val ManifestTyp(mA1) = typ[A1]
-    implicit val ManifestTyp(mA2) = typ[A2]
-    implicit val ManifestTyp(mA3) = typ[A3]
-    implicit val ManifestTyp(mB) = typ[B]
     manifestTyp
   }
-  override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
-    case Const(false) => rhs
-    case _ => super.boolean_or(lhs, rhs)
+  // override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
+  //   case Const(false) => rhs
+  //   case _ => super.boolean_or(lhs, rhs)
+  // }
+  // override def boolean_and(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
+  //   case Const(true) => rhs
+  //   case _ => super.boolean_and(lhs, rhs)
+  // }
+
+  //   case class GenerateComment(l: String) extends Def[Unit]
+  //   def generate_comment(l: String) = reflectEffect(GenerateComment(l))
+  //   case class Comment[A:Typ](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
+  //   def comment[A:Typ](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
+  //     val br = reifyEffects(b)
+  //     val be = summarizeEffects(br)
+  //     reflectEffect[A](Comment(l, verbose, br), be)
+  //   }
+
+  //   override def boundSyms(e: Any): List[Sym[Any]] = e match {
+  //     case Comment(_, _, b) => effectSyms(b)
+  //     case _ => super.boundSyms(e)
+  //   }
+
+  //   override def array_apply[T:Typ](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
+  //     case (Def(StaticData(x:Array[T])), Const(n)) =>
+  //       val y = x(n)
+  //       if (y.isInstanceOf[Int]) unit(y) else staticData(y)
+  //     case _ => super.array_apply(x,n)
+  //   }
+
+  //   // TODO: should this be in LMS?
+  //   override def isPrimitiveType[T](m: Typ[T]) = (m == typ[String]) || super.isPrimitiveType(m)
+
+  //   override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
+  //     val x1 = unbox(x)
+  //     val x1_effects = x1 match {
+  //       case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
+  //         case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
+  //         case _ => b
+  //       })
+  //         case _ => Pure()
+  //     }
+  //     f match {
+  //       case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
+  //       case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
+  //     }
+  //   }
+
+  // BEGINNING UNINLINED FUNCTIONS
+  val functionList0 = new scala.collection.mutable.HashMap[Sym[Any],Block[Any]]()
+  val functionList1 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Block[Any])]()
+  val functionList2 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Block[Any])]()
+  val functionList3 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Sym[Any],Block[Any])]()
+  def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]) = {
+    val b = reifyEffects(f())
+    uninlinedFunc0(b)
   }
-  override def boolean_and(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
-    case Const(true) => rhs
-    case _ => super.boolean_and(lhs, rhs)
+  def uninlinedFunc0[B:Typ](b: Block[B]) = {
+    val l = reflectEffect(UninlinedFunc0(b), Pure())
+    functionList0 += (l.asInstanceOf[Sym[Any]] -> b)
+    l
   }
 
-    case class GenerateComment(l: String) extends Def[Unit]
-    def generate_comment(l: String) = reflectEffect(GenerateComment(l))
-    case class Comment[A:Typ](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
-    def comment[A:Typ](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
-      val br = reifyEffects(b)
-      val be = summarizeEffects(br)
-      reflectEffect[A](Comment(l, verbose, br), be)
-    }
-
-    override def boundSyms(e: Any): List[Sym[Any]] = e match {
-      case Comment(_, _, b) => effectSyms(b)
-      case _ => super.boundSyms(e)
-    }
-
-    override def array_apply[T:Typ](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
-      case (Def(StaticData(x:Array[T])), Const(n)) =>
-        val y = x(n)
-        if (y.isInstanceOf[Int]) unit(y) else staticData(y)
-      case _ => super.array_apply(x,n)
-    }
-
-    // TODO: should this be in LMS?
-    override def isPrimitiveType[T](m: Typ[T]) = (m == typ[String]) || super.isPrimitiveType(m)
-
-    override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
-      val x1 = unbox(x)
-      val x1_effects = x1 match {
-        case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
-          case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
-          case _ => b
-        })
-          case _ => Pure()
-      }
-      f match {
-        case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
-        case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
-      }
-    }
-
-    // BEGINNING UNINLINED FUNCTIONS
-    val functionList0 = new scala.collection.mutable.HashMap[Sym[Any],Block[Any]]()
-    val functionList1 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Block[Any])]()
-    val functionList2 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Block[Any])]()
-    val functionList3 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Sym[Any],Block[Any])]()
-    def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]) = {
-      val b = reifyEffects(f())
-      uninlinedFunc0(b)
-    }
-    def uninlinedFunc0[B:Typ](b: Block[B]) = {
-      val l = reflectEffect(UninlinedFunc0(b), Pure())
-      functionList0 += (l.asInstanceOf[Sym[Any]] -> b)
-      l
-    }
-
-    val topfunTable = new scala.collection.mutable.HashMap[Any,Sym[Any]]()
-    def uninlinedFunc1[A:Typ,B:Typ](f: Exp[A] => Exp[B])(implicit pos: SourceContext): Exp[A => B] = {
-      val can = canonicalize(f)
-      topfunTable.get(can) match {
-        case Some(funSym) =>
-          funSym.asInstanceOf[Exp[A=>B]]
-        case _ =>
-          val funSym = fresh[A=>B]
-          topfunTable += can->funSym.asInstanceOf[Sym[Any]]
-          val s = fresh[A]
-          val b = reifyEffects(f(s))
-          functionList1 += (funSym.asInstanceOf[Sym[Any]] -> (s,b))
-          funSym
-      }
-    }
-    def canonicalize1(f: Any) = {
-      val s = new java.io.ByteArrayOutputStream()
-      val o = new java.io.ObjectOutputStream(s)
-      o.writeObject(f)
-      s.toString("ASCII")
-    }
-
-    def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: (Rep[A1],Rep[A2])=>Rep[B]) = {
-      val can = canonicalize1(f)
-      topfunTable.get(can) match {
-        case Some(funSym) =>
-          funSym.asInstanceOf[Exp[(A1,A2)=>B]]
-        case _ =>
-          val funSym = fresh[(A1,A2)=>B]
-          topfunTable += can->funSym.asInstanceOf[Sym[Any]]
-          val s1 = fresh[A1]
-          val s2 = fresh[A2]
-          val b = reifyEffects(f(s1,s2))
-          functionList2 += (funSym.asInstanceOf[Sym[Any]] -> (s1,s2,b))
-          funSym
-      }
-    }
-    def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], b: Block[B]) = {
-      // val l = reflectEffect(UninlinedFunc2(s1,s2,b), Pure())
-      // functionList2 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,b))
-      // l
-      ???
-    }
-
-    def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]) = {
-      // val s1 = fresh[A1]
-      // val s2 = fresh[A2]
-      // val s3 = fresh[A3]
-      // val b = reifyEffects(f(s1,s2,s3))
-      // uninlinedFunc3(s1,s2,s3,b)
-      ???
-    }
-    def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], s3: Sym[A3], b: Block[B]) = {
-      // val l = reflectEffect(UninlinedFunc3(s1,s2,s3,b), Pure())
-      // functionList3 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,s3,b))
-      // l
-      ???
-    }
-    override def doLambdaDef[A:Typ,B:Typ](f: Exp[A] => Exp[B]) : Def[A => B] = {
-      val x = unboxedFresh[A]
-      val y = reifyEffects(f(x)) // unfold completely at the definition site.
-      ???
-
-      Lambda(f, x, y)
-    }
-}
-
-// TODO: currently part of this is specific to the query tests. generalize? move?
-trait DslGenC extends CGenNumericOps
-with CGenPrimitiveOps with CGenBooleanOps with CGenIfThenElse
-with CGenEqual with CGenRangeOps with CGenOrderingOps
-with CGenMiscOps with CGenArrayOps with CGenStringOps
-with CGenSeqOps with CGenFunctions with CGenWhile
-with CGenStaticData with CGenVariables
-with CGenObjectOps with CGenUncheckedOps with CLikeGenMathOps
-with CGenTupledFunctions {
-  val IR: DslExp
-  import IR._
-
-  def getMemoryAllocString(count: String, memType: String): String = {
-    "(" + memType + "*)malloc(" + count + " * sizeof(" + memType + "));"
-  }
-  override def remap[A](m: Typ[A]): String = m.toString match {
-    case "java.lang.String" => "char*"
-    case "Array[Char]" => "char*"
-    case "Char" => "char"
-    case _ => super.remap(m)
-  }
-  def tmpremap[A](m: Typ[A]): String = m.toString match {
-    case "Int" => "int"
-    case _ => remap(m)
-  }
-  override def format(s: Exp[Any]): String = {
-    remap(s.tp) match {
-      case "uint16_t" => "%c"
-      case "bool" | "int8_t" | "int16_t" | "int32_t" => "%d"
-      case "int64_t" => "%ld"
-      case "float" | "double" => "%f"
-      case "string" => "%s"
-      case "char*" => "%s"
-      case "char" => "%c"
-      case "void" => "%c"
+  val topfunTable = new scala.collection.mutable.HashMap[Any,Sym[Any]]()
+  def uninlinedFunc1[A:Typ,B:Typ](f: Exp[A] => Exp[B])(implicit pos: SourceContext): Exp[A => B] = {
+    val can = canonicalize(f)
+    topfunTable.get(can) match {
+      case Some(funSym) =>
+        funSym.asInstanceOf[Exp[A=>B]]
       case _ =>
-        import scala.lms.internal.GenerationFailedException
-        throw new GenerationFailedException("CGenMiscOps: cannot print type " + remap(s.tp))
+        val funSym = fresh[A=>B]
+        topfunTable += can->funSym.asInstanceOf[Sym[Any]]
+        val s = fresh[A]
+        val b = reifyEffects(f(s))
+        functionList1 += (funSym.asInstanceOf[Sym[Any]] -> (s,b))
+        funSym
     }
   }
-
-  // we treat string as a primitive type to prevent memory management on strings
-  // strings are always stack allocated and freed automatically at the scope exit
-  override def isPrimitiveType(tpe: String) : Boolean = {
-    tpe match {
-      case "char*" => true
-      case "char" => true
-      case _ => super.isPrimitiveType(tpe)
-    }
+  def canonicalize1(f: Any) = {
+    val s = new java.io.ByteArrayOutputStream()
+    val o = new java.io.ObjectOutputStream(s)
+    o.writeObject(f)
+    s.toString()
   }
 
-  override def quote(x: Exp[Any]) = x match {
-    case Const(s: String) => "\""+s.replace("\"", "\\\"")+"\"" // TODO: more escapes?
-    case Const('\n') if x.tp == typ[Char] => "'\\n'"
-    case Const('\t') if x.tp == typ[Char] => "'\\t'"
-    case Const(0)    if x.tp == typ[Char] => "'\\0'"
-    case _ => super.quote(x)
+  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: (Rep[A1],Rep[A2])=>Rep[B]) = {
+    val can = canonicalize1(f)
+    topfunTable.get(can) match {
+      case Some(funSym) =>
+        funSym.asInstanceOf[Exp[(A1,A2)=>B]]
+      case _ =>
+        val funSym = fresh[(A1,A2)=>B]
+        topfunTable += can->funSym.asInstanceOf[Sym[Any]]
+        val s1 = fresh[A1]
+        val s2 = fresh[A2]
+        val b = reifyEffects(f(s1,s2))
+        functionList2 += (funSym.asInstanceOf[Sym[Any]] -> (s1,s2,b))
+        funSym
+    }
   }
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case a@ArrayNew(n) =>
-      val arrType = remap(a.m)
-      stream.println(arrType + "* " + quote(sym) + " = " + getMemoryAllocString(quote(n), arrType))
-    case ArrayApply(x,n) => emitValDef(sym, quote(x) + "[" + quote(n) + "]")
-    case ArrayUpdate(x,n,y) => stream.println(quote(x) + "[" + quote(n) + "] = " + quote(y) + ";")
-    case PrintLn(s) => stream.println("printf(\"" + format(s) + "\\n\"," + quoteRawString(s) + ");")
-    case StringCharAt(s,i) => emitValDef(sym, "%s[%s]".format(quote(s), quote(i)))
-    case Comment(s, verbose, b) =>
-      stream.println("//#" + s)
-        if (verbose) {
-          stream.println("// generated code for " + s.replace('_', ' '))
-          } else {
-            stream.println("// generated code")
-          }
-          emitBlock(b)
-          emitValDef(sym, quote(getBlockResult(b)))
-          stream.println("//#" + s)
-    case UninlinedFunc2(_, _, _) => {}
-    case _ => super.emitNode(sym,rhs)
+  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], b: Block[B]) = {
+    // val l = reflectEffect(UninlinedFunc2(s1,s2,b), Pure())
+    // functionList2 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,b))
+    // l
+    ???
   }
 
-  var dir: String = _
-  var moduleName: String = _
-
-  override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
-
-    val sA = remap(typ[A])
-
-    withStream(out) {
-      stream.println(s"""/*****************************************/
-       |#include <stdio.h>
-       |#include <stdlib.h>
-       |#include <stdint.h>
-       |#include "$moduleName.h"
-       |using namespace std;""".stripMargin)
-
-      emitFunctions(dir, moduleName)
-
-      stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
-
-      emitBlock(body)
-
-      val y = getBlockResult(body)
-      if (remap(y.tp) != "void")
-        stream.println("return " + quote(y) + ";")
-
-      stream.println("}")
-      stream.println("/*******************************************/")
-    }
-    Nil
+  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]) = {
+    // val s1 = fresh[A1]
+    // val s2 = fresh[A2]
+    // val s3 = fresh[A3]
+    // val b = reifyEffects(f(s1,s2,s3))
+    // uninlinedFunc3(s1,s2,s3,b)
+    ???
   }
-  def emitFunctions(dir: String, moduleName: String) = {
-    // Output prototypes to resolve dependencies
-    withStream(new PrintWriter(s"$dir/$moduleName.h")) {
-      stream.println("#ifndef _code")
-      stream.println("#define _code")
-      functionList0.foreach(f=>stream.println(tmpremap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
-      functionList1.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
-      functionList2.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ", " + tmpremap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
-      functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
-      stream.println("#endif")
-    }
-    withStream(new PrintWriter(s"$dir/$moduleName.i")) {
-      stream.println(s"%module $moduleName")
-      stream.println("%{")
-      stream.println(s"""#include "$moduleName.h"""")
-      stream.println("  #include <stdlib.h>")
-      stream.println("  #include <stdio.h>")
-      stream.println("  #include <stdint.h>")
-      stream.println("%}")
-      stream.println(s"""%include "$moduleName.h"""")
-    }
+  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], s3: Sym[A3], b: Block[B]) = {
+    // val l = reflectEffect(UninlinedFunc3(s1,s2,s3,b), Pure())
+    // functionList3 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,s3,b))
+    // l
+    ???
+  }
+  override def doLambdaDef[A:Typ,B:Typ](f: Exp[A] => Exp[B]) : Def[A => B] = {
+    val x = unboxedFresh[A]
+    val y = reifyEffects(f(x)) // unfold completely at the definition site.
+    ???
 
-    // Output actual functions
-    functionList0.foreach(func => {
-      stream.println(tmpremap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
-      emitBlock(func._2)
-      stream.println("return " + quote(getBlockResult(func._2)) + ";")
-      stream.println("}\n")
-    })
-    functionList1.foreach(func => {
-      stream.print(tmpremap(getBlockResult(func._2._2).tp) + " " + quote(func._1) + "(")
-      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1))
-      stream.println(") {")
-      emitBlock(func._2._2)
-      stream.println("return " + quote(getBlockResult(func._2._2)) + ";")
-      stream.println("}\n")
-    })
-    functionList2.foreach(func => {
-      stream.print(tmpremap(getBlockResult(func._2._3).tp) + " " + quote(func._1) + "(")
-      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
-      stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2))
-      stream.println(") {")
-      emitBlock(func._2._3)
-      stream.println("return " + quote(getBlockResult(func._2._3)) + ";")
-      stream.println("}\n")
-    })
-    functionList3.foreach(func => {
-      stream.print(tmpremap(getBlockResult(func._2._4).tp) + " " + quote(func._1) + "(")
-      stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
-      stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2) + ", ")
-      stream.print(tmpremap(func._2._3.tp) + " " + quote(func._2._3))
-      stream.println(") {")
-      emitBlock(func._2._4)
-      stream.println("return " + quote(getBlockResult(func._2._4)) + ";")
-      stream.println("}\n")
-    })
-    functionList0.clear
-    functionList1.clear
-    functionList2.clear
-    functionList3.clear
+    Lambda(f, x, y)
   }
 }
 
-
-abstract class DslSnippet[A:Manifest,B:Manifest] extends Dsl {
+@virtualize
+abstract class SnekDslSnippet[A:Manifest,B:Manifest] extends Dsl {
   def snippet(x: Rep[A]): Rep[B]
 }
 
-abstract class DslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: String) extends DslSnippet[A,B] with DslExp { q =>
+@virtualize
+abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: String) extends SnekDslSnippet[A,B] with DslExp with UninlinedFunctionOpsExp { q =>
   val codegen = new DslGenC {
     val IR: q.type = q
+
+    var dir: String = ""
+    var moduleName: String = ""
+
+    override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
+
+      val sA = remap(typ[A])
+
+      withStream(out) {
+        stream.println(s"""/*****************************************/
+         |#include <stdio.h>
+         |#include <stdlib.h>
+         |#include <stdint.h>
+         |#include "$moduleName.h"
+         |using namespace std;""".stripMargin)
+
+        emitFunctions(dir, moduleName)
+
+        stream.println(sA+" "+functionName+"("+args.map(a => remapWithRef(a.tp)+" "+quote(a)).mkString(", ")+") {")
+
+        emitBlock(body)
+
+        val y = getBlockResult(body)
+        if (remap(y.tp) != "void")
+          stream.println("return " + quote(y) + ";")
+
+        stream.println("}")
+        stream.println("/*******************************************/")
+      }
+      Nil
+    }
+    def tmpremap[A](m: Typ[A]): String = m.toString match {
+      case "Int" => "int"
+      case _ => remap(m)
+    }
+    def emitFunctions(dir: String, moduleName: String) = {
+      // Output prototypes to resolve dependencies
+      withStream(new PrintWriter(s"$dir/$moduleName.h")) {
+        stream.println("#ifndef _code")
+        stream.println("#define _code")
+        functionList0.foreach(f=>stream.println(tmpremap(getBlockResult(f._2).tp) + " " + quote(f._1) + "();"))
+        functionList1.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._2).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ");"))
+        functionList2.foreach(f=>stream.println(tmpremap(getBlockResult(f._2._3).tp) + " " + quote(f._1) + "(" + tmpremap(f._2._1.tp) + " " + quote(f._2._1) + ", " + tmpremap(f._2._2.tp) + " " + quote(f._2._2) +");\n"))
+        functionList3.foreach(f=>stream.println(remap(getBlockResult(f._2._4).tp) + " " + quote(f._1) + "(" + remap(f._2._1.tp) + " " + quote(f._2._1) + ", " + remap(f._2._2.tp) + " " + quote(f._2._2) + ", " + remap(f._2._3.tp) + " " + quote(f._2._3) + ");\n"))
+        stream.println("#endif")
+      }
+      withStream(new PrintWriter(s"$dir/$moduleName.i")) {
+        stream.println(s"%module $moduleName")
+        stream.println("%{")
+        stream.println(s"""#include "$moduleName.h"""")
+        stream.println("  #include <stdlib.h>")
+        stream.println("  #include <stdio.h>")
+        stream.println("  #include <stdint.h>")
+        stream.println("%}")
+        stream.println(s"""%include "$moduleName.h"""")
+      }
+
+      // Output actual functions
+      functionList0.foreach(func => {
+        stream.println(tmpremap(getBlockResult(func._2).tp) + " " + quote(func._1) + "() {")
+        emitBlock(func._2)
+        stream.println("return " + quote(getBlockResult(func._2)) + ";")
+        stream.println("}\n")
+      })
+      functionList1.foreach(func => {
+        stream.print(tmpremap(getBlockResult(func._2._2).tp) + " " + quote(func._1) + "(")
+        stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1))
+        stream.println(") {")
+        emitBlock(func._2._2)
+        stream.println("return " + quote(getBlockResult(func._2._2)) + ";")
+        stream.println("}\n")
+      })
+      functionList2.foreach(func => {
+        stream.print(tmpremap(getBlockResult(func._2._3).tp) + " " + quote(func._1) + "(")
+        stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+        stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2))
+        stream.println(") {")
+        emitBlock(func._2._3)
+        stream.println("return " + quote(getBlockResult(func._2._3)) + ";")
+        stream.println("}\n")
+      })
+      functionList3.foreach(func => {
+        stream.print(tmpremap(getBlockResult(func._2._4).tp) + " " + quote(func._1) + "(")
+        stream.print(tmpremap(func._2._1.tp) + " " + quote(func._2._1) + ", ")
+        stream.print(tmpremap(func._2._2.tp) + " " + quote(func._2._2) + ", ")
+        stream.print(tmpremap(func._2._3.tp) + " " + quote(func._2._3))
+        stream.println(") {")
+        emitBlock(func._2._4)
+        stream.println("return " + quote(getBlockResult(func._2._4)) + ";")
+        stream.println("}\n")
+      })
+      functionList0.clear
+      functionList1.clear
+      functionList2.clear
+      functionList3.clear
+    }
   }
 
   codegen.dir = ddir
@@ -513,8 +433,6 @@ abstract class DslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: Stri
   }
 
   lazy val code: String = {
-    implicit val mA = manifestTyp[A]
-    implicit val mB = manifestTyp[B]
     val source = new java.io.StringWriter()
     codegen.emitSource(snippet, "entrypoint", new PrintWriter(source))
 

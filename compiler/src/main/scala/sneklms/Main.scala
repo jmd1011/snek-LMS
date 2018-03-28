@@ -15,7 +15,7 @@ object Main {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    val driver = new DslDriverC[Int,Int](dir, moduleName) with Compiler {
+    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
       def snippet(n: Rep[Int]): Rep[Int] = {
         compile(prog_val)(Map("arg" -> Literal(n))) match {
           case Literal(n: Rep[Int]) => n
