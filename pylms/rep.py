@@ -90,7 +90,13 @@ def __break(): raise NonLocalBreak()
 def __continue(): raise NonLocalContinue()
 
 def __print(value): # TODO HACK!
-    return reflect(["print", '"{}"'.format(value)])
+    from .nn_staging import RepTensor
+    if isinstance(value, RepTensor):
+        return value.print()
+    elif isinstance(value, str):
+        return reflect(["print", '"{}"'.format(value)])
+    else:
+        return reflect(["print", value])
 
 def __var():
     return reflect(["new"])

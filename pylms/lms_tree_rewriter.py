@@ -232,8 +232,8 @@ class StagingRewriter(ast.NodeTransformer):
             if node.func.value.id is 'torch':
                 if node.func.attr is 'Tensor':
                     new_node = ast.Call(func=ast.Name(id='newTensor', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
@@ -241,64 +241,64 @@ class StagingRewriter(ast.NodeTransformer):
             if node.func.value.id is 'nn':
                 if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
 
                 if node.func.attr is 'Conv2d':
                     new_node = ast.Call(func=ast.Name(id="nn_conv2d", ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
             elif node.func.value.id is 'optim':
                 if node.func.attr is 'SGD':
                     new_node = ast.Call(func=ast.Name(id='optim_SGD', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
             elif node.func.value.id is 'F':
                 if node.func.attr is 'nll_loss':
                     new_node = ast.Call(func=ast.Name(id='F_nll_loss', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
 
                 if node.func.attr is 'relu':
                     new_node = ast.Call(func=ast.Name(id='F_relu', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
 
                 if node.func.attr is 'dropout':
                     new_node = ast.Call(func=ast.Name(id='F_dropout', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
 
                 if node.func.attr is 'max_pool2d':
                     new_node = ast.Call(func=ast.Name(id='F_max_pool2d', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
 
                 if node.func.attr is 'log_softmax':
                     new_node = ast.Call(func=ast.Name(id='F_log_softmax', ctx=ast.Load()),
-                                                      args=node.args,
-                                                      keywords=node.keywords)
+                                        args=node.args,
+                                        keywords=node.keywords)
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
@@ -314,8 +314,8 @@ class StagingRewriter(ast.NodeTransformer):
 
         if node.func.id == 'print':
             new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
-                                              args=node.args,
-                                              keywords=[])
+                                args=node.args,
+                                keywords=[])
             ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)
             return new_node
@@ -335,14 +335,12 @@ class StagingRewriter(ast.NodeTransformer):
 
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
-                    print("{}".format(ast.dump(new_node)))
                     return new_node
 
             elif node.value.attr is 'data':
                 new_node = ast.Call(func=ast.Attribute(value=node.value.value, attr='data_get', ctx=ast.Load()), args=[node.slice.value], keywords=[])
                 ast.copy_location(new_node, node)
                 ast.fix_missing_locations(new_node)
-                print("{}".format(ast.dump(new_node)))
                 return new_node
 
         return node

@@ -1,4 +1,4 @@
-from pylms import lms, stage, stageTensor
+from pylms import lms, stage, stageTensor, ast
 from pylms.rep import Rep
 
 @lms
@@ -13,7 +13,7 @@ def test(x):
 
   z = torch.Tensor(2, 3)
   y = z + z
-  y.print()
+  print(y)
 
 print(test.src)
 
