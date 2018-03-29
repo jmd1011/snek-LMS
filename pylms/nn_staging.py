@@ -176,7 +176,7 @@ def F_log_softmax(tensor, dim):
     else:
         return reflectTensor(["call", "log_softmax", [tensor, dim]])
 
-def rep_variable(tensor):
+def rep_variable(tensor, volatile=False):
     class RepVariable(RepTensor):
         def __init__(self, n):
             self.n = n
@@ -189,7 +189,7 @@ def rep_variable(tensor):
         def grad(self, v):
             return reflect(["setattr",self,"grad",v])
 
-    tmp = reflectTensor(["variable", tensor])
+    tmp = reflectTensor(["variable", tensor, volatile])
     return RepVariable(tmp.n)
 
 def __for_dataloader(src_file, bdfun):

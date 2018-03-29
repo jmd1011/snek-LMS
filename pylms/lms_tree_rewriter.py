@@ -351,7 +351,9 @@ class StagingRewriter(ast.NodeTransformer):
             return node
 
         if node.func.id is 'Variable':
-            new_node = ast.Call(func=ast.Name(id='rep_variable', ctx=ast.Load()), args=node.args, keywords=[])
+            new_node = ast.Call(func=ast.Name(id='rep_variable', ctx=ast.Load()),
+                                args=node.args,
+                                keywords=node.keywords)
             ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)
             return new_node
