@@ -38,11 +38,11 @@ class RepTensor(Rep):
 
     @property
     def data(self):
-        return reflectTensor(["get",self,"data"])
+        return reflectTensor(["getattr",self,"data"])
 
     @data.setter
     def data(self, v):
-        return reflectTensor(["set",self,"data",v])
+        return reflectTensor(["setattr",self,"data",v])
 
     def data_get(self, i):
         return reflectTensor(["array-get",self,"data",i])
@@ -125,15 +125,11 @@ def torch_loader(name, train, download, transforms):
 
         @property
         def dataset(self):
-            return reflect(["get",self,"dataset"])
+            return reflect(["getattr",self,"dataset"])
 
         @dataset.setter
         def setdataset(self,v):
-            return reflect(["set",self,"dataset",v])
-
-        @dataset.deleter
-        def deldataset(self):
-            return reflect(["del",self,"dataset"])
+            return reflect(["setattr",self,"dataset",v])
 
         def __repr__(self):
             return str(self.n)
@@ -187,15 +183,11 @@ def rep_variable(tensor):
 
         @property
         def grad(self):
-            return reflect(["get",self,"grad"])
+            return reflect(["getattr",self,"grad"])
 
         @grad.setter
         def grad(self, v):
-            return reflect(["set",self,"grad",v])
-
-        @grad.deleter
-        def grad(self):
-            return reflect(["del",self,"grad"])
+            return reflect(["setattr",self,"grad",v])
 
     tmp = reflectTensor(["variable", tensor])
     return RepVariable(tmp.n)
