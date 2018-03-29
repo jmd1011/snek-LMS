@@ -17,18 +17,18 @@ Snek-LMS provides a decorator `@lms` that extends Python's operator overloading 
 Will be converted (roughly) to:
 
 	def loop(n):
-        x = __new_var()
-        __assign(x, 0)
+	    x = __new_var()
+	    __assign(x, 0)
 
-        def cond$1():
-            return (__read(x) < n)
+	    def cond$1():
+	        return (__read(x) < n)
 
-        def body$1():
-            __assign(x, (__read(x) + 1))
+	    def body$1():
+	        __assign(x, (__read(x) + 1))
 
-        __while(cond$1, body$1)
+	    __while(cond$1, body$1)
 
-        return __read(x)
+	    return __read(x)
 
 Function like `__while` are overloaded to construct graph
 nodes for each operation. Hence, *executing* this transformed
