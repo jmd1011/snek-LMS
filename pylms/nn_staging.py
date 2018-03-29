@@ -111,7 +111,8 @@ def optim_SGD(params, lr, momentum):
             return reflectTensor(["call",self,"step"])
 
     if isinstance(params, list):
-        return optim.SGD(params, lr, momentum)
+        if isinstance(params[0], torch.Tensor):
+            return optim.SGD(params, lr, momentum)
 
     tmp = reflect(["SGD",[lr,momentum]])
     return RepSGD(tmp.n)
