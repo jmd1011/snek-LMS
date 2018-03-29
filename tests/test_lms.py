@@ -58,8 +58,8 @@ def test_foobar1_staged():
 """
 ['begin', ['let', x0, ['==', in, 0]],
  ['let', x1, ['if', x0,
-  ['begin', 'begin', ['let', x1, ['print', '"yes"']], None],
-  ['begin', 'begin', ['let', x1, ['print', '"no"']], None]]], in]
+  ['begin', ['let', x1, ['print', '"yes"']], None],
+  ['begin', ['let', x1, ['print', '"no"']], None]]], in]
 """.replace('\n','').replace('  ',' ').replace('  ',' '))
 
 #        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
@@ -93,7 +93,7 @@ def test_foobar2():
 
 def test_foobar2_staged():
     assert(lmscompile(foobar2).code ==
-        """['begin', ['let', x0, ['==', in, 0]], ['let', x1, ['if', x0, ['begin', 'begin', 'yes'], ['begin', 'begin', 'no']]], x1]""")
+        """['begin', ['let', x0, ['==', in, 0]], ['let', x1, ['if', x0, ['begin', 'yes'], ['begin', 'no']]], x1]""")
 
 def test_foobar2_rewrite():
     assert(foobar2.src == """

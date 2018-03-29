@@ -134,11 +134,11 @@ def __if(test, body, orelse):
             except NonLocalReturnValue as e:
                 return (True, e.value)
         thenret, thenp = capture(body)
-        if len(thenp) > 1:
-            thenp.insert(0, "begin")
+        # if len(thenp) > 1:
+        #     thenp.insert(0, "begin")
         elseret, elsep = capture(orelse)
-        if len(elsep) > 1:
-            elsep.insert(0, "begin")
+        # if len(elsep) > 1:
+        #     elsep.insert(0, "begin")
         rval = reflect(["if", test, thenp, elsep])
         if thenret & elseret:
             raise NonLocalReturnValue(rval) # proper return
