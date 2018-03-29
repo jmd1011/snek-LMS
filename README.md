@@ -5,70 +5,21 @@ A prototype implementation of [LMS](https://scala-lms.github.io) in Python.
 
 # Lantern Demonstration
 
-To demonstrate the full power of Snek-LMS, we've teamed up with the folks over at [Lantern](https://feiwang3311.github.io/Lantern/)! In this demo, we take some (nearly) ordinary PyTorch code which runs the canonical machine learning example of MNIST. Note that in the interest of brevity, we elect to simplify our model to have two linear layers, rather than the conventional convolutional layers.
+To demonstrate the full power of Snek-LMS, we've teamed up with the folks over at [Lantern](https://feiwang3311.github.io/Lantern/)! In this demo, we take some (nearly) ordinary PyTorch code which runs the canonical machine learning example of MNIST. Note that in the interest of brevity, we elect to simplify our model to have two linear layers, rather than the conventional convolutional layers. Even in this simple case, we see a 3x speedup by generating native C++ code!
 
 # Running the Demo
 
-Here we are, the exciting part! Read on to get all the prerequisites installed, or jump right into [running the demo](https://github.com/jmd1011/snek-LMS/tree/demo#punch-it-chewy) if you've finished this part before.
-
-## Prerequisites
-
-As always, the first step is to ensure all necessary prerequisites are installed. We detail the necessary tools and how to install them below.
-
-### python3
-
-Snek-LMS requires at least Python 3.5.
-
-[Installing Python 3.5 for Linux](http://docs.python-guide.org/en/latest/starting/install3/linux/)
-
-[Installing Python 3.5 for OSX](http://docs.python-guide.org/en/latest/starting/install3/osx/)
-
-[Installing Python 3.5 for Windows](http://docs.python-guide.org/en/latest/starting/install3/win/)
-
-### pip3
-
-[Installing pip3](https://pip.pypa.io/en/stable/installing/)
-
-<!-- Installing pip3 for Linux: `sudo apt install pip3` or equivalent
-
-[Install pip3 for OSX](http://itsevans.com/install-pip-osx/)
-
- -->
-
-### swig/swig3.0
-
-We have found that OSX users require the use of SWIG, whereas other users have reported SWIG 3.0 working best for them. Be sure to select the correct version for your system!
-
-[Installing SWIG](http://www.swig.org/Doc3.0/Preface.html)
-
-### PyTorch
-
-PyTorch has an easy to use installation guide on their site, linked below.
-
-[Installing PyTorch](http://pytorch.org/)
-
-### g++
-
-Installing g++ for Linux: `sudo apt install g++` (or equivalent)
-
-[Installing g++ for OSX](http://www-scf.usc.edu/~csci104/20142/installation/gccmac.html)
-
-[Installing g++ for Windows](http://www1.cmc.edu/pages/faculty/alee/g++/g++.html)
-
-### Other Requirements
-
-With these in place, you should be able to perform `make init` and have all other requirements automatically installed.
+Here we are, the exciting part! Be sure to get all of the [prerequisites](https://github.com/jmd1011/snek-LMS/tree/demo#prerequisites) installed, and let's dive right in!
 
 ## Punch it, Chewy!
 
-With everything installed, we can actually get things moving!
-
-(If you skipped to this section, don't forget to run `make init` to get all prerequisites installed.)
-
 You should only need to run these once to set up Snek-LMS:
 
+- `make init`
 - `make data #this downloads and sets up the MNIST data`
 - `make build_compiler`
+
+With these in place, we can start training!
 
 ### Training in PyTorch
 
@@ -94,7 +45,7 @@ def run():
     model = Net()
     optimizer = optim.SGD(...)
 
-	def train(epoch):
+    def train(epoch):
 	    for batch_idx, (data, target) in enumerate(train_loader):
 	        ...
             loss.backward()
@@ -152,7 +103,7 @@ def run(dummy):
 	...
     train_loader = torch.utils.data.DataLoader(...)
 
-	fc1 = nn.Linear(784, 50)
+    fc1 = nn.Linear(784, 50)
     fc2 = nn.Linear(50, 10)
     
     def forward(x):
@@ -375,6 +326,48 @@ sys		0m0.404s
 ```
 
 Despite the additional overhead associated with this metaprogramming and compilation, this runs nearly 3 times faster than the vanilla PyTorch code (clocking in well under a minute).
+
+## Prerequisites
+
+As always, the first step is to ensure all necessary prerequisites are installed. We detail the necessary tools and how to install them below.
+
+### python3
+
+Snek-LMS requires at least Python 3.5.
+
+[Installing Python 3.5 for Linux](http://docs.python-guide.org/en/latest/starting/install3/linux/)
+
+[Installing Python 3.5 for OSX](http://docs.python-guide.org/en/latest/starting/install3/osx/)
+
+[Installing Python 3.5 for Windows](http://docs.python-guide.org/en/latest/starting/install3/win/)
+
+### pip3
+
+[Installing pip3](https://pip.pypa.io/en/stable/installing/)
+
+### swig/swig3.0
+
+We have found that OSX users require the use of SWIG, whereas other users have reported SWIG 3.0 working best for them. Be sure to select the correct version for your system!
+
+[Installing SWIG](http://www.swig.org/Doc3.0/Preface.html)
+
+### PyTorch
+
+PyTorch has an easy to use installation guide on their site, linked below.
+
+[Installing PyTorch](http://pytorch.org/)
+
+### g++
+
+Installing g++ for Linux: `sudo apt install g++` (or equivalent)
+
+[Installing g++ for OSX](http://www-scf.usc.edu/~csci104/20142/installation/gccmac.html)
+
+[Installing g++ for Windows](http://www1.cmc.edu/pages/faculty/alee/g++/g++.html)
+
+### Other Requirements
+
+With these in place, you should be able to perform `make init` and have all other requirements automatically installed.
 
 ### Learn More!
 
