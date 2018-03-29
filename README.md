@@ -9,7 +9,7 @@ To demonstrate the full power of Snek-LMS, we've teamed up with the folks over a
 
 # Running the Demo
 
-Here we are, the exciting part!
+Here we are, the exciting part! Read on to get all the prerequisites installed, or jump right into [running the demo](https://github.com/jmd1011/snek-LMS/tree/demo#punch-it-chewy) if you've finished this part before.
 
 ## Prerequisites
 
