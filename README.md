@@ -3,6 +3,90 @@ A prototype implementation of [LMS](https://scala-lms.github.io) in Python.
 
 [![Build Status](https://travis-ci.org/jmd1011/snek-LMS.svg?branch=master)](https://travis-ci.org/jmd1011/snek-LMS)
 
+# Lantern Demonstration
+
+To demonstrate the full power of Snek-LMS, we've teamed up with the folks over at [Lantern](https://feiwang3311.github.io/Lantern/)! In this demo, we take some (nearly) ordinary PyTorch code which runs the canonical machine learning example of MNIST. Note that in the interest of brevity, we elect to simplify our model to have two linear layers, rather than the conventional convolutional layers.
+
+# Running the Demo
+
+Here we are, the exciting part!
+
+## Prerequisites
+
+As always, the first step is to ensure all necessary prerequisites are installed. We detail the necessary tools and how to install them below.
+
+### python3
+
+Snek-LMS requires at least Python 3.5.
+
+[Install Python 3.5 for Linux](http://docs.python-guide.org/en/latest/starting/install3/linux/)
+
+[Install Python 3.5 for OSX](http://docs.python-guide.org/en/latest/starting/install3/osx/)
+
+[Install Python 3.5 for Windows](http://docs.python-guide.org/en/latest/starting/install3/win/)
+
+### pip3
+
+[Installing pip3](https://pip.pypa.io/en/stable/installing/)
+
+<!-- Installing pip3 for Linux: `sudo apt install pip3` or equivalent
+
+[Install pip3 for OSX](http://itsevans.com/install-pip-osx/)
+
+ -->
+
+### swig/swig3.0
+
+We have found that OSX users require the use of SWIG, whereas other users have reported SWIG 3.0 working best for them. Be sure to select the correct version for your system!
+
+[Installing SWIG](http://www.swig.org/Doc3.0/Preface.html)
+
+### PyTorch
+
+PyTorch has an easy to use installation guide on their site, linked below.
+
+[Installing PyTorch](http://pytorch.org/)
+
+### g++
+
+Install g++ for Linux: `sudo apt install g++` (or equivalent)
+
+[Install g++ for OSX](http://www-scf.usc.edu/~csci104/20142/installation/gccmac.html)
+
+[Install g++ for Windows](http://www1.cmc.edu/pages/faculty/alee/g++/g++.html)
+
+### Other Requirements
+
+With these in place, you should be able to perform `make init` and have all other requirements automatically installed.
+
+## Punch it, Chewy!
+
+With everything installed, perform the following steps to actually get things moving!
+
+(If you skipped to this section, don't forget to run `make init` to get all prerequisites installed.)
+
+You should only need to run these once to set up Snek-LMS:
+
+- `make data #this downloads and sets up the MNIST data`
+- `make build_compiler`
+
+Finally, we can run the demo:
+
+- `python3 lantern_demo.py`
+
+This will give a giant wall of text, separated into 5 categories:
+
+1. ORIGINAL SOURCE
+	i. The PyTorch code which we're transforming.
+2. STAGED SOURCE
+	i. The transformed PyTorch code.
+3. IR CODE
+	i. The [S-Expr](https://en.wikipedia.org/wiki/S-expression) intermediate representation which will be read by our Scala code (in the `compiler` directory) and used to generate Lantern code.
+4. GENERATED CODE
+	i. The C++ code output by Lantern.
+
+The generated code is also available for inspection in the `gen` folder (in our case, it's the `module_runX.cpp` file).
+
 # Lightweight Syntax for Building Computation Graphs
 
 Snek-LMS provides a decorator `@lms` that extends Python's operator overloading capabilities to many built-in operations. This function:
