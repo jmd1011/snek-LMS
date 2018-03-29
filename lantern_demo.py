@@ -79,12 +79,13 @@ def run(train_loader):
         batch_size=args.batch_size, shuffle=False, **kwargs)
 
     # skip tests
-    # test_loader = torch.utils.data.DataLoader(
-    #    datasets.MNIST('../data', train=False, transform=transforms.Compose([
-    #                       transforms.ToTensor(),
-    #                       transforms.Normalize((0.1307,), (0.3081,))
-    #                   ])),
-    #    batch_size=args.test_batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(
+       datasets.MNIST('../data', train=False, download=False,
+                        transform=transforms.Compose([
+                          transforms.ToTensor(),
+                          transforms.Normalize((0.1307,), (0.3081,))
+                      ])),
+       batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
     # class Net(object):
@@ -145,25 +146,26 @@ def run(train_loader):
 
     asdf = train(4)
 
-    # def test():
-    #     # model.eval()
-    #     test_loss = 0
-    #     correct = 0
-    #     for batch_idx, (data, target) in enumerate(test_loader):
-    #         # if args.cuda:
-    #         #     data, target = data.cuda(), target.cuda()
-    #         data1 = Variable(data, volatile=True)
-    #         target1 = Variable(target)
-    #         output = forward(data)
-    #         test_loss = test_loss + F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
-    #         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
-    #         correct = correct + pred.eq(target.data.view_as(pred)).long().cpu().sum()
+    def test():
+        # model.eval()
+        test_loss = 0
+        correct = 0
+        for batch_idx, (data, target) in enumerate(test_loader):
+            # if args.cuda:
+            #     data, target = data.cuda(), target.cuda()
+            data1 = Variable(data, volatile=True)
+            target1 = Variable(target)
+            output = forward(data)
+            test_loss = test_loss + F.nll_loss(output, target, size_average=False).data[0] # sum up batch loss
+            pred = output.data.max(1, True)[1] # get the index of the max log-probability
+            correct = correct + pred.eq(target1.data.view_as(pred)).sum()
 
-    #     test_loss = test_loss / len(test_loader.dataset)
-    #     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-    #         test_loss, correct, len(test_loader.dataset),
-    #         100. * correct / len(test_loader.dataset)))
+        test_loss = test_loss / len(test_loader.dataset)
+        # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        #     test_loss, correct, len(test_loader.dataset),
+        #     100. * correct / len(test_loader.dataset)))
 
+    test()
 
     # loopStart = time.time()
     # loss_save = []

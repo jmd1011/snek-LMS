@@ -33,17 +33,35 @@ class RepTensor(Rep):
         return reflectTensor(["+",self,m])
     def __mul__(self, m):
         return reflectTensor(["dot",self,m])
+    def __getitem__(self, i):
+        return reflectTensor(["idx",self,i])
+
+    @property
+    def data(self):
+        return reflectTensor(["get",self,"data"])
+
+    @data.setter
+    def data(self, v):
+        return reflectTensor(["set",self,"data",v])
 
     def data_get(self, i):
-        return reflectTensor(["array-get",self,"data",i]);
+        return reflectTensor(["array-get",self,"data",i])
     def backward(self):
-        return reflectTensor(["call",self,"backward"]);
+        return reflectTensor(["call",self,"backward"])
     def conv2d(self, kernel):
-        return reflectTensor(["call",self,"conv2d",kernel.n]);
+        return reflectTensor(["call",self,"conv2d",kernel])
     def view(self, *dims):
-        return reflectTensor(["call",self,"view",dims]);
+        return reflectTensor(["call",self,"view",dims])
     def print(self):
         return reflectTensor(["call",self,"print"])
+    def max(self, n, keepDim=False):
+        return reflectTensor(["call",self,"max",[n,keepDim]])
+    def eq(self,m):
+        return reflectTensor(["call",self,"eq"])
+    def view_as(self,m):
+        return reflectTensor(["call",self,"view_as",m])
+    def sum(self):
+        return reflectTensor(["call",self,"sum"])
 
 def nn_linear(hlsize, outsize):
     class Linear(object):
