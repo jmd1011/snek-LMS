@@ -70,6 +70,8 @@ You should only need to run these once to set up Snek-LMS:
 - `make data #this downloads and sets up the MNIST data`
 - `make build_compiler`
 
+### Training in PyTorch
+
 Let's take a look at some of the PyTorch code we'll be working with (available in `pytorch_demo.py`):
 
 ```
@@ -94,6 +96,8 @@ def train(epoch):
 ```
 
 As shown, this handles training our model and calculating the training loss.
+
+### Running PyTorch
 
 Running this code using `time python3 pytorch_demo.py` yields something similar to the following output:
 
@@ -122,6 +126,8 @@ sys		0m9.404s
 
 While a training loss of only 0.07 is great for 10 epochs, the fact that this can take upwards of 5 minutes definitely isn't so great.
 
+### Training in Snek-LMS
+
 Let's see if we can do better with Snek-LMS and Lantern!
 
 We perform some very simple modifications to our training function, as follows:
@@ -145,6 +151,8 @@ def train(epoch):
                 100. * batch_idx / len(train_loader), tmp / batch_idx))
     return tloss / len(train_loader)
 ```
+
+### Running Lantern
 
 Running `time python3 lantern_demo.py` yields a giant wall of text, separated into 5 categories (we elide some for simplicity of presentation):
 
@@ -284,9 +292,11 @@ sys		0m0.404s
 
 Despite the additional overhead associated with this metaprogramming and compilation, this runs nearly 3 times faster than the vanilla PyTorch code (clocking in well under a minute).
 
+### Learn More!
+
 To learn more about Lantern, check out their website [here!](https://feiwang3311.github.io/Lantern/)
 
-Interested in learning more about Snek-LMS? We have more details below!
+Interested in learning more about how Snek-LMS works? Read on!
 
 # Lightweight Syntax for Building Computation Graphs
 
