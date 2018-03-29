@@ -164,7 +164,7 @@ def F_log_softmax(tensor, dim):
         return reflectTensor(["call", "log_softmax", [tensor, dim]])
 
 def __variable(tensor):
-    class RepVariable(object):
+    class RepVariable(RepTensor):
         def __init__(self, n):
             self.n = n
 
