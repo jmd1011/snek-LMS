@@ -77,15 +77,7 @@ Let's take a look at some of the PyTorch code we'll be working with (available i
 ```
 def run():
 	...
-	kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-                       # transform=transforms.ToTensor()),
-        batch_size=args.batch_size, shuffle=False, **kwargs)
+	train_loader = torch.utils.data.DataLoader(...)
 
     class Net(nn.Module):
         def __init__(self):
@@ -100,29 +92,15 @@ def run():
             return F.log_softmax(x, dim=1)
 
     model = Net()
-    if args.cuda:
-        model.cuda()
-
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.SGD(...)
 
 	def train(epoch):
-	    model.train()
-	    tloss = 0.0
 	    for batch_idx, (data, target) in enumerate(train_loader):
-	        if args.cuda:
-	            data, target = data.cuda(), target.cuda()
-	        data, target = Variable(data), Variable(target)
-	        optimizer.zero_grad()
-	        output = model(data)
-	        loss = F.nll_loss(output, target)
-	        tloss += loss.data[0]
-	        loss.backward()
+	        ...
+            loss.backward()
 	        optimizer.step()
-	        if (batch_idx * len(data) + 1) % args.log_interval == 0:
-	            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-	                epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
-	                100. * batch_idx / len(train_loader), tloss / (batch_idx)))
-	    return tloss / (batch_idx)
+            if (((batch_idx + 1) % args.log_interval) == 0):
+	            print_time_and_loss()
 
 	for epoch in range(1, args.epochs + 1):
 		train(epoch)
@@ -166,54 +144,43 @@ Let's see if we can do better with Snek-LMS and Lantern!
 We perform some very simple modifications to our training function and add some bootstrapping, as follows:
 
 ```
-@lms
+from pylms import lms, stage, stageTensor  # add our snek-lms module 
+from pylms.rep import Rep                  # add our snek-lms module 
+
+@lms                                       # add anotation for snek-lms
 def run(dummy):
 	...
-	kwargs = {}
-    train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-        batch_size=1, shuffle=False, **kwargs)
+    train_loader = torch.utils.data.DataLoader(...)
 
 	fc1 = nn.Linear(784, 50)
     fc2 = nn.Linear(50, 10)
-    optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
-
+    
     def forward(x):
         x1 = x.view(-1, 784)
         x2 = F.relu(fc1(x1))
         x3 = fc2(x2)
         return F.log_softmax(x3, dim=1)
+    
+    optimizer = optim.SGD(...)
 
 	def train(epoch):
-	    tloss = 0.0
 	    for batch_idx, (data, target) in enumerate(train_loader):
-	        data1 = Variable(data, volatile=True)
-	        target1 = Variable(target)
-	        optimizer.zero_grad()
-	        output = forward(data1)
-	        res = F.nll_loss(output, target1)
-	        loss = res.backward()
-	        tloss = tloss + loss.data[0]
-	        optimizer.step()
-	        tmp = tloss
-	        if (batch_idx + 1) % args.log_interval == 0:
-	            print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-	                epoch, batch_idx + 1, len(train_loader),
-	                100. * batch_idx / len(train_loader), tmp / batch_idx))
-	    return tloss / len(train_loader)
+	        ...
+            loss.backward()
+            optimizer.step()
+            if (((batch_idx + 1) % args.log_interval) == 0):
+                print_time_and_loss()
 
     idx = 0
     while idx < args.epochs:
         idx = idx + 1
         train(idx)
 
-@stage
+@stage                                     # add anotation and bootstrapping
 def runX(x):
 	return run(x)
+
+                                           # add pretty printing 
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
@@ -266,10 +233,10 @@ def run(dummy):
     try:
         idx = __var()
         ... #elided for presentation
-        train_loader = torch_loader('MNIST', True, True, trans_compose([trans_to_tensor(), trans_normalize((0.1307,), (0.3081,))]))
+        train_loader = torch_loader(...)
         fc1 = nn_linear(784, 50)
         fc2 = nn_linear(50, 10)
-        optimizer = optim_SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
+        optimizer = optim_SGD(...)
 
         def forward(x):
             try:
@@ -282,39 +249,30 @@ def run(dummy):
 
         def train(epoch):
             try:
-                tloss = __var()
-                __assign(tloss, 0.0)
-
+                
                 def forfunc$1(batch_idx, data, target):
-                    data1 = rep_variable(data, volatile=True)
-                    target1 = rep_variable(target)
-                    optimizer.zero_grad()
-                    output = forward(data1)
-                    res = F_nll_loss(output, target1)
+                    ...
                     loss = res.backward()
-                    __assign(tloss, (__read(tloss) + loss.data_get(0)))
                     optimizer.step()
-                    tmp = __read(tloss)
-
+                    
                     def then$1():
-                        __printf('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}', [epoch, (batch_idx + 1), __len(train_loader), ((100.0 * batch_idx) / __len(train_loader)), (tmp / batch_idx)])
-
+                        __printf(...)
                     def else$1():
                         pass
                     __if((((batch_idx + 1) % args.log_interval) == 0), then$1, else$1)
+                
                 __for_dataloader(train_loader, forfunc$1)
-                __return((__read(tloss) / __len(train_loader)))
+                
             except NonLocalReturnValue as r:
                 return r.value
+        
         __assign(idx, 0)
-        __print('Start Training')
-
+        
         def cond$1():
             return (__read(idx) < args.epochs)
 
         def body$1():
             __assign(idx, (__read(idx) + 1))
-            __printf('Epoch {:.0f}', [__read(idx)])
             train(__read(idx))
         __while(cond$1, body$1)
     except NonLocalReturnValue as r:
@@ -390,8 +348,7 @@ int32_t entrypoint(int32_t  x0) {
 ==============================================================
 ========================EXECUTING CODE========================
 ==============================================================
-Start Training
-Epoch 1
+
 Train Epoch: 1 (6000/60000 (10%))	Loss: 2.282214
 Train Epoch: 1 (12000/60000 (20%))	Loss: 1.521544
 Train Epoch: 1 (18000/60000 (30%))	Loss: 1.237902
@@ -402,7 +359,6 @@ Train Epoch: 1 (42000/60000 (70%))	Loss: 0.753137
 Train Epoch: 1 (48000/60000 (80%))	Loss: 0.698994
 Train Epoch: 1 (54000/60000 (90%))	Loss: 0.657642
 Train Epoch: 1 (60000/60000 (100%))	Loss: 0.614844
-Epoch 2
 Train Epoch: 2 (6000/60000 (10%))	Loss: 0.259043
 Train Epoch: 2 (12000/60000 (20%))	Loss: 0.251854
 ...
