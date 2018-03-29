@@ -175,11 +175,12 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
   type EnvT = Map[String, ValueT]
 
   val variables = new ArrayBuffer[TensorR]()
+  val names = new ArrayBuffer[String]()
   var lr: Float = 0.05f
   var momentum: Float = 0.0f
 
   def formatFromPython(s: String) = {
-    s.replace("{}", "%d").replace("{:.0f}", "%.0f").replace("{:.6f}", "%.6f") + "\\n"
+    s.replace("{}", "%d").replace("{:.0f}", "%.0f").replace("{:.6f}", "%.6f").replace("%)", "%%)") + "\\n" // TODO escape % better
   }
 
   @virtualize
@@ -266,6 +267,7 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       }
     case "*"::n::m::t =>
       (compileT(n), compileT(m)) match {
+        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT[Int](a * b)
         case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Int])) => LiteralT(a * b)
       }
     case "%"::n::m::Nil =>
@@ -287,9 +289,15 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     case "let"::(x: String)::a::b::Nil =>
       compileT(b)(env + (x -> compileT(a)))
     case "None" | Nil => LiteralT(())
-    case "variable"::t::Nil =>
-      compileT(t) match {
-        case TensorV(t) => DiffV[TensorR](new Result(() => { val res = TensorR(t); variables += res; res}))
+    case "variable"::tn::(vol: String)::Nil =>
+      compileT(tn) match {
+        case TensorV(t) => DiffV[TensorR](new Result(() => {
+          val res = TensorR(t)
+          if (vol != "True") {
+            variables += res
+          }
+          res
+        }))
         case LiteralT(x) => LiteralT(x) // FIXME
       }
     case "transform"::t => t match {
@@ -308,7 +316,7 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       lr = l
       momentum = m
       LiteralT(()) // FIXME
-    case "new" => MutT(var_new(0.0))
+    case "new" => MutT(var_new(0.0f))
     case "set"::(x: String)::t => t match { // FIXME HACK!!!!!
       case _::a::Nil =>
         val MutT(vx: Var[Float]) = env(x)
@@ -320,12 +328,14 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
         LiteralT(unit(()))
     }
     case "get"::(x: String)::Nil =>
-      val MutT(vx: Var[_]) = env(x)
+      val MutT(vx: Var[Float]) = env(x)
       LiteralT(readVar(vx))
     case "for_dataloader"::(loader: String)::List(x11: String, t0: String, x12: String)::body::Nil =>
       val DatasetV(dataloader) = env(loader)
+      val mem = getMallocAddr()
       dataloader.foreach { (idx: Rep[Int], data: Tensor, target: Rep[Int]) =>
         compileT(body)(env + (x11 -> LiteralT(idx)) + (t0 -> TensorV(data)) + (x12 -> LiteralT(target)))
+        resetMallocAddr(mem)
         ()
       }
       LiteralT(())
@@ -336,13 +346,13 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
 
     case "len"::x::Nil => compileT(x) match {
       case DatasetV(loader) => LiteralT(loader.length)
-      case TensorV(tensor) => LiteralT(tensor.nbElem)
+      case TensorV(tensor) => LiteralT(tensor.dims(0))
     }
     case "printf"::(Str(format)::args)::Nil =>
       LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
     case x: String => env(x)
     case x: Int => LiteralT(unit(x))
-    case x: Float => LiteralT(unit(x))
+    case x: Float => LiteralT(unit[Float](x))
   }
 }
 
@@ -535,6 +545,12 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
          |#include <stdio.h>
          |#include <stdlib.h>
          |#include <stdint.h>
+         |#include <math.h>
+         |#include <unistd.h>
+         |#include <sys/types.h>
+         |#include <sys/stat.h>
+         |#include <fcntl.h>
+         |#include <sys/mman.h>
          |#include "lantern.h"
          |#include "$moduleName.h"
          |using namespace std;""".stripMargin)
@@ -576,6 +592,12 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
         stream.println("  #include <stdlib.h>")
         stream.println("  #include <stdio.h>")
         stream.println("  #include <stdint.h>")
+        stream.println("  #include <math.h>")
+        stream.println("  #include <unistd.h>")
+        stream.println("  #include <sys/types.h>")
+        stream.println("  #include <sys/stat.h>")
+        stream.println("  #include <fcntl.h>")
+        stream.println("  #include <sys/mman.h>")
         stream.println("%}")
         stream.println(s"""%include "$moduleName.h"""")
       }

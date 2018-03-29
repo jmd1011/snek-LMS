@@ -3,7 +3,7 @@ from pylms import lms, stage, stageTensor
 from pylms.rep import Rep
 
 @lms
-def run(train_loader):
+def run(dummy):
     import argparse
     import torch
     import torch.nn as nn
@@ -52,9 +52,9 @@ def run(train_loader):
             target1 = Variable(target)
             optimizer.zero_grad()
             output = forward(data1)
-            loss = F.nll_loss(output, target1)
+            res = F.nll_loss(output, target1)
+            loss = res.backward()
             tloss = tloss + loss.data[0]
-            loss.backward()
             optimizer.step()
             tmp = tloss
             if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
@@ -63,7 +63,7 @@ def run(train_loader):
                     100. * batch_idx / len(train_loader), tmp / batch_idx))
         return tloss / len(train_loader)
 
-    asdf = train(args.epochs)
+    train(dummy)
 
 print(run.src)
 
@@ -72,3 +72,5 @@ def runX(x):
     return run(x)
 
 print(runX.code)
+
+runX(1)
