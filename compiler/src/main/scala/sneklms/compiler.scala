@@ -278,6 +278,10 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       (compileT(n), compileT(m)) match {
         case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a == b)
       }
+    case "<"::n::m::Nil =>
+      (compileT(n), compileT(m)) match {
+        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a < b)
+      }
     case "dot"::n::m::Nil =>
       (compileT(n), compileT(m)) match {
         case (TensorV(a), TensorV(b)) => TensorV(a dot b)
@@ -330,6 +334,10 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     case "get"::(x: String)::Nil =>
       val MutT(vx: Var[Float]) = env(x)
       LiteralT(readVar(vx))
+    case "while"::t::body::Nil =>
+      while (compileT(t) match { case LiteralT(t: Rep[Boolean]) => t })
+        compileT(body) match { case LiteralT(b: Rep[Unit]) => b }
+      LiteralT(unit(()))
     case "for_dataloader"::(loader: String)::List(x11: String, t0: String, x12: String)::body::Nil =>
       val DatasetV(dataloader) = env(loader)
       val mem = getMallocAddr()
@@ -350,6 +358,8 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
     }
     case "printf"::(Str(format)::args)::Nil =>
       LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
+    case "print"::Str(s)::Nil =>
+      LiteralT(printf(s + "\\n"))
     case x: String => env(x)
     case x: Int => LiteralT(unit(x))
     case x: Float => LiteralT(unit[Float](x))

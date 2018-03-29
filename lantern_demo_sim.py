@@ -18,10 +18,10 @@ def run(dummy):
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.05, metavar='LR',
-                        help='learning rate (default: 0.01)')
+    parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
+                        help='learning rate (default: 0.0005)')
     parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
-                        help='SGD momentum (default: 0.5)')
+                        help='SGD momentum (default: 0.0)')
     parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
                         help='how many batches to wait before logging training status')
     args = parser.parse_args()
@@ -58,12 +58,17 @@ def run(dummy):
             optimizer.step()
             tmp = tloss
             if (batch_idx + 1) % args.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx + 1, len(train_loader),
                     100. * batch_idx / len(train_loader), tmp / batch_idx))
         return tloss / len(train_loader)
 
-    train(dummy)
+    idx = 0
+    print("Start Training")
+    while idx < args.epochs:
+        idx = idx + 1
+        print('Epoch {:.0f}'.format(idx))
+        train(idx)
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
@@ -92,7 +97,7 @@ print(runX.Ccode)
 print("==============================================================")
 print("========================EXECUTING CODE========================")
 print("==============================================================")
-runX(1)
+runX(0)
 
 print("==============================================================")
 print("========================EXITING PROGRAM=======================")
