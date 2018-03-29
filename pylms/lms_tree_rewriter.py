@@ -462,7 +462,7 @@ class StagingRewriter(ast.NodeTransformer):
             ast.fix_missing_locations(outer_fun)
 
             new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
-                                         args=[ast.Str('DATA_SRC_FILE_FIXME'),
+                                         args=[node.iter.args[0],
                                                ast.Name(id=outer_fun_name, ctx=ast.Load())],
                                          keywords=[]))
             #ast.copy_location(new_node, node)
