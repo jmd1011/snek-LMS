@@ -27,8 +27,8 @@ Let's take a look at some of the PyTorch code we'll be working with (available i
 
 ```
 def run():
-	...
-	train_loader = torch.utils.data.DataLoader(...)
+    ...
+    train_loader = torch.utils.data.DataLoader(...)
 
     class Net(nn.Module):
         def __init__(self):
@@ -46,15 +46,15 @@ def run():
     optimizer = optim.SGD(...)
 
     def train(epoch):
-	    for batch_idx, (data, target) in enumerate(train_loader):
-	        ...
+        for batch_idx, (data, target) in enumerate(train_loader):
+            ...
             loss.backward()
-	        optimizer.step()
+            optimizer.step()
             if (((batch_idx + 1) % args.log_interval) == 0):
-	            print_time_and_loss()
+                print_time_and_loss()
 
-	for epoch in range(1, args.epochs + 1):
-		train(epoch)
+    for epoch in range(1, args.epochs + 1):
+	   train(epoch)
 ```
 
 As shown, this handles training our model and calculating the training loss.
@@ -114,9 +114,9 @@ def run(dummy):
     
     optimizer = optim.SGD(...)
 
-	def train(epoch):
-	    for batch_idx, (data, target) in enumerate(train_loader):
-	        ...
+    def train(epoch):
+        for batch_idx, (data, target) in enumerate(train_loader):
+            ...
             loss.backward()
             optimizer.step()
             if (((batch_idx + 1) % args.log_interval) == 0):
@@ -129,7 +129,7 @@ def run(dummy):
 
 @stage                                     # add anotation and bootstrapping
 def runX(x):
-	return run(x)
+    return run(x)
 
                                            # add pretty printing 
 
