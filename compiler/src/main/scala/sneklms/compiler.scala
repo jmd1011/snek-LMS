@@ -195,6 +195,10 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       case "nll_loss" => (compileT(args(0)), compileT(args(1))) match {
         case (DiffV(a: Result[TensorR]), LiteralT(target: Rep[Int])) => DiffV[TensorR](new Result(() => a().nllLoss(target)))
       }
+      case "relu" => (compileT(args(0))) match {
+        case (DiffV(a: Result[TensorR])) => DiffV[TensorR](new Result(() => a().relu()))
+      } 
+      
     }
     case "call"::(x: Any)::(member: String)::Nil => member match {
       case "backward" => compileT(x) match {
