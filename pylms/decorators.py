@@ -78,13 +78,17 @@ def toSexpr(l):
             return ['let', stm[1], rhs, body]
         else:
             raise Exception()
+    elif len(l) > 3 and l[0] == 'for_dataloader':
+        return ['for_dataloader', l[1], l[2], toSexpr(l[3])]
     elif len(l) > 2 and l[0] == 'while':
         cond = toSexpr(l[1])
         body = toSexpr(l[2])
         return ['while', cond, body]
     elif len(l) > 1 and str(l[0]) == 'begin':
         print("begin {}".format(l[1:]))
-        return ['begin'] + [toSexpr(l[1:])]
+        rtmp =  ['begin'] + [toSexpr(l[1:])]
+        print(rtmp)
+        return rtmp
     elif len(l) > 3 and str(l[0]) == 'if':
         print("if")
         cond = toSexpr(l[1])

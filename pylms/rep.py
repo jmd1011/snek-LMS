@@ -37,7 +37,7 @@ def fresh():
 def reify(f, *args):
     def f1():
         global stBlock
-        stBlock = []
+        stBlock = ['begin']
         try:
             last = f(*args)
             return stBlock + [ last ]

@@ -56,10 +56,11 @@ def run(train_loader):
             tloss = tloss + loss.data[0]
             loss.backward()
             optimizer.step()
+            tmp = tloss
             if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), tloss / batch_idx))
+                    100. * batch_idx / len(train_loader), tmp / batch_idx))
         return tloss / len(train_loader)
 
     asdf = train(args.epochs)
