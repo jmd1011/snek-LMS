@@ -95,7 +95,7 @@ def optim_SGD(params, lr, momentum):
     if isinstance(params, list):
         return optim.SGD(params, lr, momentum)
 
-    tmp = reflect([self,[lr,momentum]])
+    tmp = reflect(["SGD",[lr,momentum]])
     return RepSGD(tmp.n)
 
 # def torch_loader(dataset, batch_size, shuffle, **kwargs):
