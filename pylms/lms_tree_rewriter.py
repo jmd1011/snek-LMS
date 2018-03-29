@@ -228,6 +228,23 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
 
+        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Attribute):
+            if isinstance(node.func.value.value, ast.Attribute) and isinstance(node.func.value.value.value, ast.Name):
+                if node.func.value.value.value.id is 'torch' and node.func.value.value.attr is 'utils' and node.func.value.attr is 'data' and node.func.attr is 'DataLoader':
+                    args = [
+                        ast.Str(s=node.args[0].func.attr), #set
+                        node.args[0].keywords[0].value, #train
+                        node.args[0].keywords[1].value, #download
+                        node.args[0].keywords[2].value
+                    ]
+                    new_node = ast.Call(func=ast.Name(id='torch_loader', ctx=ast.Load()),
+                                        args=args,
+                                        keywords=[])
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
+
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             if node.func.value.id is 'torch':
                 if node.func.attr is 'Tensor':
@@ -254,7 +271,33 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
-            elif node.func.value.id is 'optim':
+
+            if node.func.value.id is 'transforms':
+                if node.func.attr is 'Compose':
+                    new_node = ast.Call(func=ast.Name(id='trans_compose', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
+                if node.func.attr is 'ToTensor':
+                    new_node = ast.Call(func=ast.Name(id='trans_to_tensor', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
+                if node.func.attr is 'Normalize':
+                    new_node = ast.Call(func=ast.Name(id='trans_normalize', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
+            if node.func.value.id is 'optim':
                 if node.func.attr is 'SGD':
                     new_node = ast.Call(func=ast.Name(id='optim_SGD', ctx=ast.Load()),
                                         args=node.args,
@@ -262,7 +305,8 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
-            elif node.func.value.id is 'F':
+
+            if node.func.value.id is 'F':
                 if node.func.attr is 'nll_loss':
                     new_node = ast.Call(func=ast.Name(id='F_nll_loss', ctx=ast.Load()),
                                         args=node.args,
@@ -306,14 +350,22 @@ class StagingRewriter(ast.NodeTransformer):
         if not isinstance(node.func, ast.Name):
             return node
 
-        if node.func.id == 'Variable':
+        if node.func.id is 'Variable':
             new_node = ast.Call(func=ast.Name(id='__variable', ctx=ast.Load()), args=node.args, keywords=[])
             ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)
             return new_node
 
-        if node.func.id == 'print':
+        if node.func.id is 'print':
             new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
+                                args=node.args,
+                                keywords=[])
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+
+        if node.func.id is 'len':
+            new_node = ast.Call(func=ast.Name(id='__len', ctx=ast.Load()),
                                 args=node.args,
                                 keywords=[])
             ast.copy_location(new_node, node)

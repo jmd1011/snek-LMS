@@ -1,7 +1,8 @@
 __all__ = [
     'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__return', '__print',
-    '__var', '__assign', '__read', '__break', '__continue', '__for'
+    '__var', '__assign', '__read', '__len',
+    '__break', '__continue', '__for'
 ]
 
 var_counter = 0
@@ -106,6 +107,9 @@ def __assign(name, value):
 
 def __read(name):
     return reflect(["get", name])
+
+def __len(name):
+    return reflect(["len", name])
 
 def __if(test, body, orelse):
     if isinstance(test, bool):
