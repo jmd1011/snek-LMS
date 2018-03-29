@@ -105,7 +105,7 @@ def __print(value): # TODO HACK!
 
 def __printf(s, vs):
     nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]
-    return reflect(["printf", ['"{}"'.format(s), ["{}".format(", ".join(nvs))]]])
+    return reflect(["printf", ['"{}"'.format(s), "{}".format(", ".join(nvs))]])
 
 def __var():
     return reflect(["new"])
