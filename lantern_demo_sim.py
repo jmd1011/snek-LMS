@@ -49,7 +49,7 @@ def run(train_loader):
         tloss = 0.0
         for batch_idx, (data, target) in enumerate(train_loader):
             data1 = Variable(data, volatile=True)
-            target1 = Variable(target, volatile=True)
+            target1 = Variable(target)
             optimizer.zero_grad()
             output = forward(data1)
             loss = F.nll_loss(output, target1)
