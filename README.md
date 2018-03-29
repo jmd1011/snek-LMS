@@ -74,23 +74,23 @@ Let's take a look at some of the PyTorch code we'll be working with (available i
 
 ```
 def train(epoch):
-        model.train()
-        tloss = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
-            if args.cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data), Variable(target)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            tloss += loss.data[0]
-            loss.backward()
-            optimizer.step()
-            if (batch_idx * len(data) + 1) % args.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), tloss / (batch_idx)))
-        return tloss / (batch_idx)
+    model.train()
+    tloss = 0.0
+    for batch_idx, (data, target) in enumerate(train_loader):
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        data, target = Variable(data), Variable(target)
+        optimizer.zero_grad()
+        output = model(data)
+        loss = F.nll_loss(output, target)
+        tloss += loss.data[0]
+        loss.backward()
+        optimizer.step()
+        if (batch_idx * len(data) + 1) % args.log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), tloss / (batch_idx)))
+    return tloss / (batch_idx)
 ```
 
 As shown, this handles training our model and calculating the training loss.
@@ -128,22 +128,22 @@ We perform some very simple modifications to our training function, as follows:
 
 ```
 def train(epoch):
-        tloss = 0.0
-        for batch_idx, (data, target) in enumerate(train_loader):
-            data1 = Variable(data, volatile=True)
-            target1 = Variable(target)
-            optimizer.zero_grad()
-            output = forward(data1)
-            res = F.nll_loss(output, target1)
-            loss = res.backward()
-            tloss = tloss + loss.data[0]
-            optimizer.step()
-            tmp = tloss
-            if (batch_idx + 1) % args.log_interval == 0:
-                print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx + 1, len(train_loader),
-                    100. * batch_idx / len(train_loader), tmp / batch_idx))
-        return tloss / len(train_loader)
+    tloss = 0.0
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data1 = Variable(data, volatile=True)
+        target1 = Variable(target)
+        optimizer.zero_grad()
+        output = forward(data1)
+        res = F.nll_loss(output, target1)
+        loss = res.backward()
+        tloss = tloss + loss.data[0]
+        optimizer.step()
+        tmp = tloss
+        if (batch_idx + 1) % args.log_interval == 0:
+            print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx + 1, len(train_loader),
+                100. * batch_idx / len(train_loader), tmp / batch_idx))
+    return tloss / len(train_loader)
 ```
 
 Running `time python3 lantern_demo.py` yields a giant wall of text, separated into 5 categories (we elide some for simplicity of presentation):
