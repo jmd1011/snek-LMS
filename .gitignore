@@ -6,3 +6,4 @@ compiler/project/target
 *.pyc
 gen/
 .snek*.log
+data/
