@@ -240,7 +240,7 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       case "step" =>
         for ((weight, idx) <- variables.zipWithIndex) {
           weight.x.addMul(-lr, weight.d)
-          weight.clear_grad()
+          // weight.clear_grad()
         }
         LiteralT(())
     }
