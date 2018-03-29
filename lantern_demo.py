@@ -138,10 +138,10 @@ def run(train_loader):
             tloss = tloss + loss.data[0]
             loss.backward()
             optimizer.step()
-        #    if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
-        # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #     epoch, batch_idx * len(data), len(train_loader.dataset),
-        #     100. * batch_idx / len(train_loader), tloss / (batch_idx)))
+            if ((batch_idx + 1) * len(data)) % args.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * args.batch_size, len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), tloss / (batch_idx)))
         return tloss / len(train_loader)
 
     asdf = train(4)
@@ -161,9 +161,9 @@ def run(train_loader):
             correct = correct + pred.eq(target1.data.view_as(pred)).sum()
 
         test_loss = test_loss / len(test_loader.dataset)
-        # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        #     test_loss, correct, len(test_loader.dataset),
-        #     100. * correct / len(test_loader.dataset)))
+        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+            test_loss, correct, len(test_loader.dataset),
+            100. * correct / len(test_loader.dataset)))
 
     test()
 

@@ -126,14 +126,14 @@ def stageTensor(func):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            # self.gateway = JavaGateway()
-            # self.moduleName = 'module_{}'.format(func.__name__)
-            # self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
+            self.gateway = JavaGateway()
+            self.moduleName = 'module_{}'.format(func.__name__)
+            self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
-            # exec("import {} as foo".format(self.moduleName), globals())
-            # return foo.x1(*args)
-            return None
+            exec("import {} as foo".format(self.moduleName), globals())
+            return foo.x1(*args)
+            # return None
 
     return Snippet()
 

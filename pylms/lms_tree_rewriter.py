@@ -357,12 +357,27 @@ class StagingRewriter(ast.NodeTransformer):
             return new_node
 
         if node.func.id is 'print':
-            new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
-                                args=node.args,
-                                keywords=[])
-            ast.copy_location(new_node, node)
-            ast.fix_missing_locations(new_node)
-            return new_node
+            if isinstance(node.args[0], ast.Call) and node.args[0].func.attr is 'format':
+                args = [
+                    node.args[0].func.value,
+                    ast.List(elts=node.args[0].args,ctx=ast.Load())
+                ]
+                new_node = ast.Call(func=ast.Name(id='__printf', ctx=ast.Load()),
+                                    args=args,
+                                    keywords=[])
+
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                return new_node
+
+            else:
+                new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
+                                    args=node.args,
+                                    keywords=[])
+
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                return new_node
 
         if node.func.id is 'len':
             new_node = ast.Call(func=ast.Name(id='__len', ctx=ast.Load()),

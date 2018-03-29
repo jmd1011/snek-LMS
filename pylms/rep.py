@@ -1,6 +1,6 @@
 __all__ = [
     'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
-    '__if', '__while', '__return', '__print',
+    '__if', '__while', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
     '__break', '__continue', '__for'
 ]
@@ -60,8 +60,12 @@ class Rep(object):
         return reflect(["-",self,m])
     def __mul__(self, m):
         return reflect(["*",self,m])
+    def __rmul__(m, self):
+        return reflect(["*",m,self])
     def __truediv__(self, m):
         return reflect(["/",self,m])
+    def __mod__(self, m):
+        return reflect(["%",self,m])
     def __eq__(self, m):
         return reflect(["==",self,m])
     def __ne__(self, m):
@@ -98,6 +102,10 @@ def __print(value): # TODO HACK!
         return reflect(["print", '"{}"'.format(value)])
     else:
         return reflect(["print", value])
+
+def __printf(s, vs):
+    nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]
+    return reflect(["printf", ['"{}"'.format(s), ["{}".format(", ".join(nvs))]]])
 
 def __var():
     return reflect(["new"])

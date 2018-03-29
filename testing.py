@@ -1,9 +1,18 @@
 from pylms import lms, stage, stageTensor, ast
 from pylms.rep import Rep
 
-# @ast
-# def t():
-#   x = "hi"
+# @lms
+# def t(x):
+#   print("{}{}{}".format("0","1","2"))
+#   # __printf("{}{}{}", ["0","1","2"])
+
+# print(t.src)
+
+# @stageTensor
+# def tX(x):
+#   return t(x)
+
+# print(tX.code)
 
 @lms
 def test(x):
@@ -23,6 +32,7 @@ def test(x):
   loss = out.backward()
   print(z)
   print(loss.data[0])
+  # print("{}".format(z))
 
 print(test.src)
 
