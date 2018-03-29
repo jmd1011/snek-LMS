@@ -57,9 +57,9 @@ def run(dummy):
             tloss = tloss + loss.data[0]
             optimizer.step()
             tmp = tloss
-            if batch_idx % args.log_interval == 0:
+            if (batch_idx + 1) % args.log_interval == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx, len(train_loader),
+                    epoch, batch_idx + 1, len(train_loader),
                     100. * batch_idx / len(train_loader), tmp / batch_idx))
         return tloss / len(train_loader)
 
