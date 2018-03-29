@@ -20,8 +20,8 @@ train_loader = torch.utils.data.DataLoader(
 
 
 def train():
-    with open(target_dir + 'mnist_train.bin', 'wb') as f:
-        with open(target_dir + 'mnist_train_target.bin', 'wb') as g:
+    with open(target_dir + 'MNIST_train.bin', 'wb') as f:
+        with open(target_dir + 'MNIST_train_target.bin', 'wb') as g:
             for batch_idx, (data, target) in enumerate(train_loader):
                 for by in data.storage().tolist():
                     f.write(struct.pack("@f", by))
