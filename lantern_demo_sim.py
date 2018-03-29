@@ -70,12 +70,12 @@ def run(train_loader):
     def forward(x):
         #x = F.relu(F.max_pool2d(self.conv1(x), 2))
         #x = F.relu(F.max_pool2d(self.conv2(x), 2))
-        x = x.view(-1, 784)
+        x1 = x.view(-1, 784)
         #x = self.fc1(x)
-        x = F.relu(fc1(x))
+        x2 = F.relu(fc1(x1))
         #x = F.dropout(x, training=self.training)
-        x = fc2(x)
-        return F.log_softmax(x, dim=1)
+        x3 = fc2(x2)
+        return F.log_softmax(x3, dim=1)
 
     def train(epoch):
         # model.train()
