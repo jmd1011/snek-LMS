@@ -77,13 +77,13 @@ Finally, we can run the demo:
 This will give a giant wall of text, separated into 5 categories:
 
 1. ORIGINAL SOURCE
-	i. The PyTorch code which we're transforming.
+	1. The PyTorch code which we're transforming.
 2. STAGED SOURCE
-	i. The transformed PyTorch code.
+	1. The transformed PyTorch code.
 3. IR CODE
-	i. The [S-Expr](https://en.wikipedia.org/wiki/S-expression) intermediate representation which will be read by our Scala code (in the `compiler` directory) and used to generate Lantern code.
+	1. The [S-Expr](https://en.wikipedia.org/wiki/S-expression) intermediate representation which will be read by our Scala code (in the `compiler` directory) and used to generate Lantern code.
 4. GENERATED CODE
-	i. The C++ code output by Lantern.
+	1. The C++ code output by Lantern.
 
 The generated code is also available for inspection in the `gen` folder (in our case, it's the `module_runX.cpp` file).
 
