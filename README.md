@@ -77,6 +77,16 @@ Let's take a look at some of the PyTorch code we'll be working with (available i
 ```
 def run():
 	...
+	kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../data', train=True, download=True,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.1307,), (0.3081,))
+                       ])),
+                       # transform=transforms.ToTensor()),
+        batch_size=args.batch_size, shuffle=False, **kwargs)
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -159,6 +169,15 @@ We perform some very simple modifications to our training function and add some 
 @lms
 def run(dummy):
 	...
+	kwargs = {}
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../data', train=True, download=True,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.1307,), (0.3081,))
+                       ])),
+        batch_size=1, shuffle=False, **kwargs)
+
 	fc1 = nn.Linear(784, 50)
     fc2 = nn.Linear(50, 10)
     optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
@@ -243,30 +262,61 @@ Running `time python3 lantern_demo.py` yields a giant wall of text, separated in
 ==============================================================
 ========================STAGED SOURCE=========================
 ==============================================================
-def train(epoch):
+def run(dummy):
     try:
-        tloss = __var()
-        __assign(tloss, 0.0)
+        idx = __var()
+        ... #elided for presentation
+        train_loader = torch_loader('MNIST', True, True, trans_compose([trans_to_tensor(), trans_normalize((0.1307,), (0.3081,))]))
+        fc1 = nn_linear(784, 50)
+        fc2 = nn_linear(50, 10)
+        optimizer = optim_SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
 
-        def forfunc$1(batch_idx, data, target):
-            data1 = rep_variable(data, volatile=True)
-            target1 = rep_variable(target)
-            optimizer.zero_grad()
-            output = forward(data1)
-            res = F_nll_loss(output, target1)
-            loss = res.backward()
-            __assign(tloss, (__read(tloss) + loss.data_get(0)))
-            optimizer.step()
-            tmp = __read(tloss)
+        def forward(x):
+            try:
+                x1 = x.view((- 1), 784)
+                x2 = F_relu(fc1(x1))
+                x3 = fc2(x2)
+                __return(F_log_softmax(x3, dim=1))
+            except NonLocalReturnValue as r:
+                return r.value
 
-            def then$1():
-                __printf('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}', [epoch, (batch_idx + 1), __len(train_loader), ((100.0 * batch_idx) / __len(train_loader)), (tmp / batch_idx)])
+        def train(epoch):
+            try:
+                tloss = __var()
+                __assign(tloss, 0.0)
 
-            def else$1():
-                pass
-            __if((((batch_idx + 1) % args.log_interval) == 0), then$1, else$1)
-        __for_dataloader(train_loader, forfunc$1)
-        __return((__read(tloss) / __len(train_loader)))
+                def forfunc$1(batch_idx, data, target):
+                    data1 = rep_variable(data, volatile=True)
+                    target1 = rep_variable(target)
+                    optimizer.zero_grad()
+                    output = forward(data1)
+                    res = F_nll_loss(output, target1)
+                    loss = res.backward()
+                    __assign(tloss, (__read(tloss) + loss.data_get(0)))
+                    optimizer.step()
+                    tmp = __read(tloss)
+
+                    def then$1():
+                        __printf('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}', [epoch, (batch_idx + 1), __len(train_loader), ((100.0 * batch_idx) / __len(train_loader)), (tmp / batch_idx)])
+
+                    def else$1():
+                        pass
+                    __if((((batch_idx + 1) % args.log_interval) == 0), then$1, else$1)
+                __for_dataloader(train_loader, forfunc$1)
+                __return((__read(tloss) / __len(train_loader)))
+            except NonLocalReturnValue as r:
+                return r.value
+        __assign(idx, 0)
+        __print('Start Training')
+
+        def cond$1():
+            return (__read(idx) < args.epochs)
+
+        def body$1():
+            __assign(idx, (__read(idx) + 1))
+            __printf('Epoch {:.0f}', [__read(idx)])
+            train(__read(idx))
+        __while(cond$1, body$1)
     except NonLocalReturnValue as r:
         return r.value
 ```
