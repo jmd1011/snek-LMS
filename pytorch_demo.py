@@ -64,7 +64,7 @@ def run():
 
     for epoch in range(1, args.epochs + 1):
         train(epoch)
-        print('Training completed in {} sec ({} sec/image)'.format(int(stop - start), (stop - start)/60000))
+        # print('Training completed in {} sec ({} sec/image)'.format(int(stop - start), (stop - start)/60000))
 
 
 

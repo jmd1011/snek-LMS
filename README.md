@@ -61,7 +61,7 @@ With these in place, you should be able to perform `make init` and have all othe
 
 ## Punch it, Chewy!
 
-With everything installed, perform the following steps to actually get things moving!
+With everything installed, we can actually get things moving!
 
 (If you skipped to this section, don't forget to run `make init` to get all prerequisites installed.)
 
@@ -70,28 +70,223 @@ You should only need to run these once to set up Snek-LMS:
 - `make data #this downloads and sets up the MNIST data`
 - `make build_compiler`
 
-Finally, we can run the demo:
+Let's take a look at some of the PyTorch code we'll be working with (available in `pytorch_demo.py`):
 
-- `python3 lantern_demo.py`
+```
+def train(epoch):
+        model.train()
+        tloss = 0.0
+        for batch_idx, (data, target) in enumerate(train_loader):
+            if args.cuda:
+                data, target = data.cuda(), target.cuda()
+            data, target = Variable(data), Variable(target)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = F.nll_loss(output, target)
+            tloss += loss.data[0]
+            loss.backward()
+            optimizer.step()
+            if (batch_idx * len(data) + 1) % args.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader), tloss / (batch_idx)))
+        return tloss / (batch_idx)
+```
 
-This will give a giant wall of text, separated into 5 categories:
+As shown, this handles training our model and calculating the training loss.
+
+Running this code using `time python3 pytorch_demo.py` yields something similar to the following output:
+
+```
+
+Train Epoch: 1 [6000/60000 (10%)]	Loss: 0.971245
+Train Epoch: 1 [12000/60000 (20%)]	Loss: 0.702314
+Train Epoch: 1 [18000/60000 (30%)]	Loss: 0.603477
+Train Epoch: 1 [24000/60000 (40%)]	Loss: 0.530881
+Train Epoch: 1 [30000/60000 (50%)]	Loss: 0.487666
+Train Epoch: 1 [36000/60000 (60%)]	Loss: 0.456104
+Train Epoch: 1 [42000/60000 (70%)]	Loss: 0.431443
+Train Epoch: 1 [48000/60000 (80%)]	Loss: 0.412651
+Train Epoch: 1 [54000/60000 (90%)]	Loss: 0.396839
+Train Epoch: 1 [60000/60000 (100%)]	Loss: 0.376887
+Train Epoch: 2 [6000/60000 (10%)]	Loss: 0.218387
+Train Epoch: 2 [12000/60000 (20%)]	Loss: 0.222979
+...
+Train Epoch: 10 [54000/60000 (90%)]	  Loss: 0.074284
+Train Epoch: 10 [60000/60000 (100%)]	Loss: 0.072710
+
+real	3m25.236s
+user	3m21.780s
+sys		0m9.404s
+```
+
+While a training loss of only 0.07 is great for 10 epochs, the fact that this can take upwards of 5 minutes definitely isn't so great.
+
+Let's see if we can do better with Snek-LMS and Lantern!
+
+We perform some very simple modifications to our training function, as follows:
+
+```
+def train(epoch):
+        tloss = 0.0
+        for batch_idx, (data, target) in enumerate(train_loader):
+            data1 = Variable(data, volatile=True)
+            target1 = Variable(target)
+            optimizer.zero_grad()
+            output = forward(data1)
+            res = F.nll_loss(output, target1)
+            loss = res.backward()
+            tloss = tloss + loss.data[0]
+            optimizer.step()
+            tmp = tloss
+            if (batch_idx + 1) % args.log_interval == 0:
+                print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx + 1, len(train_loader),
+                    100. * batch_idx / len(train_loader), tmp / batch_idx))
+        return tloss / len(train_loader)
+```
+
+Running `time python3 lantern_demo.py` yields a giant wall of text, separated into 5 categories (we elide some for simplicity of presentation):
 
 1. ORIGINAL SOURCE
-	1. The PyTorch code which we're transforming.
+	1. The PyTorch code which we're transforming. We elide this in our output, as it is visible above.
 2. STAGED SOURCE
 	1. The transformed PyTorch code.
+
+```
+==============================================================
+========================STAGED SOURCE=========================
+==============================================================
+def train(epoch):
+    try:
+        tloss = __var()
+        __assign(tloss, 0.0)
+
+        def forfunc$1(batch_idx, data, target):
+            data1 = rep_variable(data, volatile=True)
+            target1 = rep_variable(target)
+            optimizer.zero_grad()
+            output = forward(data1)
+            res = F_nll_loss(output, target1)
+            loss = res.backward()
+            __assign(tloss, (__read(tloss) + loss.data_get(0)))
+            optimizer.step()
+            tmp = __read(tloss)
+
+            def then$1():
+                __printf('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}', [epoch, (batch_idx + 1), __len(train_loader), ((100.0 * batch_idx) / __len(train_loader)), (tmp / batch_idx)])
+
+            def else$1():
+                pass
+            __if((((batch_idx + 1) % args.log_interval) == 0), then$1, else$1)
+        __for_dataloader(train_loader, forfunc$1)
+        __return((__read(tloss) / __len(train_loader)))
+    except NonLocalReturnValue as r:
+        return r.value
+```
+
 3. IR CODE
 	1. The [S-Expr](https://en.wikipedia.org/wiki/S-expression) intermediate representation which will be read by our Scala code (in the `compiler` directory) and used to generate Lantern code.
+
+```
+==============================================================
+===========================IR CODE============================
+==============================================================
+(def runX (in) (begin (begin (let x0 new (let x1 (transform toTensor) (let x2 (transform normalize (0.1307 0.3081)) (let x3 (transform compose (x1 x2)) (let x4 (loader (MNIST True True x3)) (let x5 (tensor (50 784)) (let x6 (variable x5 False) (let x7 (tensor (50)) (let x8 (variable x7 False) (let x9 (tensor (10 50)) (let x10 (variable x9 False) (let x11 (tensor (10)) (let x12 (variable x11 False) (let x13 (SGD (0.0005 0.0)) (let x14 (set x0 0) (let x15 (print "Start Training") (let x16 (while (begin (let x16 (get x0) (let x17 (< x16 10) x17))) (begin (let x16 (get x0) (let x17 (+ x16 1) (let x18 (set x0 x17) (let x19 (get x0) (let x20 (printf ("Epoch {:.0f}" x19)) (let x21 (get x0) (let x22 new (let x23 (set x22 0.0) (let x26 (for_dataloader x4 (x24 t0 x25) (begin (let x26 (variable t0 True) (let x27 (variable x25 False) (let x28 (call x13 zero_grad) (let x29 (call x26 view (-1 784)) (let x30 (dot x6 x29) (let x31 (+ x30 x8) (let x32 (call relu (x31)) (let x33 (dot x10 x32) (let x34 (+ x33 x12) (let x35 (call log_softmax (x34 1)) (let x36 (call nll_loss (x35 x27 True)) (let x37 (call x36 backward) (let x38 (get x22) (let x39 (array-get x37 data 0) (let x40 (+ x38 x39) (let x41 (set x22 x40) (let x42 (call x13 step) (let x43 (get x22) (let x44 (+ x24 1) (let x45 (% x44 6000) (let x46 (== x45 0) (let x47 (if x46 (begin (let x47 (+ x24 1) (let x48 (len x4) (let x49 (* x24 100.0) (let x50 (len x4) (let x51 (/ x49 x50) (let x52 (/ x43 x24) (let x53 (printf ("Train Epoch: {:.0f} ({}/{} ({:.0f}%))\tLoss: {:.6f}" x21 x47 x48 x51 x52)) None)))))))) (begin None)) None)))))))))))))))))))))))) (let x27 (get x22) (let x28 (len x4) (let x29 (/ x27 x28) None)))))))))))))) None))))))))))))))))))))
+```
+
 4. GENERATED CODE
-	1. The C++ code output by Lantern.
+	1. The C++ code output by Lantern. This generated code is also available for inspection in the `gen` folder (in our case, it's the `module_runX.cpp` file).
+
+```
+==============================================================
+========================GENERATED CODE========================
+==============================================================
+/*****************************************/
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include "lantern.h"
+#include "module_runX.h"
+using namespace std;
+void x1(int x2) {
+  float x3 = 0.0f;
+  float* x14 = (float*)myMalloc(39200 * sizeof(float));
+  for(int x16=0; x16 < 39200; x16++) {
+    float x17 = (float)rand()/RAND_MAX;
+    float x18 = x17 - 0.5f;
+    float x19 = x18 * 1.0f;
+    x14[x16] = x19;
+  }
+  float* x23 = (float*)myMalloc(50 * sizeof(float));
+  for(int x25=0; x25 < 50; x25++) {
+    float x26 = (float)rand()/RAND_MAX;
+    float x27 = x26 - 0.5f;
+    float x28 = x27 * 1.0f;
+    x23[x25] = x28;
+  }
+  float* x32 = (float*)myMalloc(500 * sizeof(float));
+  for(int x34=0; x34 < 500; x34++) {
+    float x35 = (float)rand()/RAND_MAX;
+    float x36 = x35 - 0.5f;
+    float x37 = x36 * 1.0f;
+    x32[x34] = x37;
+  }
+...
+  return ;
+}
+int32_t entrypoint(int32_t  x0) {
+}
+/*******************************************/
+
+```
+
 5. EXECUTING CODE
 	1. The output of the C++ code (generated by Lantern).
 
-The generated code is also available for inspection in the `gen` folder (in our case, it's the `module_runX.cpp` file).
+```
+==============================================================
+========================EXECUTING CODE========================
+==============================================================
+Start Training
+Epoch 1
+Train Epoch: 1 (6000/60000 (10%))	Loss: 2.282214
+Train Epoch: 1 (12000/60000 (20%))	Loss: 1.521544
+Train Epoch: 1 (18000/60000 (30%))	Loss: 1.237902
+Train Epoch: 1 (24000/60000 (40%))	Loss: 1.034043
+Train Epoch: 1 (30000/60000 (50%))	Loss: 0.916597
+Train Epoch: 1 (36000/60000 (60%))	Loss: 0.822662
+Train Epoch: 1 (42000/60000 (70%))	Loss: 0.753137
+Train Epoch: 1 (48000/60000 (80%))	Loss: 0.698994
+Train Epoch: 1 (54000/60000 (90%))	Loss: 0.657642
+Train Epoch: 1 (60000/60000 (100%))	Loss: 0.614844
+Epoch 2
+Train Epoch: 2 (6000/60000 (10%))	Loss: 0.259043
+Train Epoch: 2 (12000/60000 (20%))	Loss: 0.251854
+...
+Train Epoch: 10 (54000/60000 (90%))	Loss: 0.106502
+Train Epoch: 10 (60000/60000 (100%))	Loss: 0.103535
+```
 
-### Optional: Running PyTorch
+Finally, we have the timing results:
 
-If you'd like to run an equivalent demo using vanilla PyTorch, we've provided such an implementation. Simply run this using `python3 pytorch_demo.py` and dare to compare against the power of Snek-LMS and Lantern!
+```
+real	0m49.702s
+user	0m48.432s
+sys		0m0.404s
+```
+
+Despite the additional overhead associated with this metaprogramming and compilation, this runs nearly 3 times faster than the vanilla PyTorch code (clocking in well under a minute).
+
+To learn more about Lantern, check out their website [here!](https://feiwang3311.github.io/Lantern/)
+
+Interested in learning more about Snek-LMS? We have more details below!
 
 # Lightweight Syntax for Building Computation Graphs
 
