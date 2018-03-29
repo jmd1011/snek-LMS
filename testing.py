@@ -15,17 +15,14 @@ def test(x):
   from torch.autograd import Variable
   import time
 
-  # z = Variable(newTensor(2, 3))
-  # y = z + z
-  kwargs = {}
-  train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
-                       transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
-                       # transform=transforms.ToTensor()),
-        batch_size=10, shuffle=False, **kwargs)
+  init = newTensor(3)
+  print(init)
+  z = Variable(init)
+  y = z + z
+  out = F.nll_loss(y, 1)
+  loss = out.backward()
+  print(z)
+  print(loss.data[0])
 
 print(test.src)
 
@@ -35,4 +32,6 @@ def testX(x):
 
 print(testX.code)
 
-# print(testX.Ccode)
+print(testX.Ccode)
+
+testX(1)

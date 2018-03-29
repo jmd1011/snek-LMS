@@ -14,6 +14,8 @@ import scala.virtualization.lms.common._
 
 import java.io.{PrintWriter, File}
 
+import scala.collection.mutable.ArrayBuffer
+
 import lantern._
 
 trait Compiler extends TensorExp with UninlinedFunctionOps {
@@ -151,8 +153,24 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
   }
   case class LiteralT[T](v: Rep[T]) extends ValueT
   case class TensorV(v: Tensor) extends ValueT
-  case class DiffV[T](v: () => T @diff) extends ValueT
+
+
+  val variables = new ArrayBuffer[TensorR]()
+  class Result[+T](v: () => T @diff) {
+    var x: Int = -1
+    def apply() = {
+      // if (x == -1) {
+      //   x = variables.length
+      //   variables += v()
+      // }
+      // variables(x)
+      v()
+    }
+  }
+
+  case class DiffV[T](v: Result[T]) extends ValueT
   type EnvT = Map[String, ValueT]
+
   @virtualize
   def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
     case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
@@ -160,8 +178,8 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
         case x1::Nil =>
           lazy val fptr: Rep[Int => Unit] = uninlinedFunc1 { (x1v: Rep[Int]) =>
             compileT(body)(env + (x1 -> LiteralT(x1v)) + (f -> LiteralT(fptr))) match {
-              case DiffV(a: Function0[Unit @diff]) => val r = reset { a() }; unit(r)
-              case LiteralT(()) => unit(())
+              // case DiffV(a: Function0[Unit @diff]) => val r = reset { a() }; unit(r)
+              case LiteralT(_: Rep[Unit]) => unit(())
               case a => System.out.println(s"$a"); ???
             }
           }
@@ -173,24 +191,47 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
         case (agg, exp) => Some(compileT(exp))
       }
       res.get
+    case "call"::(fun: String)::(args: List[Any])::Nil => fun match {
+      case "nll_loss" => (compileT(args(0)), compileT(args(1))) match {
+        case (DiffV(a: Result[TensorR]), LiteralT(target: Rep[Int])) => DiffV[TensorR](new Result(() => a().nllLoss(target)))
+      }
+    }
+    case "call"::(x: Any)::(member: String)::Nil => member match {
+      case "backward" => compileT(x) match {
+        case DiffV(a: Result[TensorR]) => TensorV(gradR_loss(dummy => a())(Tensor.scalar(0.0f)))
+        case x => System.out.println(s">> $x"); ???
+      }
+      case "print" => compileT(x) match {
+        case TensorV(a) => a.print(); LiteralT(())
+        case DiffV(a: Result[TensorR]) =>
+          // LiteralT(reset { val r = a(); r.print(derivative=true) })
+          DiffV[Unit](new Result(() => { val r = a(); r.print(derivative=true) }))
+        case LiteralT(x: Rep[Float]) => LiteralT(printf("%.4f\\n", x))
+      }
+    }
+    case "array-get"::x::"data"::idx::Nil => (compileT(x), compileT(idx)) match {
+      case (DiffV(a: Result[TensorR]), LiteralT(idx: Rep[Int])) =>
+        var r: Tensor = null
+        reset { val tensor = a(); r = tensor.x }
+        LiteralT(r.data(idx))
+      case (TensorV(a), LiteralT(idx: Rep[Int])) =>
+        LiteralT(a.data(idx))
+    }
     case "tensor"::(list: List[Int])::Nil => TensorV(Tensor.rand(list:_*))
     case "+"::n::m::Nil =>
       (compileT(n), compileT(m)) match {
         case (TensorV(a), TensorV(b)) => TensorV(a + b)
-        case (DiffV(a: Function0[TensorR @diff]), DiffV(b: Function0[TensorR @diff])) => DiffV[TensorR](() => a() + b())
-      }
-    case "call"::n::"print"::Nil => compileT(n) match {
-        case (TensorV(a)) => a.print(); LiteralT(())
-        case (DiffV(a: Function0[TensorR @diff])) => DiffV[TensorR](() => { val r = a(); r.print(); r })
+        case (DiffV(a: Result[TensorR]), DiffV(b: Result[TensorR])) => DiffV[TensorR](new Result(() => a() + b()))
       }
     case "let"::(x: String)::a::b::Nil =>
       compileT(b)(env + (x -> compileT(a)))
     case "None" | Nil => LiteralT(())
     case "variable"::t::Nil =>
       compileT(t) match {
-        case TensorV(t) => DiffV[TensorR](() => TensorR(t))
+        case TensorV(t) => DiffV[TensorR](new Result(() => { val res = TensorR(t); variables += res; res}))
       }
     case x: String => env(x)
+    case x: Int => LiteralT(unit(x))
   }
 }
 
