@@ -7,7 +7,7 @@ from torch.autograd import Variable
 
 __all__ = [
     'newTensor', 'RepTensor', 'nn_linear', 'nn_conv2d', 'optim_SGD',
-    'torch_loader', '__variable', '__for_dataloader',
+    'torch_loader', 'rep_variable', '__for_dataloader',
     'trans_compose', 'trans_to_tensor', 'trans_normalize',
     'F_nll_loss', 'F_relu', 'F_dropout', 'F_max_pool2d', 'F_log_softmax', ]
 
@@ -66,8 +66,8 @@ class RepTensor(Rep):
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
-            self.weight = newTensor(outsize, hlsize)
-            self.bias =  newTensor(outsize)
+            self.weight = rep_variable(newTensor(outsize, hlsize))
+            self.bias   = rep_variable(newTensor(outsize))
             self.linear = None
 
         def __call__(self, tensor):
@@ -182,7 +182,7 @@ def F_log_softmax(tensor, dim):
     else:
         return reflectTensor(["call", "log_softmax", [tensor, dim]])
 
-def __variable(tensor):
+def rep_variable(tensor):
     class RepVariable(RepTensor):
         def __init__(self, n):
             self.n = n
