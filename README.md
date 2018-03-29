@@ -100,7 +100,7 @@ from pylms.rep import Rep                  # add our snek-lms module
 
 @lms                                       # add anotation for snek-lms
 def run(dummy):
-	...
+    ...
     train_loader = torch.utils.data.DataLoader(...)
 
     fc1 = nn.Linear(784, 50)
