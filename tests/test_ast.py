@@ -17,6 +17,12 @@ def test_power_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "lantern.h"
 """ + "#include \"{0}.h\"".format(power.moduleName) + """
 using namespace std;
@@ -65,6 +71,12 @@ def test_ifelse_Ccode():
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "lantern.h"
 """ + "#include \"{0}.h\"".format(ifelse.moduleName) + """
 using namespace std;
