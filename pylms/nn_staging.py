@@ -137,8 +137,6 @@ def torch_loader(name, train, download, transforms):
 
         def __repr__(self):
             return str(self.n)
-        # def __len__(self):
-        #     return reflectTensor(["call",self,"len"])
 
     tmp = reflect(["loader", [name, train, download, transforms]])
     return RepLoader(tmp.n)
@@ -204,7 +202,7 @@ def rep_variable(tensor):
 
 def __for_dataloader(src_file, bdfun):
     var_idx = fresh()
-    var_data = RepTensor(reflect(freshTensor()).n)
+    var_data = freshTensor()
     var_target = fresh()
 
     def capture(f):
