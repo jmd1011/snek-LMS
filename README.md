@@ -89,6 +89,10 @@ This will give a giant wall of text, separated into 5 categories:
 
 The generated code is also available for inspection in the `gen` folder (in our case, it's the `module_runX.cpp` file).
 
+### Optional: Running PyTorch
+
+If you'd like to run an equivalent demo using vanilla PyTorch, we've provided such an implementation. Simply run this using `python3 pytorch_demo.py` and dare to compare against the power of Snek-LMS and Lantern!
+
 # Lightweight Syntax for Building Computation Graphs
 
 Snek-LMS provides a decorator `@lms` that extends Python's operator overloading capabilities to many built-in operations. This function:
