@@ -19,11 +19,11 @@ As always, the first step is to ensure all necessary prerequisites are installed
 
 Snek-LMS requires at least Python 3.5.
 
-[Install Python 3.5 for Linux](http://docs.python-guide.org/en/latest/starting/install3/linux/)
+[Installing Python 3.5 for Linux](http://docs.python-guide.org/en/latest/starting/install3/linux/)
 
-[Install Python 3.5 for OSX](http://docs.python-guide.org/en/latest/starting/install3/osx/)
+[Installing Python 3.5 for OSX](http://docs.python-guide.org/en/latest/starting/install3/osx/)
 
-[Install Python 3.5 for Windows](http://docs.python-guide.org/en/latest/starting/install3/win/)
+[Installing Python 3.5 for Windows](http://docs.python-guide.org/en/latest/starting/install3/win/)
 
 ### pip3
 
@@ -49,11 +49,11 @@ PyTorch has an easy to use installation guide on their site, linked below.
 
 ### g++
 
-Install g++ for Linux: `sudo apt install g++` (or equivalent)
+Installing g++ for Linux: `sudo apt install g++` (or equivalent)
 
-[Install g++ for OSX](http://www-scf.usc.edu/~csci104/20142/installation/gccmac.html)
+[Installing g++ for OSX](http://www-scf.usc.edu/~csci104/20142/installation/gccmac.html)
 
-[Install g++ for Windows](http://www1.cmc.edu/pages/faculty/alee/g++/g++.html)
+[Installing g++ for Windows](http://www1.cmc.edu/pages/faculty/alee/g++/g++.html)
 
 ### Other Requirements
 
