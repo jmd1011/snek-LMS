@@ -75,24 +75,47 @@ You should only need to run these once to set up Snek-LMS:
 Let's take a look at some of the PyTorch code we'll be working with (available in `pytorch_demo.py`):
 
 ```
-def train(epoch):
-    model.train()
-    tloss = 0.0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target)
-        tloss += loss.data[0]
-        loss.backward()
-        optimizer.step()
-        if (batch_idx * len(data) + 1) % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), tloss / (batch_idx)))
-    return tloss / (batch_idx)
+def run():
+	...
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = nn.Linear(784, 50)
+            self.fc2 = nn.Linear(50, 10)
+
+        def forward(self, x):
+            x = x.view(-1, 784)
+            x = F.relu(self.fc1(x))
+            x = self.fc2(x)
+            return F.log_softmax(x, dim=1)
+
+    model = Net()
+    if args.cuda:
+        model.cuda()
+
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+
+	def train(epoch):
+	    model.train()
+	    tloss = 0.0
+	    for batch_idx, (data, target) in enumerate(train_loader):
+	        if args.cuda:
+	            data, target = data.cuda(), target.cuda()
+	        data, target = Variable(data), Variable(target)
+	        optimizer.zero_grad()
+	        output = model(data)
+	        loss = F.nll_loss(output, target)
+	        tloss += loss.data[0]
+	        loss.backward()
+	        optimizer.step()
+	        if (batch_idx * len(data) + 1) % args.log_interval == 0:
+	            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+	                epoch, batch_idx * len(data) + 1, len(train_loader.dataset),
+	                100. * batch_idx / len(train_loader), tloss / (batch_idx)))
+	    return tloss / (batch_idx)
+
+	for epoch in range(1, args.epochs + 1):
+		train(epoch)
 ```
 
 As shown, this handles training our model and calculating the training loss.
@@ -130,26 +153,81 @@ While a training loss of only 0.07 is great for 10 epochs, the fact that this ca
 
 Let's see if we can do better with Snek-LMS and Lantern!
 
-We perform some very simple modifications to our training function, as follows:
+We perform some very simple modifications to our training function and add some bootstrapping, as follows:
 
 ```
-def train(epoch):
-    tloss = 0.0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data1 = Variable(data, volatile=True)
-        target1 = Variable(target)
-        optimizer.zero_grad()
-        output = forward(data1)
-        res = F.nll_loss(output, target1)
-        loss = res.backward()
-        tloss = tloss + loss.data[0]
-        optimizer.step()
-        tmp = tloss
-        if (batch_idx + 1) % args.log_interval == 0:
-            print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx + 1, len(train_loader),
-                100. * batch_idx / len(train_loader), tmp / batch_idx))
-    return tloss / len(train_loader)
+@lms
+def run(dummy):
+	...
+	fc1 = nn.Linear(784, 50)
+    fc2 = nn.Linear(50, 10)
+    optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
+
+    def forward(x):
+        x1 = x.view(-1, 784)
+        x2 = F.relu(fc1(x1))
+        x3 = fc2(x2)
+        return F.log_softmax(x3, dim=1)
+
+	def train(epoch):
+	    tloss = 0.0
+	    for batch_idx, (data, target) in enumerate(train_loader):
+	        data1 = Variable(data, volatile=True)
+	        target1 = Variable(target)
+	        optimizer.zero_grad()
+	        output = forward(data1)
+	        res = F.nll_loss(output, target1)
+	        loss = res.backward()
+	        tloss = tloss + loss.data[0]
+	        optimizer.step()
+	        tmp = tloss
+	        if (batch_idx + 1) % args.log_interval == 0:
+	            print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+	                epoch, batch_idx + 1, len(train_loader),
+	                100. * batch_idx / len(train_loader), tmp / batch_idx))
+	    return tloss / len(train_loader)
+
+    idx = 0
+    while idx < args.epochs:
+        idx = idx + 1
+        train(idx)
+
+@stage
+def runX(x):
+	return run(x)
+
+print("==============================================================")
+print("=======================ORIGINAL SOURCE========================")
+print("==============================================================")
+print(run.original_src)
+
+print("==============================================================")
+print("========================STAGED SOURCE=========================")
+print("==============================================================")
+print(run.src)
+
+@stageTensor
+def runX(x):
+    return run(x)
+
+print("==============================================================")
+print("===========================IR CODE============================")
+print("==============================================================")
+print(runX.code)
+
+print("==============================================================")
+print("========================GENERATED CODE========================")
+print("==============================================================")
+print(runX.Ccode)
+
+print("==============================================================")
+print("========================EXECUTING CODE========================")
+print("==============================================================")
+runX(0)
+
+print("==============================================================")
+print("========================EXITING PROGRAM=======================")
+print("==============================================================")
 ```
 
 ### Running Lantern
