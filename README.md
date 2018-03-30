@@ -96,23 +96,23 @@ Let's see if we can do better with Snek-LMS and Lantern!
 We perform some very simple modifications to our training function and add some bootstrapping, as follows:
 
 ```
-from pylms import lms, stage, stageTensor  # add our snek-lms module 
-from pylms.rep import Rep                  # add our snek-lms module 
+from pylms import lms, stage, stageTensor  # add our snek-lms module
+from pylms.rep import Rep                  # add our snek-lms module
 
-@lms                                       # add anotation for snek-lms
+@lms                                       # add annotation for snek-lms
 def run(dummy):
     ...
     train_loader = torch.utils.data.DataLoader(...)
 
     fc1 = nn.Linear(784, 50)
     fc2 = nn.Linear(50, 10)
-    
+
     def forward(x):
         x1 = x.view(-1, 784)
         x2 = F.relu(fc1(x1))
         x3 = fc2(x2)
         return F.log_softmax(x3, dim=1)
-    
+
     optimizer = optim.SGD(...)
 
     def train(epoch):
@@ -129,11 +129,11 @@ def run(dummy):
         idx = idx + 1
         train(idx)
 
-@stage                                     # add anotation and bootstrapping
+@stage                                     # add annotation and bootstrapping
 def runX(x):
     return run(x)
 
-                                           # add pretty printing 
+                                           # add pretty printing
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
@@ -202,25 +202,25 @@ def run(dummy):
 
         def train(epoch):
             try:
-                
+
                 def forfunc$1(batch_idx, data, target):
                     ...
                     loss = res.backward()
                     optimizer.step()
-                    
+
                     def then$1():
                         __printf(...)
                     def else$1():
                         pass
                     __if((((batch_idx + 1) % args.log_interval) == 0), then$1, else$1)
-                
+
                 __for_dataloader(train_loader, forfunc$1)
-                
+
             except NonLocalReturnValue as r:
                 return r.value
-        
+
         __assign(idx, 0)
-        
+
         def cond$1():
             return (__read(idx) < args.epochs)
 
