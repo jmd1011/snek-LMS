@@ -63,6 +63,7 @@ def lms(func):
 
             #self.code = "foobar"
         def __call__(self,*args):
+            print(self.src)
             return self.func(*args)
 
     return Snippet()

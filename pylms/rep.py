@@ -140,12 +140,13 @@ def __if(test, body, orelse):
         # if len(elsep) > 1:
         #     elsep.insert(0, "begin")
         rval = reflect(["if", test, thenp, elsep])
-        if thenret & elseret:
-            raise NonLocalReturnValue(rval) # proper return
-        elif (not thenret) & (not elseret):
-            return rval
-        else:
-            raise Exception("if/else: branches must either both return or none of them")
+        # if thenret & elseret:
+        #     raise NonLocalReturnValue(rval) # proper return
+        # elif (not thenret) & (not elseret):
+        #     return rval
+        # else:
+        #     raise Exception("if/else: branches must either both return or none of them")
+        return rval
 
 def __while(test, body):
     # z = test()

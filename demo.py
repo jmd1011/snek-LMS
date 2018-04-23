@@ -1,45 +1,62 @@
 from pylms import lms, lmscompile, stage
 from pylms.rep import *
-from pylms.nn_staging import *
+# from pylms.nn_staging import *
 # import numpy
 
-@lms
-def power(x, n):
-    if n == 0:
-        return 1
+
+@lms 
+def foo(x):
+    if x == 0:
+        return x
     else:
-        return x * power(x, n - 1)
-
-@stage
-def power3(x):
-    return power(x, 3)
-
-@lms
-def loop(x):
-    y = 0
-    while y < x:
-        print(y)
-        y = y + 1
-    # continue
-    return y
-
-@stage
-def loopX(x):
-    return loop(x)
-
-@lms
-def test_for(train_loader):
-    x = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data = Variable(data)
-        target = Variable(target)
-        new_data = data * data
-        x = x + 1
+        x = x - 1
     return x
 
 @stage
-def test_for2(x):
-    return test_for(x)
+def bar(x):
+    return foo(x)
+
+bar(3)
+
+print("test")
+
+# @lms
+# def power(x, n):
+#     if n == 0:
+#         return 1
+#     else:
+#         return x * power(x, n - 1)
+
+# @stage
+# def power3(x):
+#     return power(x, 3)
+
+# @lms
+# def loop(x):
+#     y = 0
+#     while y < x:
+#         print(y)
+#         y = y + 1
+#     # continue
+#     return y
+
+# @stage
+# def loopX(x):
+#     return loop(x)
+
+# @lms
+# def test_for(train_loader):
+#     x = 0
+#     for batch_idx, (data, target) in enumerate(train_loader):
+#         data = Variable(data)
+#         target = Variable(target)
+#         new_data = data * data
+#         x = x + 1
+#     return x
+
+# @stage
+# def test_for2(x):
+#     return test_for(x)
 
 # @lms
 # def lib(x):
