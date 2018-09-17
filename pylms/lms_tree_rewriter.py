@@ -347,6 +347,22 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.fix_missing_locations(new_node)
                     return new_node
 
+            if node.func.value.id is 'onnx':
+                if node.func.attr is 'load':
+                    new_node = ast.Call(func=ast.Name(id='onnx_load', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+                if node.func.attr is 'run':
+                    new_node = ast.Call(func=ast.Name(id='onnx_run', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
         if not isinstance(node.func, ast.Name):
             return node
 

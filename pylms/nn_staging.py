@@ -22,47 +22,6 @@ def newTensor(*dims):
     rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
     return RepTensor(rep.n)
 
-def reflectTensor(args):
-    rep = reflect(args)
-    return RepTensor(rep.n)
-
-class RepTensor(Rep):
-    def __init__(self, n):
-        super().__init__(n)
-    def __add__(self, m):
-        return reflectTensor(["+",self,m])
-    def __mul__(self, m):
-        return reflectTensor(["dot",self,m])
-    def __getitem__(self, i):
-        return reflectTensor(["idx",self,i])
-
-    @property
-    def data(self):
-        return reflectTensor(["getattr",self,"data"])
-
-    @data.setter
-    def data(self, v):
-        return reflectTensor(["setattr",self,"data",v])
-
-    def data_get(self, i):
-        return reflectTensor(["array-get",self,"data",i])
-    def backward(self):
-        return reflectTensor(["call",self,"backward"])
-    def conv2d(self, kernel):
-        return reflectTensor(["call",self,"conv2d",kernel])
-    def view(self, *dims):
-        return reflectTensor(["call",self,"view",dims])
-    def print(self):
-        return reflectTensor(["call",self,"print"])
-    def max(self, n, keepDim=False):
-        return reflectTensor(["call",self,"max",[n,keepDim]])
-    def eq(self,m):
-        return reflectTensor(["call",self,"eq"])
-    def view_as(self,m):
-        return reflectTensor(["call",self,"view_as",m])
-    def sum(self):
-        return reflectTensor(["call",self,"sum"])
-
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
@@ -208,4 +167,3 @@ def __for_dataloader(src_file, bdfun):
         return rval
     else:
         raise Exception("while: return in body not allowed")
-

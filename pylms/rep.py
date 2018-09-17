@@ -1,5 +1,7 @@
 __all__ = [
-    'reflect', 'reify', 'fresh', 'Rep', 'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
+    'reflect', 'reify', 'fresh',
+    'Rep', 'RepTensor',
+    'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
     '__break', '__continue', '__for'
@@ -12,7 +14,6 @@ def freshName(): # for generate AST
     n_var = var_counter
     var_counter += 1
     return "v" + str(n_var)
-
 
 stFresh = 0
 stBlock = []
@@ -80,6 +81,47 @@ class Rep(object):
         return reflect([">",self,m])
     def __repr__(self):
         return str(self.n)
+
+class RepTensor(Rep):
+    def __init__(self, n):
+        super().__init__(n)
+    def __add__(self, m):
+        return reflectTensor(["+",self,m])
+    def __mul__(self, m):
+        return reflectTensor(["dot",self,m])
+    def __getitem__(self, i):
+        return reflectTensor(["idx",self,i])
+
+    @property
+    def data(self):
+        return reflectTensor(["getattr",self,"data"])
+
+    @data.setter
+    def data(self, v):
+        return reflectTensor(["setattr",self,"data",v])
+
+    def data_get(self, i):
+        return reflectTensor(["array-get",self,"data",i])
+    def backward(self):
+        return reflectTensor(["call",self,"backward"])
+    def conv2d(self, kernel):
+        return reflectTensor(["call",self,"conv2d",kernel])
+    def view(self, *dims):
+        return reflectTensor(["call",self,"view",dims])
+    def print(self):
+        return reflectTensor(["call",self,"print"])
+    def max(self, n, keepDim=False):
+        return reflectTensor(["call",self,"max",[n,keepDim]])
+    def eq(self,m):
+        return reflectTensor(["call",self,"eq"])
+    def view_as(self,m):
+        return reflectTensor(["call",self,"view_as",m])
+    def sum(self):
+        return reflectTensor(["call",self,"sum"])
+
+def reflectTensor(args):
+    rep = reflect(args)
+    return RepTensor(rep.n)
 
 class NonLocalReturnValue(Exception):
     def __init__(self, value):
