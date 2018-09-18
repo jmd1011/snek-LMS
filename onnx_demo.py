@@ -8,13 +8,13 @@ def run(dummy):
 	import torch
 	# from torch.autograd import Variable
 	# set_backend('lantern')
-	onnx_model = onnx.load('/home/james/Research/onnx_tutorials/tutorials/assets/squeezenet.onnx')
-	input_data = 3
-	x = onnx.run(onnx_model, input_data)
+	onnx_model = onnx.load('/home/fei/bitbucket/snek-LMS/model.onnx')
+	input_file = "data.csv"
+	x = onnx.run(onnx_model, input_file)
 	print(x)
 	# x = Variable(torch.randn(1, 3, 224, 224), True)
 	# ...
-	# (let (x0 (onnx_load test.onnx)) (let (x1 (...)) (let (x2 (onnx_run (x0 x1))))))
+	# (let (x0 (onnx_load test.onnx)) (let (x1 (...)) (let (x2 (onnx_run (x0 data.csv))))))
 
 # @stageTensor
 # def runX(x):
@@ -25,4 +25,4 @@ def runX(x):
 	return run(x)
 
 print(runX.code)
-# run('a')
+runX(0)

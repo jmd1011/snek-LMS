@@ -18,7 +18,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import lantern._
 
-trait Compiler extends TensorExp with UninlinedFunctionOps {
+trait Compiler extends ONNXLib with UninlinedFunctionOps {
 
   implicit val pos = implicitly[SourceContext]
 
@@ -157,6 +157,8 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
   import Dataset.DataLoader
   case class DatasetV(v: DataLoader) extends ValueT
   case class TensorV(v: Tensor) extends ValueT
+  case class FuncT[T, U](v: T => U) extends ValueT
+  case class FuncWithDimsT[T, U](v: T => U, dims: Seq[Int]) extends ValueT
 
 
   class Result[+T](v: () => T @diff) {
@@ -360,6 +362,17 @@ trait Compiler extends TensorExp with UninlinedFunctionOps {
       LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
     case "print"::Str(s)::Nil =>
       LiteralT(printf(s + "\\n"))
+    case "onnx_load"::(filename: String)::Nil => {
+      val (func, x_dims: Seq[Int]) = readONNX(filename)
+      val rfunc = FuncWithDimsT[Tensor, Tensor](func, x_dims)
+      rfunc
+    }
+    case "onnx_run"::((model: String)::(filename: String)::Nil)::Nil => {
+      // TODO: (Fei Wang) not yet using file name as data
+      val FuncWithDimsT(func: (Tensor => Tensor), dims: Seq[Int]) = env(model)
+      val inp = Tensor.zeros(dims: _*)
+      TensorV(func(inp))
+    }
     case x: String => env(x)
     case x: Int => LiteralT(unit(x))
     case x: Float => LiteralT(unit[Float](x))
@@ -561,6 +574,13 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
          |#include <sys/stat.h>
          |#include <fcntl.h>
          |#include <sys/mman.h>
+          |#include <errno.h>
+          |#include <err.h>
+          |#include <sys/time.h>
+          |#include <time.h>
+          |#include <functional>
+          |#include <memory>
+          |#include <random>
          |#include "lantern.h"
          |#include "$moduleName.h"
          |using namespace std;""".stripMargin)
