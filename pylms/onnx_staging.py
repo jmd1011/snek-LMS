@@ -18,7 +18,7 @@ def reflectTensor(args):
     return RepTensor(rep.n)
 
 def onnx_load(filename):
-    return reflectTensor(["onnx_load", [filename]])
+    return reflectTensor(["onnx_load", filename])
 
 def onnx_run(model, data):
     return reflectTensor(["onnx_run", [model, data]])
