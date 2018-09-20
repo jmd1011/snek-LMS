@@ -44,11 +44,11 @@ def nn_conv2d(outSize, inSize, kernel_size, bias):
     class Conv2d(object):
         def __init__(self):
             self.kernel = newTensor(outSize, inSize, kernel_size, kernel_size)
-            self.cond2d = None
+            self.conv2d = None
 
         def __call__(self, tensor):
             if isinstance(tensor, torch.Tensor): #unstaged
-                if self.cond2d is None:
+                if self.conv2d is None:
                     self.conv2d = nn.Conv2d(hlsize, outsize, kernel_size=kernel_size, bias=bias)
 
                 return self.conv2d(tensor)

@@ -5,24 +5,43 @@ from pylms import lms, stageTensor
 
 @lms
 def run(dummy):
-	import torch
+	# import torch
 	# from torch.autograd import Variable
-	# set_backend('lantern')
-	onnx_model = onnx.load('/home/fei/bitbucket/snek-LMS/model.onnx')
-	input_file = "data.csv"
-	x = onnx.run(onnx_model, input_file)
-	print(x)
+	onnx_model = onnx.load('/home/james/Research/snek-LMS/compiler/Lantern/src/test/onnxModel/squeezenet/model.onnx')
 	# x = Variable(torch.randn(1, 3, 224, 224), True)
-	# ...
-	# (let (x0 (onnx_load test.onnx)) (let (x1 (...)) (let (x2 (onnx_run (x0 data.csv))))))
+	input_file = 'test.csv'
+	res = lantern.run(onnx_model, input_file) # .data.numpy())
+	print(res)
 
-# @stageTensor
-# def runX(x):
-# 	return run(x)
+print("==============================================================")
+print("=======================ORIGINAL SOURCE========================")
+print("==============================================================")
+print(run.original_src)
+
+print("==============================================================")
+print("========================STAGED SOURCE=========================")
+print("==============================================================")
+print(run.src)
 
 @stageTensor
 def runX(x):
 	return run(x)
 
+print("==============================================================")
+print("===========================IR CODE============================")
+print("==============================================================")
 print(runX.code)
+
+print("==============================================================")
+print("========================GENERATED CODE========================")
+print("==============================================================")
+print(runX.Ccode)
+
+print("==============================================================")
+print("========================EXECUTING CODE========================")
+print("==============================================================")
 runX(0)
+
+print("==============================================================")
+print("========================EXITING PROGRAM=======================")
+print("==============================================================")

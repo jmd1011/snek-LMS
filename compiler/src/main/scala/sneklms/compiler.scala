@@ -363,14 +363,15 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
     case "print"::Str(s)::Nil =>
       LiteralT(printf(s + "\\n"))
     case "onnx_load"::(filename: String)::Nil => {
-      val (func, x_dims: Seq[Int]) = readONNX(filename)
-      val rfunc = FuncWithDimsT[Tensor, Tensor](func, x_dims)
+      val model = readONNX(filename)
+      val rfunc = FuncWithDimsT[Tensor, Tensor](model.inference_func, model.x_dims)
       rfunc
     }
-    case "onnx_run"::((model: String)::(filename: String)::Nil)::Nil => {
+    case "lantern_run"::((model: String)::(filename: String)::Nil)::Nil => {
       // TODO: (Fei Wang) not yet using file name as data
       val FuncWithDimsT(func: (Tensor => Tensor), dims: Seq[Int]) = env(model)
-      val inp = Tensor.zeros(dims: _*)
+      val inp = Tensor(readOnnxData(filename), dims: _*) // Tensor.zeros(dims: _*)
+      // val inp2 = Tensor.zeros(dims: _*)
       TensorV(func(inp))
     }
     case x: String => env(x)

@@ -137,7 +137,6 @@ def __break(): raise NonLocalBreak()
 def __continue(): raise NonLocalContinue()
 
 def __print(value): # TODO HACK!
-    from .nn_staging import RepTensor
     if isinstance(value, RepTensor):
         return value.print()
     elif isinstance(value, str):

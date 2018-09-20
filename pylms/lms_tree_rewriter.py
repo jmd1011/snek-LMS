@@ -355,8 +355,10 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.copy_location(new_node, node)
                     ast.fix_missing_locations(new_node)
                     return new_node
+
+            if node.func.value.id is 'lantern':
                 if node.func.attr is 'run':
-                    new_node = ast.Call(func=ast.Name(id='onnx_run', ctx=ast.Load()),
+                    new_node = ast.Call(func=ast.Name(id='lantern_run', ctx=ast.Load()),
                                         args=node.args,
                                         keywords=node.keywords)
                     ast.copy_location(new_node, node)
