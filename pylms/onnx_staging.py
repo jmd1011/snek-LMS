@@ -1,6 +1,6 @@
 from .rep import *
 
-__all__ = ['onnx_load', 'lantern_run']
+__all__ = ['onnx_load', 'lantern_run', 'lantern_train']
 
 stFresh = 0
 
@@ -22,3 +22,6 @@ def onnx_load(filename):
 
 def lantern_run(model, data):
     return reflectTensor(["lantern_run", [model, data]])
+
+def lantern_train(model, data):
+    return reflectTensor(["lantern_train", [model, data]])

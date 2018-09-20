@@ -365,6 +365,14 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.fix_missing_locations(new_node)
                     return new_node
 
+                if node.func.attr is 'train':
+                    new_node = ast.Call(func=ast.Name(id='lantern_train', ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
         if not isinstance(node.func, ast.Name):
             return node
 

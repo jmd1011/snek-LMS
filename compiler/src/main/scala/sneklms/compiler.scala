@@ -367,6 +367,9 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
       val rfunc = FuncWithDimsT[Tensor, Tensor](model.inference_func, model.x_dims)
       rfunc
     }
+    case "lantern_train"::((model: String)::(filename:String)::Nil)::Nil => {
+      ???
+    }
     case "lantern_run"::((model: String)::(filename: String)::Nil)::Nil => {
       // TODO: (Fei Wang) not yet using file name as data
       val FuncWithDimsT(func: (Tensor => Tensor), dims: Seq[Int]) = env(model)
