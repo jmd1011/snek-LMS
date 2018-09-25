@@ -59,8 +59,8 @@ def lms(func):
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
             self.src = astunparse.unparse(self.ast)
-            print("finished, src = {}".format(self.src))
-            print("ast = {}".format(astunparse.dump(self.ast)))
+            print("finished, src:\n{}".format(self.src))
+            print("ast:\n{}".format(astunparse.dump(self.ast)))
             exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
             self.func = eval(func.__name__)
 

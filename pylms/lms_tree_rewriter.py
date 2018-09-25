@@ -23,7 +23,7 @@ class ScopeAnalysis(ast.NodeVisitor):
             self.generic_visit(node)
             return
         elif isinstance(node.targets[0], ast.Tuple):
-            ids = list(map(lambda x: x.id, node.targets[0].elts))
+            ids = list(map(lambda x: x.func.id if isinstance(x, ast.Call) else x.id, node.targets[0].elts))
         else:
             ids = [node.targets[0].id] # TODO: brittle, should look at shadowing, etc.
 
@@ -36,13 +36,11 @@ class ScopeAnalysis(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        print('visit_FunctionDef({})'.format(node.name))
         node.parent = self.fundef
         self.fundef = node
         node.locals = {}
         self.generic_visit(node)
         self.fundef = node.parent
-        print('analysis: {}'.format(node.name))
 
 
 class StagingRewriter(ast.NodeTransformer):
@@ -71,12 +69,9 @@ class StagingRewriter(ast.NodeTransformer):
                (self.fundef.locals[id] > 1))
 
     def visit_FunctionDef(self, node):
-        print('rewriter: {}'.format(node.name))
         node.parent = self.fundef
         self.fundef = node
-        print('self.generic_visit(node)')
         self.generic_visit(node)
-        print('done')
 
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
@@ -95,7 +90,6 @@ class StagingRewriter(ast.NodeTransformer):
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
-        print('self.fundef = node.parent')
         self.fundef = node.parent
         return new_node
 
@@ -147,12 +141,21 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
+        cond_name = self.freshName("cond")
         tBranch_name = self.freshName("then")
         eBranch_name = self.freshName("else")
+
+        cond = ast.FunctionDef(name=cond_name,
+                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=[ast.Return(node.test)],
+                                  decorator_list=[],
+                                  returns=[])
+
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=[])
 
         if len(node.orelse) is 0:
             node.orelse = [ast.Pass()]
@@ -160,16 +163,26 @@ class StagingRewriter(ast.NodeTransformer):
         eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.orelse,
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=[])
+
+        ast.fix_missing_locations(cond)
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
 
-        self.generic_visit(tBranch)
-        self.generic_visit(eBranch)
+        # self.scope.visit(cond)
+        self.scope.visit(tBranch)
+        self.scope.visit(eBranch)
+
+        # self.visit(cond)
+        self.visit(tBranch)
+        self.visit(eBranch)
 
         new_node = ast.Expr(value=ast.Call(
             func=ast.Name(id='__if', ctx=ast.Load()),
-            args=[node.test,
+            args=[
+                  # node.test,
+                  ast.Name(id=cond_name, ctx=ast.Load()),
                   ast.Name(id=tBranch_name, ctx=ast.Load()),
                   ast.Name(id=eBranch_name, ctx=ast.Load())
                  ],
@@ -177,7 +190,7 @@ class StagingRewriter(ast.NodeTransformer):
         ))
 
         ast.fix_missing_locations(new_node)
-        mod = [tBranch, eBranch, new_node]
+        mod = [cond, tBranch, eBranch, new_node]
         return mod
 
     def visit_While(self, node):
@@ -188,16 +201,21 @@ class StagingRewriter(ast.NodeTransformer):
         tFun = ast.FunctionDef(name=tFun_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=[ast.Return(node.test)],
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=[])
         bFun = ast.FunctionDef(name=bFun_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=[])
         ast.fix_missing_locations(tFun)
         ast.fix_missing_locations(bFun)
 
-        self.generic_visit(tFun)
-        self.generic_visit(bFun)
+        self.scope.visit(tFun)
+        self.scope.visit(bFun)
+
+        self.visit(tFun)
+        self.visit(bFun)
 
         new_node = ast.Expr(ast.Call(
             func=ast.Name(id='__while', ctx=ast.Load()),
@@ -437,8 +455,12 @@ class StagingRewriter(ast.NodeTransformer):
                                                                          targetToFlatList(node.target.elts))),
                                                            vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                         body=node.body,
-                                        decorator_list=[])
+                                        decorator_list=[],
+                                        returns=[])
             ast.fix_missing_locations(outer_fun)
+
+            self.scope.visit(outer_fun)
+            self.visit(outer_fun)
 
             new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
                                          args=[node.iter.args[0],
@@ -450,12 +472,14 @@ class StagingRewriter(ast.NodeTransformer):
         else:
             bFun_name = self.freshName("body")
             bFun = ast.FunctionDef(name=bFun_name,
-                                  args=ast.arguments(args=[ast.arg(arg='self', annotation=None)], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  args=[], # ast.arguments(args=[ast.arg(arg='self', annotation=None)], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=[])
             ast.fix_missing_locations(bFun)
 
-            self.generic_visit(bFun)
+            self.scope.visit(bFun)
+            self.visit(bFun)
 
             new_node = ast.Expr(ast.Call(
                 func=ast.Name(id='__for', ctx=ast.Load()),
