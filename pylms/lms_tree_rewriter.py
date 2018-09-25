@@ -146,10 +146,19 @@ class StagingRewriter(ast.NodeTransformer):
         eBranch_name = self.freshName("else")
 
         cond = ast.FunctionDef(name=cond_name,
-                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=[ast.Return(node.test)],
-                                  decorator_list=[],
-                                  returns=[])
+                               args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                               body=[ast.Try(
+                                    body=[ast.Return(node.test)],
+                                    handlers=[
+                                        ast.ExceptHandler(
+                                            type=ast.Name(id='NonLocalReturnValue',ctx=ast.Load()),
+                                            name='r',
+                                            body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])
+                                        ],
+                                    orelse=[],
+                                    finalbody=[])],
+                               decorator_list=[],
+                               returns=[])
 
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
@@ -170,11 +179,11 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
 
-        # self.scope.visit(cond)
+        self.scope.visit(cond)
         self.scope.visit(tBranch)
         self.scope.visit(eBranch)
 
-        # self.visit(cond)
+        self.visit(cond)
         self.visit(tBranch)
         self.visit(eBranch)
 
