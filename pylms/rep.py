@@ -161,8 +161,8 @@ def __len(name):
     return reflect(["len", name])
 
 def __if(test, body, orelse):
-    if callable(test):
-        if test():
+    if isinstance(test, bool):
+        if test:
             return body()
         else:
             return orelse()

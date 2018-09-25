@@ -141,21 +141,12 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
-        cond_name = self.freshName("cond")
         tBranch_name = self.freshName("then")
         eBranch_name = self.freshName("else")
-
-        cond = ast.FunctionDef(name=cond_name,
-                                  args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=[ast.Return(node.test)],
-                                  decorator_list=[],
-                                  returns=[])
-
         tBranch = ast.FunctionDef(name=tBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[],
-                                  returns=[])
+                                  decorator_list=[])
 
         if len(node.orelse) is 0:
             node.orelse = [ast.Pass()]
@@ -163,26 +154,16 @@ class StagingRewriter(ast.NodeTransformer):
         eBranch = ast.FunctionDef(name=eBranch_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.orelse,
-                                  decorator_list=[],
-                                  returns=[])
-
-        # ast.fix_missing_locations(cond)
+                                  decorator_list=[])
         ast.fix_missing_locations(tBranch)
         ast.fix_missing_locations(eBranch)
 
-        # self.scope.visit(cond)
-        self.scope.visit(tBranch)
-        self.scope.visit(eBranch)
-
-        # self.visit(cond)
-        self.visit(tBranch)
-        self.visit(eBranch)
+        self.generic_visit(tBranch)
+        self.generic_visit(eBranch)
 
         new_node = ast.Expr(value=ast.Call(
             func=ast.Name(id='__if', ctx=ast.Load()),
-            args=[
-                  # node.test,
-                  ast.Name(id=cond_name, ctx=ast.Load()),
+            args=[node.test,
                   ast.Name(id=tBranch_name, ctx=ast.Load()),
                   ast.Name(id=eBranch_name, ctx=ast.Load())
                  ],
@@ -190,7 +171,7 @@ class StagingRewriter(ast.NodeTransformer):
         ))
 
         ast.fix_missing_locations(new_node)
-        mod = [cond, tBranch, eBranch, new_node]
+        mod = [tBranch, eBranch, new_node]
         return mod
 
     def visit_While(self, node):
