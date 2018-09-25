@@ -1,13 +1,16 @@
 from __future__ import print_function
 import onnx
+import os
 from pylms.nn_staging import *
 from pylms import lms, stageTensor
+
+onnx_modeldir = os.environ['HOME'] + "/onnx_models"
 
 @lms
 def run(dummy):
 	# import torch
 	# from torch.autograd import Variable
-	onnx_model = onnx.load('/home/james/Research/snek-LMS/compiler/Lantern/src/test/onnxModel/squeezenet/model.onnx')
+	onnx_model = onnx.load('{}/squeezenet/model.onnx'.format(onnx_modeldir))
 	# x = Variable(torch.randn(1, 3, 224, 224), True)
 	input_file = 'test.csv'
 	res = lantern.run(onnx_model, input_file) # .data.numpy())

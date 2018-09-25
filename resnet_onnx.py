@@ -1,12 +1,16 @@
 from __future__ import print_function
 import onnx
+import os
 from pylms.nn_staging import *
 from pylms import lms, stageTensor
+
+onnx_modeldir = os.environ['HOME'] + "/onnx_models"
 
 @lms
 def run(dummy):
 	# import torch
 	# from torch.autograd import Variable
+	# TODO: add script to download resetnet automatically to onnx_modeldir
 	onnx_model = onnx.load('/home/james/Research/snek-LMS/compiler/Lantern/src/test/onnxModel/resnet50/model.onnx')
 	# x = Variable(torch.randn(1, 3, 224, 224), True)
 	input_file = '/home/james/Research/snek-LMS/compiler/Lantern/src/test/onnxModel/resnet50/test_data_set_0/input_0.pb'
