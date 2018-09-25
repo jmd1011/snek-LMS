@@ -1,5 +1,5 @@
 __all__ = [
-    'reflect', 'reify', 'fresh',
+    'reflect', 'reflectTensor', 'reify', 'fresh',
     'Rep', 'RepTensor',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__return', '__print', '__printf',

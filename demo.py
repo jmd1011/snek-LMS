@@ -14,32 +14,32 @@ def power(x, n):
 def power3(x):
     return power(x, 3)
 
-@lms
-def loop(x):
-    y = 0
-    while y < x:
-        print(y)
-        y = y + 1
-    # continue
-    return y
+# @lms
+# def loop(x):
+#     y = 0
+#     while y < x:
+#         print(y)
+#         y = y + 1
+#     # continue
+#     return y
 
-@stage
-def loopX(x):
-    return loop(x)
+# @stage
+# def loopX(x):
+#     return loop(x)
 
-@lms
-def test_for(train_loader):
-    x = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data = Variable(data)
-        target = Variable(target)
-        new_data = data * data
-        x = x + 1
-    return x
+# @lms
+# def test_for(train_loader):
+#     x = 0
+#     for batch_idx, (data, target) in enumerate(train_loader):
+#         data = Variable(data)
+#         target = Variable(target)
+#         new_data = data * data
+#         x = x + 1
+#     return x
 
-@stage
-def test_for2(x):
-    return test_for(x)
+# @stage
+# def test_for2(x):
+#     return test_for(x)
 
 # @lms
 # def lib(x):
@@ -62,15 +62,18 @@ def test_for2(x):
 # def floopX(x):
 #     return floop(x)
 
+print("======= Power original code =======")
+print(power.original_src)
+print("======= Power converted code ========")
+print(power.src)
+print("\n")
+print("======= Power3 IR ========")
+print(power3.code)
+print("\n")
+print("======= Power3 C/C++ code ========")
+print(power3.Ccode)
 
-# print("======= Power converted code ========")
-# print(power.src)
-# print("\n")
-# print("======= Power3 IR ========")
-# print(power3.code)
-# print("\n")
-# print("======= Power3 C/C++ code ========")
-# print(power3.Ccode)
+print(power3(5))
 
 # print("======= Loop converted code ========")
 # print(loop.src)

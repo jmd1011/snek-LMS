@@ -36,11 +36,13 @@ class ScopeAnalysis(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
+        print('visit_FunctionDef({})'.format(node.name))
         node.parent = self.fundef
         self.fundef = node
         node.locals = {}
         self.generic_visit(node)
         self.fundef = node.parent
+        print('analysis: {}'.format(node.name))
 
 
 class StagingRewriter(ast.NodeTransformer):
@@ -49,11 +51,11 @@ class StagingRewriter(ast.NodeTransformer):
     1) virtualize primitives such as `if`, `while`, `for` and etc
     2) virtualize var accesses for non-single-assignment vars
     """
-    def __init__(self):
+    def __init__(self, scope):
         self.fundef = None # keep track of the current function we're in
         self.var_names = {}
+        self.scope = scope
         super()
-
 
     def freshName(self,s = ""):
         if s not in self.var_names:
@@ -64,13 +66,17 @@ class StagingRewriter(ast.NodeTransformer):
     def shouldLiftVar(self, id):
         # lift a var if it's assigned more than once
         # TODO: need to check super scopes?
+        # print('\nchecking {}'.format(astunparse.dump(self.fundef)))
         return ((self.fundef.locals.get(id)) and
                (self.fundef.locals[id] > 1))
 
     def visit_FunctionDef(self, node):
+        print('rewriter: {}'.format(node.name))
         node.parent = self.fundef
         self.fundef = node
+        print('self.generic_visit(node)')
         self.generic_visit(node)
+        print('done')
 
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
@@ -89,6 +95,7 @@ class StagingRewriter(ast.NodeTransformer):
                                          returns=node.returns),
                           node)
         ast.fix_missing_locations(new_node)
+        print('self.fundef = node.parent')
         self.fundef = node.parent
         return new_node
 
@@ -189,6 +196,9 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(tFun)
         ast.fix_missing_locations(bFun)
 
+        self.generic_visit(tFun)
+        self.generic_visit(bFun)
+
         new_node = ast.Expr(ast.Call(
             func=ast.Name(id='__while', ctx=ast.Load()),
             args=[ast.Name(id=tFun_name, ctx=ast.Load()),
@@ -255,6 +265,14 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.fix_missing_locations(new_node)
                     return new_node
 
+                else:
+                    new_node = ast.Call(func=ast.Name(id='torch_{}'.format(node.func.attr), ctx=ast.Load()),
+                                        args=node.args,
+                                        keywords=node.keywords)
+                    ast.copy_location(new_node, node)
+                    ast.fix_missing_locations(new_node)
+                    return new_node
+
             if node.func.value.id is 'nn':
                 if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
@@ -297,81 +315,14 @@ class StagingRewriter(ast.NodeTransformer):
                     ast.fix_missing_locations(new_node)
                     return new_node
 
-            if node.func.value.id is 'optim':
-                if node.func.attr is 'SGD':
-                    new_node = ast.Call(func=ast.Name(id='optim_SGD', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-            if node.func.value.id is 'F':
-                if node.func.attr is 'nll_loss':
-                    new_node = ast.Call(func=ast.Name(id='F_nll_loss', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-                if node.func.attr is 'relu':
-                    new_node = ast.Call(func=ast.Name(id='F_relu', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-                if node.func.attr is 'dropout':
-                    new_node = ast.Call(func=ast.Name(id='F_dropout', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-                if node.func.attr is 'max_pool2d':
-                    new_node = ast.Call(func=ast.Name(id='F_max_pool2d', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-                if node.func.attr is 'log_softmax':
-                    new_node = ast.Call(func=ast.Name(id='F_log_softmax', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-            if node.func.value.id is 'onnx':
-                if node.func.attr is 'load':
-                    new_node = ast.Call(func=ast.Name(id='onnx_load', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-            if node.func.value.id is 'lantern':
-                if node.func.attr is 'run':
-                    new_node = ast.Call(func=ast.Name(id='lantern_run', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
-
-                if node.func.attr is 'train':
-                    new_node = ast.Call(func=ast.Name(id='lantern_train', ctx=ast.Load()),
-                                        args=node.args,
-                                        keywords=node.keywords)
-                    ast.copy_location(new_node, node)
-                    ast.fix_missing_locations(new_node)
-                    return new_node
+            # TODO(James): Fix this hacky nonsense
+            if node.func.value.id in ['optim', 'F', 'onnx', 'lantern']:
+                new_node = ast.Call(func=ast.Name(id='{}_{}'.format(node.func.value.id, node.func.attr), ctx=ast.Load()),
+                                    args=node.args,
+                                    keywords=node.keywords)
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                return new_node
 
         if not isinstance(node.func, ast.Name):
             return node
@@ -497,10 +448,21 @@ class StagingRewriter(ast.NodeTransformer):
             ast.fix_missing_locations(new_node)
             return [outer_fun, new_node]
         else:
-            # FIXME target are just names
-            new_node = ast.Expr(ast.Call(func=ast.Name(id='__for', ctx=ast.Load()),
-                                         args=[node.target, node.iter, node.body],
-                                         keywords=[]))
+            bFun_name = self.freshName("body")
+            bFun = ast.FunctionDef(name=bFun_name,
+                                  args=ast.arguments(args=[ast.arg(arg='self', annotation=None)], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  body=node.body,
+                                  decorator_list=[])
+            ast.fix_missing_locations(bFun)
+
+            self.generic_visit(bFun)
+
+            new_node = ast.Expr(ast.Call(
+                func=ast.Name(id='__for', ctx=ast.Load()),
+                args=[node.target,
+                      node.iter,
+                      ast.Name(id=bFun_name, ctx=ast.Load())],
+                keywords=[]))
             ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)
-            return new_node
+            return [bFun, new_node]

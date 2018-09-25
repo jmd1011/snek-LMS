@@ -55,10 +55,12 @@ def lms(func):
             self.original_ast = py_ast.parse(self.original_src)
             scope = ScopeAnalysis()
             scope.visit(self.original_ast)
-            visitor = StagingRewriter()
+            visitor = StagingRewriter(scope)
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
             self.src = astunparse.unparse(self.ast)
+            print("finished, src = {}".format(self.src))
+            print("ast = {}".format(astunparse.dump(self.ast)))
             exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
             self.func = eval(func.__name__)
 
