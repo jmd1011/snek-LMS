@@ -1,4 +1,4 @@
-from .decorators import lms, ast, stage, lmscompile, stageTensor, lanternRun
+from .decorators import lms, ast, stage, stage2, lmscompile, stageTensor, lanternRun
 from subprocess import Popen
 import os
 import psutil

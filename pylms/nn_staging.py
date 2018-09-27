@@ -32,6 +32,23 @@ def newTensor(*dims):
 ####################### torch Methods #######################
 #############################################################
 
+class RepTuple(Rep):
+    def __init__(self, n):
+        super().__init__(n)
+    @property
+    def _1(self):
+        return reflectTensor(["getattr",self,"_1"])
+    @property
+    def _2(self):
+        return reflectTensor(["getattr",self,"_2"])
+    @property
+    def _3(self):
+        return reflectTensor(["getattr",self,"_3"])
+
+def reflectTuple(args):
+    rep = reflect(args)
+    return RepTuple(rep.n)
+
 # def torch_loader(dataset, batch_size, shuffle, **kwargs):
 def torch_loader(name, train, download, transforms):
     class RepLoader(object):
@@ -63,6 +80,9 @@ def torch_cat(t1, dim):
 
 def torch_mul(t1, t2):
     return reflect(["call", "mul", [t1, t2]])
+
+def torch_split(iou, size, dim):
+    return reflectTuple(["call", "split", [iou, size, dim]])
 
 def torch_sum(t1, t2):
     return reflect(["call", "sum", [t1, t2]])
@@ -103,7 +123,6 @@ def nn_conv2d(outSize, inSize, kernel_size, bias):
             else: #staged
                 return tensor.conv2d(self.kernel)
     return Conv2d()
-
 
 #############################################################
 ################## torch.transforms Methods #################

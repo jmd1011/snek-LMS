@@ -65,7 +65,6 @@ class StagingRewriter(ast.NodeTransformer):
     def shouldLiftVar(self, id):
         # lift a var if it's assigned more than once
         # TODO: need to check super scopes?
-        # print('\nchecking {}'.format(astunparse.dump(self.fundef)))
         return ((self.fundef.locals.get(id)) and
                (self.fundef.locals[id] > 1))
 

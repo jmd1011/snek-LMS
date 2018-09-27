@@ -108,10 +108,30 @@ def stage(func):
         def __init__(self):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
-            self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            self.gateway = JavaGateway()
-            self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            self.code = "(def {} (in1 in2) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            # self.gateway = JavaGateway()
+            # self.moduleName = 'module_{}'.format(func.__name__)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+
+        def __call__(self, *args): #TODO naming
+            exec("import {} as foo".format(self.moduleName), globals())
+            return foo.x1(*args)
+            # return None
+
+    return Snippet()
+
+def stage2(func):
+    if not isinstance(func, types.FunctionType):
+        return NotImplemented
+
+    class Snippet(object):
+        def __init__(self):
+            self.original = func
+            self.pcode = toSexpr(reify(lambda: func(Rep("in1"), Rep("in2"))))
+            self.code = "(def {} (in1 in2) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            # self.gateway = JavaGateway()
+            # self.moduleName = 'module_{}'.format(func.__name__)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
@@ -130,9 +150,9 @@ def stageTensor(func):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            self.gateway = JavaGateway()
-            self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
+            # self.gateway = JavaGateway()
+            # self.moduleName = 'module_{}'.format(func.__name__)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
