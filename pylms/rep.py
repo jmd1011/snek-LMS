@@ -154,15 +154,13 @@ def __def_staged(f, *args):
     params = list(sig.parameters)
     nargs = []
     fargs = copy.deepcopy(args)
-    assert(len(sig.parameters) == len(args),
-        'Invalid number of parameters specified for {} (got {}, expected {}).'.format(f.__name__, len(args), len(sig.parameters)))
+    if len(sig.parameters) is not len(args):
+        raise NotImplemented
     for i in range(len(args)):
         if isinstance(args[i], Rep):
             nargs.append(params[i])
-            print('renaming {} to {}'.format(args[i].n, params[i]))
             fargs[i].n = params[i]
 
-    print('nargs = {}'.format(nargs))
     return reflect(['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
 def __call_staged(f, *args):
