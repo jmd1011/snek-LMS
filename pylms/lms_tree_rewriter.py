@@ -53,6 +53,7 @@ class StagingRewriter(ast.NodeTransformer):
         self.fundef = None # keep track of the current function we're in
         self.var_names = {}
         self.scope = scope
+        self.recs = []
         super()
 
     def freshName(self,s = ""):
@@ -71,6 +72,7 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         node.parent = self.fundef
         self.fundef = node
+
         self.generic_visit(node)
 
         # generate code to pre-initialize staged vars
@@ -326,6 +328,30 @@ class StagingRewriter(ast.NodeTransformer):
         if not isinstance(node.func, ast.Name):
             return node
 
+        if self.fundef is not None and self.fundef.name == node.func.id:
+            if node.func.id not in self.recs:
+                self.recs += [node.func.id]
+            new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+                                args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+                                keywords=node.keywords)
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+
+        if node.func.id in self.recs:
+            # def_node = ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
+            #                     args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+            #                     keywords=node.keywords)
+
+            # ast.fix_missing_locations(def_node)
+
+            new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+                                args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+                                keywords=node.keywords)
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+
         if node.func.id is 'Variable':
             new_node = ast.Call(func=ast.Name(id='rep_variable', ctx=ast.Load()),
                                 args=node.args,
@@ -397,7 +423,18 @@ class StagingRewriter(ast.NodeTransformer):
                                                    keywords=[]))
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
-        return new_node
+
+        mod = new_node
+
+        if isinstance(node.value, ast.Call) and node.value.func.id is '__call_staged':
+            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
+                                args=node.value.args,
+                                keywords=node.value.keywords))
+
+            ast.copy_location(def_node,new_node)
+            ast.fix_missing_locations(def_node)
+            mod = [def_node, new_node]
+        return mod
 
     def visit_For(self, node):
         self.generic_visit(node)

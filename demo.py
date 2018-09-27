@@ -4,15 +4,17 @@ from pylms.nn_staging import *
 # import numpy
 
 @lms
-def power(x, n):
-    if n == 0:
-        return 1
-    else:
-        return x * power(x, n - 1)
+def run(z):
+	def power(x, n):
+	    if n == 0:
+	        return 1
+	    else:
+	        return x * power(x, n - 1)
+	return power(2, z)
 
 @stage
-def power3(x):
-    return power(x, 3)
+def runX(x):
+    return run(x)
 
 # @lms
 # def loop(x):
@@ -63,17 +65,17 @@ def power3(x):
 #     return floop(x)
 
 print("======= Power original code =======")
-print(power.original_src)
+print(run.original_src)
 print("======= Power converted code ========")
-print(power.src)
+print(run.src)
 print("\n")
 print("======= Power3 IR ========")
-print(power3.code)
-print("\n")
-print("======= Power3 C/C++ code ========")
-print(power3.Ccode)
+print(runX.code)
+# print("\n")
+# print("======= Power3 C/C++ code ========")
+# print(runX.Ccode)
 
-print(power3(5))
+# print(power3(5))
 
 # print("======= Loop converted code ========")
 # print(loop.src)

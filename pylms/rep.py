@@ -1,8 +1,10 @@
+import inspect
+
 __all__ = [
     'reflect', 'reflectTensor', 'reify', 'fresh',
     'Rep', 'RepTensor',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
-    '__if', '__while', '__return', '__print', '__printf',
+    '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
     '__break', '__continue', '__for'
 ]
@@ -81,6 +83,8 @@ class Rep(object):
         return reflect([">",self,m])
     def __repr__(self):
         return str(self.n)
+    def __call__(self):
+        return str(self.n)
 
 class RepTensor(Rep):
     def __init__(self, n):
@@ -143,6 +147,20 @@ def __print(value): # TODO HACK!
         return reflect(["print", '"{}"'.format(value)])
     else:
         return reflect(["print", value])
+
+def __def_staged(f, *args):
+    sig = inspect.signature(f)
+    params = list(sig.parameters)
+    nargs = []
+    for i in range(len(args)):
+        if isinstance(args[i], Rep):
+            nargs += params[i]
+            args[i].n = params[i]
+
+    return reflect(['def', f.__name__, [*nargs], reify(lambda: f(*args))])
+
+def __call_staged(f, *args):
+    return reflect([f.__name__, [*args]])
 
 def __printf(s, vs):
     nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]
