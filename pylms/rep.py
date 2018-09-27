@@ -149,15 +149,21 @@ def __print(value): # TODO HACK!
         return reflect(["print", value])
 
 def __def_staged(f, *args):
+    import copy
     sig = inspect.signature(f)
     params = list(sig.parameters)
     nargs = []
+    fargs = copy.deepcopy(args)
+    assert(len(sig.parameters) == len(args),
+        'Invalid number of parameters specified for {} (got {}, expected {}).'.format(f.__name__, len(args), len(sig.parameters)))
     for i in range(len(args)):
         if isinstance(args[i], Rep):
-            nargs += params[i]
-            args[i].n = params[i]
+            nargs.append(params[i])
+            print('renaming {} to {}'.format(args[i].n, params[i]))
+            fargs[i].n = params[i]
 
-    return reflect(['def', f.__name__, [*nargs], reify(lambda: f(*args))])
+    print('nargs = {}'.format(nargs))
+    return reflect(['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
 def __call_staged(f, *args):
     return reflect([f.__name__, [*args]])
