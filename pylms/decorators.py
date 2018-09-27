@@ -70,6 +70,7 @@ def lms(func):
     return Snippet()
 
 def toSexpr(l):
+    print('l = ' , l)
     if not isinstance(l, list):
         return l
     if len(l) > 0 and isinstance(l[0], list):
@@ -80,6 +81,8 @@ def toSexpr(l):
             return ['let', stm[1], rhs, body]
         else:
             raise Exception()
+    elif len(l) > 3 and l[0] == 'def':
+        return ['def', l[1], l[2], toSexpr(l[3])]
     elif len(l) > 3 and l[0] == 'for_dataloader':
         return ['for_dataloader', l[1], l[2], toSexpr(l[3])]
     elif len(l) > 2 and l[0] == 'while':
