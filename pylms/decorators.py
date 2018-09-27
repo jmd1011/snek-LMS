@@ -70,7 +70,6 @@ def lms(func):
     return Snippet()
 
 def toSexpr(l):
-    print('l = ' , l)
     if not isinstance(l, list):
         return l
     if len(l) > 0 and isinstance(l[0], list):
@@ -110,9 +109,9 @@ def stage(func):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            # self.gateway = JavaGateway()
-            # self.moduleName = 'module_{}'.format(func.__name__)
-            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            self.gateway = JavaGateway()
+            self.moduleName = 'module_{}'.format(func.__name__)
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())

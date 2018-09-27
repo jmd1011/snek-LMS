@@ -71,9 +71,9 @@ print(run.src)
 print("\n")
 print("======= Power3 IR ========")
 print(runX.code)
-# print("\n")
-# print("======= Power3 C/C++ code ========")
-# print(runX.Ccode)
+print("\n")
+print("======= Power3 C/C++ code ========")
+print(runX.Ccode)
 
 # print(power3(5))
 

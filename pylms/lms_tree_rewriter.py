@@ -339,12 +339,6 @@ class StagingRewriter(ast.NodeTransformer):
             return new_node
 
         if node.func.id in self.recs:
-            # def_node = ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
-            #                     args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
-            #                     keywords=node.keywords)
-
-            # ast.fix_missing_locations(def_node)
-
             new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
                                 keywords=node.keywords)
