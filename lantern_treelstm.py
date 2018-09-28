@@ -44,8 +44,8 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 
 		def outputs(i, init):
 			if (i >= 0):
-				left = outputs(lefts[i])
-				right = outputs(rights[i])
+				left = outputs(lefts[i], init)
+				right = outputs(rights[i], init)
 
 				lossL = left[0]
 				hiddenL = left[1]
@@ -58,7 +58,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 				tArg = Tensor.zeros(output_size)
 				score = scores[i]
 				tArg.data[score] = 1
-				ret = None
+				# ret = None
 
 				if lefts[i] < 0:
 					word = words[i]
@@ -75,7 +75,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					res = pred2.dot(tArg)
 					loss = lossL + lossR - res.log()
 					ret = rep_tuple(loss, hidden, cell)
-					# return ret
+					return ret
 				else:
 					i_gate1 = (tU0i.dot(hiddenL) + tU1i.dot(hiddenR) + tbbi).sigmoid()
 					fl_gate = (tU00f.dot(hiddenL) + tU01f.dot(hiddenR) + tbbf).sigmoid()
@@ -88,9 +88,9 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					pred21 = pred11 / pred11.sum()
 					res1 = pred21.dot(tArg)
 					loss1 = lossL + lossR - res1.log()
-					ret = rep_tuple(loss1, hidden1, cell1)
-					# return ret1
-				return ret
+					ret1 = rep_tuple(loss1, hidden1, cell1)
+					return ret1
+				return None
 			else:
 				return init
 
