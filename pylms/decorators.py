@@ -108,9 +108,9 @@ def stage(func):
         def __init__(self):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
-            self.code = "(def {} (in1 in2) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            # self.gateway = JavaGateway()
-            # self.moduleName = 'module_{}'.format(func.__name__)
+            self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            self.gateway = JavaGateway()
+            self.moduleName = 'module_{}'.format(func.__name__)
             # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
@@ -129,9 +129,9 @@ def stage2(func):
             self.original = func
             self.pcode = toSexpr(reify(lambda: func(Rep("in1"), Rep("in2"))))
             self.code = "(def {} (in1 in2) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            # self.gateway = JavaGateway()
-            # self.moduleName = 'module_{}'.format(func.__name__)
-            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            self.gateway = JavaGateway()
+            self.moduleName = 'module_{}'.format(func.__name__)
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
