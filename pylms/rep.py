@@ -171,6 +171,9 @@ class RepTuple(Rep):
     def _3(self):
         return reflectTensor(["getattr",self,"_3"])
 
+    def append(self,t):
+        return reflectTuple(["call","append",self,t])
+
 def rep_tuple(*args):
     tmp = reflectTuple(["call", "tuple", *args])
     return RepTuple(tmp.n)
