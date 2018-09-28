@@ -212,8 +212,10 @@ def __def_staged(f, *args):
         raise NotImplemented
     for i in range(len(args)):
         if isinstance(args[i], Rep):
-            nargs.append(params[i])
             fargs[i].n = params[i]
+            nargs.append(params[i])
+        else:
+            nargs.append("{}:{}".format(params[i], type(args[i]).__name__))
 
     return reflectDef(f.__name__, nargs, reify(lambda: f(*fargs))) # ['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
