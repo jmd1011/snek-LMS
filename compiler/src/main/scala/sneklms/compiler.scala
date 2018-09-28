@@ -15,12 +15,12 @@ import scala.virtualization.lms.common._
 import java.io.{PrintWriter, File}
 
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.ListBuffer
 
 import lantern._
 
-/*
-trait CpsConv {
-  implicit class Cps[T](simple: Iterable[T]) {
+trait CpsConv extends Serializable {
+  implicit class Cps[T](simple: Iterable[T]) extends Serializable {
 
     def Cps() = new Cps(simple)
 
@@ -31,7 +31,16 @@ trait CpsConv {
       }
     }
 
-    def foldLefttt[U, A](init: U)(f: (U, T) => U @cps[A]) = {
+    def map[U, A](f: T => U @cps[A]) = {
+      val builder = new ListBuffer[U]()
+      val iter = simple.iterator
+      while(iter.hasNext){
+        builder += f(iter.next)
+      }
+      builder.result()
+    }
+
+    def foldLeft[U, A](init: U)(f: (U, T) => U @cps[A]) = {
       var temp = init
       val iter = simple.iterator
       while (iter.hasNext) {
@@ -40,10 +49,9 @@ trait CpsConv {
       temp
     }
   }
-}*/
+}
 
-
-trait Compiler extends ONNXLib with UninlinedFunctionOps {
+trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
 
   implicit val pos = implicitly[SourceContext]
 
@@ -74,71 +82,163 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
     printDebug("==================")
   }
 
-/*
+
   abstract class ValueR {
     def get = this
   }
   case class Base(v: TensorR) extends ValueR
-  case class Func[T](v: T => TensorR @diff) extends ValueR
+  case class Func1[A](v: A => TensorR @diff) extends ValueR
   case class Func3[A, B, C](v: (A, B, C) => TensorR @diff) extends ValueR
+  case class LitR[T](v: Rep[T]) extends ValueR
+  case class MulR[T](v: Var[T]) extends ValueR
+  case class WrapR(var v: ValueR) extends ValueR {
+    override def get = v.get
+  }
+  case class Tup3(v1: TensorR, v2: TensorR, v3: TensorR) extends ValueR
 
-  //@virtualize
-  def compileModel(exp: Any)(env: Env): TensorR => TensorR @diff = { x: TensorR =>
+  def compileModel(exp: Any)(env: Map[String, ValueR]) = {
 
-    // the sexp input of compileModel should be a def with one input!
-    val ("def" :: (f:String) :: (args: List[String]) :: (body: List[List[Any]]) :: Nil) = exp
-    assert(args.length == 1, "we require the input of model function is a single tensor")
-
+    val ("def":: (f:String) :: (args: List[String]) :: (body: List[List[Any]]) :: Nil) = exp
+    assert (args.size == 5, s"TODO: we only handle models with 5 inputs: 4 inputs for training data, 1 input for dummy Tensor, but args is $args")
+    printDebug(s"main body >> $body")
 
     // now the body part should evaluates to TensorR @diff
-    def com(exp: Any)(implicit envR: Map[String, ValueR] = Map.empty): TensorR @diff = exp match {
+    def com(exp: Any)(implicit envR: Map[String, ValueR] = Map.empty): ValueR @diff = exp match {
 
-      case "def"::(f:String)::(args: List[String])::(body: List[Any])::r =>
+      case "def"::(f:String)::(args:List[String])::(body: List[Any])::r =>
         printDebug(s"def >> $f $args $body $r")
 
-        // now we need to stage this function (maybe recursive)
-        // TODO: (Fei Wang) Problem! type of F is determined by types of args!!
-        val F = { (init: TensorR, lch: Rep[Array[Int]], rch: Rep[Array[Int]]) => shift { (k: TensorR => Unit) =>
+        args match {
 
-          // stuff in here should return type Unit
-          lazy val func: Rep[Int] => (TensorR => Unit) => TensorR => Unit = FUNl { (i: Rep[Int]) => (k: TensorR => Unit) => (x: TensorR) =>
-            def sh_func = (i: Rep[Int]) => shift {k: (TensorR => Unit) => func(i)(k)(x)}
-            body match {
-              case "let"::(x: String)::a::b =>
-                compile(b)(env + (x -> compile(a)) + ??? )
-              case "=="::n::m::Nil =>
-                compile[Int,Boolean](n, m)(_ == _)(env)
-              case "if"::c::t::e::Nil =>
-                val Literal(rc: Rep[Boolean]) = compile(c)
-                Literal(__ifThenElse(rc, RST{k(com(t)(envR + (f -> Func(sh_func))))},
-                                         RST{k(com(e)(envR + (f -> Func(sh_func))))}))
-            }
+          case "i"::Nil => { // TODO: (Fei Wang) We assume that "i" means String
+            val F = { (i: Rep[Int]) => shift { (k: TensorR => Unit) =>
+              lazy val func = FUN00 { (k: TensorR => Unit) =>
+
+              }
+            }}
           }
-          func(0)(k)(init)
-        }}
-        com(r)(envR + (f -> Func3(F)))
+          case x1::Nil => {
+            val F = { (x: TensorR) => shift { (k: TensorR => Unit) =>
+              lazy val func = FUN0 { (k: TensorR => Unit) => (x: TensorR) =>
+                // printDebug(s"in body >>> $body")
+                RST{k( com(body)(envR + (x1 -> Base(x))) match {case Base(v) => v} )}
+              }
+              func(k)(x)
+            }}
+            printDebug(s"next >>> $r")
+            com(r)(envR + (f -> Func1(F)))
+          }
+          case x1::x2::Nil => shift{(k: ValueR => Unit) => ???}
+          case x1::x2::x3::Nil => {
+            // now we need to stage this function (maybe recursive)
+            // TODO: (Fei Wang) Problem! type of F is determined by types of args!!
+            val F = { (init: TensorR, lch: Rep[Array[Int]], rch: Rep[Array[Int]]) => shift { (k: TensorR => Unit) =>
+
+              // stuff in here should return type Unit
+              lazy val func: Rep[Int] => (TensorR => Unit) => TensorR => Unit = FUNl { (i: Rep[Int]) => (k: TensorR => Unit) => (x: TensorR) =>
+                def sh_func = (i: Rep[Int]) => shift {k: (TensorR => Unit) => func(i)(k)(x)}
+                // TODO: this could very much be wrong (Fei Wang)
+                RST{k( com(body)(envR + (x1 -> Base(init), x2 -> LitR(lch), x3 -> LitR(rch))) match {case Base(v) => v} )}
+              }
+              func(0)(k)(init)
+            }}
+            printDebug(s"next >>> $r")
+            com(r)(envR + (f -> Func3(F)))
+          }
+        }
 
       case "begin"::seq =>
         printDebug(s"seq >> $seq")
-        val res = seq.Cps.foldLefttt(None: Option[TensorR]){
+        seq match {
+          case x :: Nil => com(x)
+          case x :: y :: Nil => com(x); com(y)
+          case x :: y :: z :: Nil => com(x); com(y); com(z)
+          case _ => shift{(k: ValueR => Unit) => ???}
+        }
+
+        /*
+        val res = seq.Cps.foldLeft(None: Option[ValueR]){
           //case (agg, "None") => agg
           case (agg, exp) => Some(com(exp))
         }
         res.get
+        */
+      case "let"::(x: String)::a::b =>
+        com(b)(envR + (x -> com(a)))
+
+      case "call"::t =>
+        t match {
+          case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::(r:List[Any]) =>
+            assert(r.size == 0, "TODO: tensor_randinit cannot handle dims that is not of size 2")
+            Base(TensorR(Tensor.randinit(dim0, dim1, scale)))
+          case "tensor_zeros"::(dim0:Int)::(r: List[Any]) =>
+            assert(r.size == 0, "TODO: tensor_zeros cannot handle dims that is not of size 1")
+            Base(TensorR(Tensor.zeros(dim0)))
+          case "tuple"::(x:String)::(y:String)::(z:String)::(r:List[Any]) =>
+            assert(r.size == 0, "TODO: tuple only support 3-tuples")
+            val (Base(xx), Base(yy), Base(zz)) = (envR(x), envR(y), envR(z))
+            Tup3(xx, yy, zz)
+
+
+        }
+
+      case "*"::n::m::Nil =>
+        printDebug(s"* $n, $m")
+        val nn = com(n)
+        val mm = com(m)
+        if (nn.isInstanceOf[Base] && mm.isInstanceOf[Base]) {
+          val Base(vn) = nn
+          val Base(vm) = mm
+          Base(vn * vm)
+        } else { shift{(k: ValueR => Unit) => ???} }
+      case "+"::n::m::Nil => (com(n), com(m)) match { case (Base(n: TensorR), Base(m: TensorR)) => Base(n + m) }
+      case "-"::n::m::Nil => (com(n), com(m)) match { case (Base(n: TensorR), Base(m: TensorR)) => Base(n - m) }
+
+      case x: Int => LitR(unit(x))
+      case x: String => envR(x)
+      case x::Nil =>
+        printDebug(s"shrink >> $x")
+        com(x)
 
       case f::(x: List[Any]) =>
         printDebug(s"f >> $f")
         printDebug(s"x >> $x")
-        ???
-      // case "None" =>
+        val nf = com(f).get
+        printDebug(s"nf >> $nf")
+        (nf, x) match {
+          case (Func1(f: (TensorR => TensorR @diff)), a::Nil) =>
+            com(a) match {
+              case Base(aa: TensorR) => Base(f(aa))
+            }
+          case (Func1(f: (Rep[Int] => TensorR @diff)), a::Nil) =>
+            com(a) match {
+              case LitR(aa: Rep[Int]) => Base(f(aa))
+            }
+        }
 
-      case todo => {printDebug(s"todo>>>$todo"); shift{(k: TensorR => Unit) => ???} }
+        /*
+        val args = x.Cps.map(com(_) match {
+          case Base(v) => v
+          case Func1(v) => v
+          case Func3(v) => v
+        })
+        printDebug(s"args >> $args")
+        (nf, args) match {
+          case (Func1(f: (Rep[Int] => TensorR @diff)), (x1: Rep[Int])::Nil) => Base(f(x1))
+          case (Func3(f: ((TensorR, Rep[Array[Int]], Rep[Array[Int]]) => TensorR @diff)),
+                (x1:TensorR)::(x2:Rep[Array[Int]])::(x3:Rep[Array[Int]])::Nil) => Base(f(x1, x2, x3))
+        }*/
+
+      case todo => {printDebug(s"todo>>>$todo"); shift{(k: ValueR => Unit) => ???} }
     }
 
-    printDebug(s"main body >> $body")
-    com(body)(Map(args.head -> Base(x)))
+    // TODO: (Fei Wang): this is assuming the knowledge about the types of args
+    {(scores: Rep[Array[Int]], words: Rep[Array[Int]], lchs: Rep[Array[Int]], rchs: Rep[Array[Int]]) => { x: TensorR =>
+      val envR = env + (args(0) -> LitR(scores), args(1) -> LitR(words), args(2) -> LitR(lchs), args(3) -> LitR(rchs), args(4) -> Base(x))
+      com(body)(envR) match { case Base(v) => v }
+    }}
+
   }
-  */
 
 
   @virtualize
@@ -193,15 +293,15 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
       printDebug(s"r    >> $r")
       val func = args match {
         case x1::Nil =>
-          lazy val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) + (f -> Literal(fptr))) match {
+          val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) ) match {
               case Literal(n: Rep[Int]) => n
             }
           }
           Literal(fptr)
         case x1::x2::Nil =>
-          lazy val fptr: Rep[(Int, Int) => Int] = uninlinedFunc2 { (x1v: Rep[Int], x2v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) + (f -> Literal(fptr))) match {
+          val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
               case Literal(n: Rep[Int]) => n
             }
           }
@@ -549,20 +649,20 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
   //   // TODO: should this be in LMS?
   //   override def isPrimitiveType[T](m: Typ[T]) = (m == typ[String]) || super.isPrimitiveType(m)
 
-  //   override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
-  //     val x1 = unbox(x)
-  //     val x1_effects = x1 match {
-  //       case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
-  //         case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
-  //         case _ => b
-  //       })
-  //         case _ => Pure()
-  //     }
-  //     f match {
-  //       case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
-  //       case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
-  //     }
-  //   }
+  override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
+    val x1 = unbox(x)
+    val x1_effects = x1 match {
+      case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
+        case Def(Lambda(_, _, yy)) => b orElse summarizeEffects(yy)
+        case _ => b
+      })
+        case _ => Pure()
+    }
+    f match {
+      case Def(Lambda(_, _, y)) => reflectEffect(Apply(f, x1), summarizeEffects(y) andAlso x1_effects)
+      case _ => reflectEffect(Apply(f, x1), Simple() andAlso x1_effects)
+    }
+  }
 
   // BEGINNING UNINLINED FUNCTIONS
   val functionList0 = new scala.collection.mutable.HashMap[Sym[Any],Block[Any]]()
@@ -637,13 +737,14 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
     // l
     ???
   }
+  /*
   override def doLambdaDef[A:Typ,B:Typ](f: Exp[A] => Exp[B]) : Def[A => B] = {
     val x = unboxedFresh[A]
     val y = reifyEffects(f(x)) // unfold completely at the definition site.
-    ???
+    //???
 
     Lambda(f, x, y)
-  }
+  }*/
 }
 
 @virtualize
