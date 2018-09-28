@@ -100,7 +100,7 @@ class RepTensor(Rep):
     def __add__(self, m):
         return reflectTensor(["+",self,m])
     def __mul__(self, m):
-        return reflectTensor(["dot",self,m])
+        return reflectTensor(["*",self,m])
     def __truediv__(self, m):
         return reflectTensor(["/",self,m])
     def __getitem__(self, i):
