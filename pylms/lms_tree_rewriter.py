@@ -24,8 +24,12 @@ class ScopeAnalysis(ast.NodeVisitor):
             return
         elif isinstance(node.targets[0], ast.Tuple):
             ids = list(map(lambda x: x.func.id if isinstance(x, ast.Call) else x.id, node.targets[0].elts))
-        else:
+        elif isinstance(node.targets[0], ast.Name):
             ids = [node.targets[0].id] # TODO: brittle, should look at shadowing, etc.
+        else:
+            self.generic_visit(node)
+            return
+            # ids = [node.targets[0].value.value.id] # TODO: This is for Subscripts
 
         locals = self.fundef.locals
 
@@ -65,8 +69,13 @@ class StagingRewriter(ast.NodeTransformer):
     def shouldLiftVar(self, id):
         # lift a var if it's assigned more than once
         # TODO: need to check super scopes?
-        return ((self.fundef.locals.get(id)) and
-               (self.fundef.locals[id] > 1))
+        try:
+            return ((self.fundef.locals.get(id)) and
+                    (self.fundef.locals[id] > 1))
+        except AttributeError:
+            self.fundef.locals = {}
+            self.fundef.locals[id] = 1
+            return False
 
     def visit_FunctionDef(self, node):
         node.parent = self.fundef
@@ -88,7 +97,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                       orelse=[],
                                                       finalbody=[])],
                                          decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)),
-                                         returns=node.returns),
+                                         returns=node.returns if hasattr(node, 'returns') else []),
                           node)
         ast.fix_missing_locations(new_node)
         self.fundef = node.parent
@@ -101,6 +110,23 @@ class StagingRewriter(ast.NodeTransformer):
             self.generic_visit(node)
             return node
         elif isinstance(node.targets[0], ast.Tuple):
+            self.generic_visit(node)
+            return node
+        elif isinstance(node.targets[0], ast.Subscript):
+            if node.targets[0].value.attr is 'data':
+                new_node = ast.Expr(ast.Call(
+                    func=ast.Attribute(
+                        value=node.targets[0].value.value,
+                        attr='data_set',
+                        ctx=ast.Load()),
+                    args=[node.targets[0].slice.value, node.value],
+                    keywords=[]))
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                return new_node
+            self.generic_visit(node)
+            return node
+        elif isinstance(node.targets[0], ast.Call):
             self.generic_visit(node)
             return node
 
@@ -324,6 +350,14 @@ class StagingRewriter(ast.NodeTransformer):
                 ast.fix_missing_locations(new_node)
                 return new_node
 
+            if node.func.value.id is 'Tensor':
+                new_node = ast.Call(func=ast.Name(id='tensor_{}'.format(node.func.attr), ctx=ast.Load()),
+                                    args=node.args,
+                                    keywords=node.keywords)
+                ast.copy_location(new_node, node)
+                ast.fix_missing_locations(new_node)
+                return new_node
+
         if not isinstance(node.func, ast.Name):
             return node
 
@@ -340,6 +374,14 @@ class StagingRewriter(ast.NodeTransformer):
         if node.func.id in self.recs:
             new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+                                keywords=node.keywords)
+            ast.copy_location(new_node, node)
+            ast.fix_missing_locations(new_node)
+            return new_node
+
+        if node.func.id is 'SnekTuple':
+            new_node = ast.Call(func=ast.Name(id='rep_tuple', ctx=ast.Load()),
+                                args=node.args,
                                 keywords=node.keywords)
             ast.copy_location(new_node, node)
             ast.fix_missing_locations(new_node)

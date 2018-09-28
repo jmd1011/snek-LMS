@@ -1,8 +1,8 @@
 import inspect
 
 __all__ = [
-    'reflect', 'reflectTensor', 'reify', 'fresh',
-    'Rep', 'RepTensor',
+    'reflect', 'reflectTensor', 'reify', 'fresh', 'rep_tuple',
+    'Rep', 'RepTensor', 'newTensor', 'freshTensor', 'RepTuple', 'reflectTuple', 'reflectDef',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
@@ -11,7 +11,7 @@ __all__ = [
 
 var_counter = 0
 
-def freshName(): # for generate AST
+def freshName(): # for generating AST
     global var_counter
     n_var = var_counter
     var_counter += 1
@@ -58,6 +58,10 @@ def reflectTensor(args):
     rep = reflect(args)
     return RepTensor(rep.n)
 
+def reflectTuple(args):
+    rep = reflect(args)
+    return RepTuple(rep.n)
+
 class Rep(object):
     def __init__(self, n):
         self.n = n
@@ -97,8 +101,12 @@ class RepTensor(Rep):
         return reflectTensor(["+",self,m])
     def __mul__(self, m):
         return reflectTensor(["dot",self,m])
+    def __truediv__(self, m):
+        return reflectTensor(["/",self,m])
     def __getitem__(self, i):
         return reflectTensor(["idx",self,i])
+    def __setitem__(self,i,v):
+        return reflectTensor(["set-idx",self,i,v])
 
     @property
     def data(self):
@@ -110,6 +118,10 @@ class RepTensor(Rep):
 
     def data_get(self, i):
         return reflectTensor(["array-get",self,"data",i])
+    def data_set(self, i, v):
+        return reflectTensor(["array-set",self,"data",i,v])
+    def dot(self, t):
+        return reflectTensor(["dot",self,t])
     def backward(self):
         return reflectTensor(["call",self,"backward"])
     def conv2d(self, kernel):
@@ -126,6 +138,42 @@ class RepTensor(Rep):
         return reflectTensor(["call",self,"view_as",m])
     def sum(self):
         return reflectTensor(["call",self,"sum"])
+    def sigmoid(self):
+        return reflectTensor(["call",self,"sigmoid"])
+    def tanh(self):
+        return reflectTensor(["call",self,"tanh"])
+    def exp(self):
+        return reflectTensor(["call",self,"exp"])
+    def log(self):
+        return reflectTensor(["call",self,"log"])
+
+stTensorFresh = 0
+
+def freshTensor():
+    global stTensorFresh
+    stTensorFresh += 1
+    return RepTensor("t"+str(stTensorFresh-1))
+
+def newTensor(*dims):
+    rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
+    return RepTensor(rep.n)
+
+class RepTuple(Rep):
+    def __init__(self, n):
+        super().__init__(n)
+    @property
+    def _1(self):
+        return reflectTensor(["getattr",self,"_1"])
+    @property
+    def _2(self):
+        return reflectTensor(["getattr",self,"_2"])
+    @property
+    def _3(self):
+        return reflectTensor(["getattr",self,"_3"])
+
+def rep_tuple(*args):
+    tmp = reflectTuple(["tuple", [args]])
+    return RepTuple(tmp.n)
 
 class NonLocalReturnValue(Exception):
     def __init__(self, value):
@@ -170,6 +218,8 @@ def __def_staged(f, *args):
     return reflectDef(f.__name__, nargs, reify(lambda: f(*fargs))) # ['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
 def __call_staged(f, *args):
+    if f.__name__ is 'outputs':
+        return reflectTensor([f.__name__, *args])
     return reflect([f.__name__, *args])
 
 def __printf(s, vs):
@@ -183,6 +233,8 @@ def __assign(name, value):
     return reflect(["set", name, value])
 
 def __read(name):
+    if isinstance(name, RepTensor):
+        return reflectTensor(["get", name])
     return reflect(["get", name])
 
 def __len(name):

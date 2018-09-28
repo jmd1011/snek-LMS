@@ -13,6 +13,7 @@ from .lms_tree_rewriter import ScopeAnalysis, StagingRewriter
 from .rep import *
 from .nn_staging import *
 from .onnx_staging import *
+from .lantern_staging import *
 
 sys.path.insert(0, 'gen')
 
@@ -62,8 +63,6 @@ def lms(func):
             print("finished, src:\n{}".format(self.src))
             exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
             self.func = eval(func.__name__)
-
-            #self.code = "foobar"
         def __call__(self,*args):
             return self.func(*args)
 
@@ -153,11 +152,11 @@ def stageTensor(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
-            self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            self.pcode = toSexpr(reify(lambda: func(RepTensor("in1"),RepTensor("in2"),RepTensor("in3"),RepTensor("in4"),RepTensor("in5"))))
+            self.code = "(def {} (in1 in2 in3 in4 in5) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())

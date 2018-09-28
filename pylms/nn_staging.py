@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 __all__ = [
-    'newTensor', 'RepTensor',
+    'RepTensor',
     'torch_loader', 'torch_abs', 'torch_add', 'torch_mul', 'torch_sum',
     'nn_conv2d', 'nn_linear',
     'F_dropout', 'F_log_softmax', 'F_max_pool2d',
@@ -16,38 +16,10 @@ __all__ = [
     'rep_variable', '__for_dataloader',
     ]
 
-stFresh = 0
-
-def freshTensor():
-    global stFresh
-    stFresh += 1
-    return RepTensor("t"+str(stFresh-1))
-
-def newTensor(*dims):
-    rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
-    return RepTensor(rep.n)
-
 
 #############################################################
 ####################### torch Methods #######################
 #############################################################
-
-class RepTuple(Rep):
-    def __init__(self, n):
-        super().__init__(n)
-    @property
-    def _1(self):
-        return reflectTensor(["getattr",self,"_1"])
-    @property
-    def _2(self):
-        return reflectTensor(["getattr",self,"_2"])
-    @property
-    def _3(self):
-        return reflectTensor(["getattr",self,"_3"])
-
-def reflectTuple(args):
-    rep = reflect(args)
-    return RepTuple(rep.n)
 
 # def torch_loader(dataset, batch_size, shuffle, **kwargs):
 def torch_loader(name, train, download, transforms):
@@ -70,22 +42,22 @@ def torch_loader(name, train, download, transforms):
     return RepLoader(tmp.n)
 
 def torch_abs(t1):
-    return reflect(["call", "abs", [t1]])
+    return reflectTensor(["call", "abs", [t1]])
 
 def torch_add(t1, t2):
-    return reflect(["call", "add", [t1, t2]])
+    return reflectTensor(["call", "add", [t1, t2]])
 
 def torch_cat(t1, dim):
-    return reflect(["call", "cat", [t1, dim]])
+    return reflectTensor(["call", "cat", [t1, dim]])
 
 def torch_mul(t1, t2):
-    return reflect(["call", "mul", [t1, t2]])
+    return reflectTensor(["call", "mul", [t1, t2]])
 
 def torch_split(iou, size, dim):
     return reflectTuple(["call", "split", [iou, size, dim]])
 
 def torch_sum(t1, t2):
-    return reflect(["call", "sum", [t1, t2]])
+    return reflectTensor(["call", "sum", [t1, t2]])
 
 
 #############################################################
