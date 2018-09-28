@@ -1,7 +1,7 @@
 import inspect
 
 __all__ = [
-    'reflect', 'reflectTensor', 'reify', 'fresh', 'rep_tuple',
+    'reflect', 'reflectTensor', 'reify', 'fresh', 'rep_tuple', 'new_tuple',
     'Rep', 'RepTensor', 'newTensor', 'freshTensor', 'RepTuple', 'reflectTuple', 'reflectDef',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
@@ -176,6 +176,10 @@ class RepTuple(Rep):
 
 def rep_tuple(*args):
     tmp = reflectTuple(["call", "tuple", *args])
+    return RepTuple(tmp.n)
+
+def new_tuple():
+    tmp = reflectTuple(["call","new_tuple"])
     return RepTuple(tmp.n)
 
 class NonLocalReturnValue(Exception):

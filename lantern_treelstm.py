@@ -58,7 +58,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 				tArg = Tensor.zeros(output_size)
 				score = scores[i]
 				tArg.data[score] = 1
-				ret = rep_tuple()
+				ret = new_tuple()
 
 				if lefts[i] < 0:
 					word = words[i]
