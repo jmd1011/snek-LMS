@@ -96,7 +96,8 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 
 		return outputs(0)[0]
 	__def_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
-	return __call_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
+	x = __call_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
+	return lantern_train(x)
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")

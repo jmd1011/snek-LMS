@@ -172,7 +172,7 @@ class RepTuple(Rep):
         return reflectTensor(["getattr",self,"_3"])
 
 def rep_tuple(*args):
-    tmp = reflectTuple(["tuple", [args]])
+    tmp = reflectTuple(["call", "tuple", *args])
     return RepTuple(tmp.n)
 
 class NonLocalReturnValue(Exception):
