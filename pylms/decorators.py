@@ -82,7 +82,7 @@ def toSexpr(l):
             args = toSexpr(stm[2])
             fbody = toSexpr(stm[3])
             body = toSexpr(l[1:])
-            return ['def', stm[1], args, fbody, body]
+            return ['def', stm[1], args if isinstance(args, list) else [args] , fbody, body]
         else:
             raise Exception()
     elif len(l) > 3 and l[0] == 'def':
