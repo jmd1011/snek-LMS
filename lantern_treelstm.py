@@ -59,8 +59,6 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 				score = scores[i]
 				tArg.data[score] = 1
 
-				# tArg1?
-
 				if lefts[i] < 0:
 					word = words[i]
 					word_data = word_embedding_data[word]
