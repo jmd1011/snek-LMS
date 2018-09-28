@@ -54,6 +54,10 @@ def reflect(s):
     stBlock += [["let", id, s]]
     return id
 
+def reflectTensor(args):
+    rep = reflect(args)
+    return RepTensor(rep.n)
+
 class Rep(object):
     def __init__(self, n):
         self.n = n
@@ -123,10 +127,6 @@ class RepTensor(Rep):
     def sum(self):
         return reflectTensor(["call",self,"sum"])
 
-def reflectTensor(args):
-    rep = reflect(args)
-    return RepTensor(rep.n)
-
 class NonLocalReturnValue(Exception):
     def __init__(self, value):
         self.value = value
@@ -148,6 +148,12 @@ def __print(value): # TODO HACK!
     else:
         return reflect(["print", value])
 
+def reflectDef(name, args, f):
+    global stBlock
+    id = fresh()
+    stBlock += [["def", name, args, f]]
+    return id
+
 def __def_staged(f, *args):
     import copy
     sig = inspect.signature(f)
@@ -161,10 +167,10 @@ def __def_staged(f, *args):
             nargs.append(params[i])
             fargs[i].n = params[i]
 
-    return reflect(['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
+    return reflectDef(f.__name__, nargs, reify(lambda: f(*fargs))) # ['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
 def __call_staged(f, *args):
-    return reflect([f.__name__, [*args]])
+    return reflect([f.__name__, *args])
 
 def __printf(s, vs):
     nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]

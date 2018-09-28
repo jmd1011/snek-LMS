@@ -78,6 +78,11 @@ def toSexpr(l):
             rhs = toSexpr(stm[2])
             body = toSexpr(l[1:])
             return ['let', stm[1], rhs, body]
+        elif stm[0] == 'def':
+            args = toSexpr(stm[2])
+            fbody = toSexpr(stm[3])
+            body = toSexpr(l[1:])
+            return ['def', stm[1], args, fbody, body]
         else:
             raise Exception()
     elif len(l) > 3 and l[0] == 'def':
@@ -111,7 +116,7 @@ def stage(func):
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
-            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
