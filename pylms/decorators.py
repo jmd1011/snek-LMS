@@ -111,39 +111,17 @@ def stage(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.pcode = toSexpr(reify(lambda: func(Rep("in"))))
+            self.pcode = toSexpr(reify(lambda: func(*[Rep("in{}".format(i)) for i in range(len(inspect.signature(func).parameters))])))
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
             return foo.x1(*args)
-            # return None
 
     return Snippet()
-
-def stage2(func):
-    if not isinstance(func, types.FunctionType):
-        return NotImplemented
-
-    class Snippet(object):
-        def __init__(self):
-            self.original = func
-            self.pcode = toSexpr(reify(lambda: func(Rep("in1"), Rep("in2"))))
-            self.code = "(def {} (in1 in2) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            self.gateway = JavaGateway()
-            self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
-
-        def __call__(self, *args): #TODO naming
-            exec("import {} as foo".format(self.moduleName), globals())
-            return foo.x1(*args)
-            # return None
-
-    return Snippet()
-
 
 def stageTensor(func):
     if not isinstance(func, types.FunctionType):
@@ -152,7 +130,7 @@ def stageTensor(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.pcode = toSexpr(reify(lambda: func(RepTensor("in1"),RepTensor("in2"),RepTensor("in3"),RepTensor("in4"),RepTensor("in5"))))
+            self.pcode = toSexpr(reify(lambda: func(*[RepTensor("in{}".format(i)) for i in range(len(inspect.signature(func).parameters))])))
             self.code = "(def {} (in1 in2 in3 in4 in5) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)

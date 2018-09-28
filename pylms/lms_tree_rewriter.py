@@ -97,7 +97,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                       orelse=[],
                                                       finalbody=[])],
                                          decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)),
-                                         returns=node.returns if hasattr(node, 'returns') else []),
+                                         ),
                           node)
         ast.fix_missing_locations(new_node)
         self.fundef = node.parent
@@ -461,7 +461,17 @@ class StagingRewriter(ast.NodeTransformer):
 
         mod = new_node
 
-        if isinstance(node.value, ast.Call) and node.value.func.id is '__call_staged':
+        # TODO(James): Fix this hacky nonsense (also, need to do something similar for Assign, etc.)
+        if isinstance(node.value, ast.Subscript) and isinstance(node.value.value, ast.Call) and node.value.value.func.id is '__call_staged':
+            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
+                                args=node.value.value.args,
+                                keywords=node.value.value.keywords))
+
+            ast.copy_location(def_node,new_node)
+            ast.fix_missing_locations(def_node)
+            mod = [def_node, new_node]
+
+        elif isinstance(node.value, ast.Call) and node.value.func.id is '__call_staged':
             def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
                                 args=node.value.args,
                                 keywords=node.value.keywords))

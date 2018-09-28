@@ -4,7 +4,7 @@ from pylms.rep import *
 from pylms.lantern_staging import *
 
 @lms
-def run(x):
+def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 	word_embedding_size = 300
 	hidden_size = 150
 	output_size = 5
@@ -64,7 +64,7 @@ def run(x):
 				if lefts[i] < 0:
 					word = words[i]
 					word_data = word_embedding_data[word]
-					embedding_tensor = Tensor(word_data, word_embedding_size)
+					embedding_tensor = newTensor(word_data, word_embedding_size)
 
 					i_gate = (tWi.dot(embedding_tensor) + tbi).sigmoid()
 					o_gate = (tWo.dot(embedding_tensor) + tbo).sigmoid()
@@ -94,7 +94,9 @@ def run(x):
 			else:
 				return init
 
-		return outputs(0)._1
+		return outputs(0)[0]
+	__def_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
+	return __call_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
@@ -107,8 +109,8 @@ print("==============================================================")
 print(run.src)
 
 @stageTensor
-def runX(x):
-	return run(x)
+def runX(in_scores,in_words,in_lefts,in_rights,in_dummy):
+	return run(in_scores,in_words,in_lefts,in_rights,in_dummy)
 
 print("==============================================================")
 print("===========================IR CODE============================")
