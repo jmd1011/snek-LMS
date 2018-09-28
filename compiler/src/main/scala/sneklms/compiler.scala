@@ -18,6 +18,31 @@ import scala.collection.mutable.ArrayBuffer
 
 import lantern._
 
+/*
+trait CpsConv {
+  implicit class Cps[T](simple: Iterable[T]) {
+
+    def Cps() = new Cps(simple)
+
+    def foreach[U](f: T => Unit @cps[U]) = {
+      val iter = simple.iterator
+      while(iter.hasNext){
+        f(iter.next)
+      }
+    }
+
+    def foldLefttt[U, A](init: U)(f: (U, T) => U @cps[A]) = {
+      var temp = init
+      val iter = simple.iterator
+      while (iter.hasNext) {
+        temp = f(temp, iter.next)
+      }
+      temp
+    }
+  }
+}*/
+
+
 trait Compiler extends ONNXLib with UninlinedFunctionOps {
 
   implicit val pos = implicitly[SourceContext]
@@ -40,7 +65,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
   }
 
   implicit def repToValue[T](x: Rep[T]) = Literal(x)
-  val debug = false
+  val debug =true
   def printDebug(s: String) = if (debug) System.out.println(s)
 
   def printEnv(implicit env: Env) = {
@@ -48,6 +73,73 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
     env foreach { case (k, v) => printDebug(s"$k -> $v") }
     printDebug("==================")
   }
+
+/*
+  abstract class ValueR {
+    def get = this
+  }
+  case class Base(v: TensorR) extends ValueR
+  case class Func[T](v: T => TensorR @diff) extends ValueR
+  case class Func3[A, B, C](v: (A, B, C) => TensorR @diff) extends ValueR
+
+  //@virtualize
+  def compileModel(exp: Any)(env: Env): TensorR => TensorR @diff = { x: TensorR =>
+
+    // the sexp input of compileModel should be a def with one input!
+    val ("def" :: (f:String) :: (args: List[String]) :: (body: List[List[Any]]) :: Nil) = exp
+    assert(args.length == 1, "we require the input of model function is a single tensor")
+
+
+    // now the body part should evaluates to TensorR @diff
+    def com(exp: Any)(implicit envR: Map[String, ValueR] = Map.empty): TensorR @diff = exp match {
+
+      case "def"::(f:String)::(args: List[String])::(body: List[Any])::r =>
+        printDebug(s"def >> $f $args $body $r")
+
+        // now we need to stage this function (maybe recursive)
+        // TODO: (Fei Wang) Problem! type of F is determined by types of args!!
+        val F = { (init: TensorR, lch: Rep[Array[Int]], rch: Rep[Array[Int]]) => shift { (k: TensorR => Unit) =>
+
+          // stuff in here should return type Unit
+          lazy val func: Rep[Int] => (TensorR => Unit) => TensorR => Unit = FUNl { (i: Rep[Int]) => (k: TensorR => Unit) => (x: TensorR) =>
+            def sh_func = (i: Rep[Int]) => shift {k: (TensorR => Unit) => func(i)(k)(x)}
+            body match {
+              case "let"::(x: String)::a::b =>
+                compile(b)(env + (x -> compile(a)) + ??? )
+              case "=="::n::m::Nil =>
+                compile[Int,Boolean](n, m)(_ == _)(env)
+              case "if"::c::t::e::Nil =>
+                val Literal(rc: Rep[Boolean]) = compile(c)
+                Literal(__ifThenElse(rc, RST{k(com(t)(envR + (f -> Func(sh_func))))},
+                                         RST{k(com(e)(envR + (f -> Func(sh_func))))}))
+            }
+          }
+          func(0)(k)(init)
+        }}
+        com(r)(envR + (f -> Func3(F)))
+
+      case "begin"::seq =>
+        printDebug(s"seq >> $seq")
+        val res = seq.Cps.foldLefttt(None: Option[TensorR]){
+          //case (agg, "None") => agg
+          case (agg, exp) => Some(com(exp))
+        }
+        res.get
+
+      case f::(x: List[Any]) =>
+        printDebug(s"f >> $f")
+        printDebug(s"x >> $x")
+        ???
+      // case "None" =>
+
+      case todo => {printDebug(s"todo>>>$todo"); shift{(k: TensorR => Unit) => ???} }
+    }
+
+    printDebug(s"main body >> $body")
+    com(body)(Map(args.head -> Base(x)))
+  }
+  */
+
 
   @virtualize
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
@@ -65,7 +157,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
         compile(body) match { case Literal(b: Rep[Unit]) => b }
       unit(())
     case x: Int => unit(x)
-    case x: String => env(x)
+    case x: String => {env(x)}
     case Str(x) => Literal(unit(x))
     case "*"::n::m::Nil =>
       compile[Int,Int](n, m)(_ * _)
@@ -98,6 +190,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
       }
     case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
       printDebug(s"body >> $body")
+      printDebug(s"r    >> $r")
       val func = args match {
         case x1::Nil =>
           lazy val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
@@ -114,7 +207,10 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps {
           }
           Literal(fptr)
       }
+      printDebug(s"******************$f")
+      printDebug(s"******************$r")
       compile(r)(env + (f -> func))
+
 
     case "lambda"::(f: String)::(x: String)::e::Nil =>
       lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>

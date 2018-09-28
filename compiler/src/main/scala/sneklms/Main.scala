@@ -7,7 +7,7 @@ object Main {
   import Matches._
 
   def main(args: Array[String]) = {
-    val code = genT(args(0), "gen", "snek")
+    val code = gen(args(0), "gen", "snek")
     println(code)
   }
 
@@ -28,6 +28,26 @@ object Main {
       "Error"
   }
 
+/*
+  def genN(arg: String, dir: String, moduleName: String) = {
+    val prog_val = parseExp(arg)
+    println(prog_val)
+
+    val driver = new SnekDslDriverC[Float, Float](dir, moduleName) with Compiler {
+      def snippet(n: Rep[Float]): Rep[Float] = {
+        val in = NewArray[Float](1)
+        in(0) = n
+	val inn = Tensor(in, 1)
+        val g = gradR(compileModel(prog_val)(Map.empty))(inn)
+        g.data(0)
+      }
+    }
+    if (driver.gen)
+      driver.code
+    else
+      "Error"
+  }
+*/
   def genT(arg: String, dir: String, moduleName: String) = {
     println(s"Input: $arg")
     val prog_val = parseExp(arg)

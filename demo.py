@@ -3,66 +3,29 @@ from pylms.rep import *
 from pylms.nn_staging import *
 # import numpy
 
+
+# @lms
+# def power(x, n):
+#     if n == 0:
+#         return 1
+#     else:
+#         return x * power(x, n - 1)
+
+# @stage
+# def power3(x):
+#     return power(x, 3)
+
 @lms
-def run(z):
-	def power(x, n):
-	    if n == 0:
-	        return 1
-	    else:
-	        return x * power(x, n - 1)
-	return power(2, z)
+def run(x):
+  def mul(a, b):
+    return a * b
+  return __call_staged(mul, x, x)
 
 @stage
 def runX(x):
     return run(x)
 
-# @lms
-# def loop(x):
-#     y = 0
-#     while y < x:
-#         print(y)
-#         y = y + 1
-#     # continue
-#     return y
 
-# @stage
-# def loopX(x):
-#     return loop(x)
-
-# @lms
-# def test_for(train_loader):
-#     x = 0
-#     for batch_idx, (data, target) in enumerate(train_loader):
-#         data = Variable(data)
-#         target = Variable(target)
-#         new_data = data * data
-#         x = x + 1
-#     return x
-
-# @stage
-# def test_for2(x):
-#     return test_for(x)
-
-# @lms
-# def lib(x):
-#     optim.SGD(1, 2, 3)
-#     return x
-
-# @stage
-# def libX(x):
-#     return lib(x)
-
-# @lms
-# def floop(x):
-#     y = 0
-#     for i in x:
-#         print(y)
-#         y = y + 1
-#     return y
-
-# @stage
-# def floopX(x):
-#     return floop(x)
 
 print("======= Power original code =======")
 print(run.original_src)
