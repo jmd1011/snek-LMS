@@ -155,7 +155,7 @@ def freshTensor():
     return RepTensor("t"+str(stTensorFresh-1))
 
 def newTensor(*dims):
-    rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
+    rep = reflect(["call", "tensor", "[{}]".format(", ".join(list(map(str, dims))))])
     return RepTensor(rep.n)
 
 class RepTuple(Rep):
