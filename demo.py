@@ -49,9 +49,9 @@ def runpower(z):
 
 @lms
 def run(x):
-  def mul(a, b):
-    return a * b
-  return __call_staged(mul, x, x)
+  def mul(a):
+    return a * a
+  return __call_staged(mul, x)
 
 @stage
 def runX(x):

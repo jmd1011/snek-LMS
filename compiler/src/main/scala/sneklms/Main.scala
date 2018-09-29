@@ -157,6 +157,7 @@ object Main {
         val dummy_forget_gate    = TensorR(Tensor.zeros(hidden_size))
 
         val ext_map: Map[String, ValueR] = Map (
+          "x0" -> LitR(word_embedding_data),
           "x1" -> Base(tWi),
           "x2" -> Base(tbi),
           "x3" -> Base(tWo),

@@ -88,13 +88,19 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   }
   case class Base(v: TensorR) extends ValueR
   case class Func1[A](v: A => TensorR @diff) extends ValueR
+  case class Func2[A, B](v: (A, B) => TensorR @diff) extends ValueR
   case class Func3[A, B, C](v: (A, B, C) => TensorR @diff) extends ValueR
+  case class Cons[T](v: T) extends ValueR
   case class LitR[T](v: Rep[T]) extends ValueR
   case class MulR[T](v: Var[T]) extends ValueR
   case class WrapR(var v: ValueR) extends ValueR {
     override def get = v.get
   }
   case class Tup3(v1: TensorR, v2: TensorR, v3: TensorR) extends ValueR
+  case class ABase(v: ArrayBuffer[TensorR]) extends ValueR
+  case class AFunc1[A](v: A => ArrayBuffer[TensorR] @diff) extends ValueR
+  case class AFunc2[A, B](v: (A, B) => ArrayBuffer[TensorR] @diff) extends ValueR
+  implicit def getArrayBuffer(a: ABase): ArrayBuffer[TensorR] = a.v
 
   def compileModel(exp: Any)(env: Map[String, ValueR]) = {
 
@@ -107,17 +113,24 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
 
       case "def"::(f:String)::(args:List[String])::(body: List[Any])::r =>
         printDebug(s"def >> $f $args $body $r")
-
         args match {
 
-          case "i"::Nil => { // TODO: (Fei Wang) We assume that "i" means String
-            val F = { (i: Rep[Int]) => shift { (k: TensorR => Unit) =>
-              lazy val func = FUN00 { (k: TensorR => Unit) =>
+          case "i"::(x2:String)::Nil => { // TODO: (Fei Wang) We assume that "i" means type Rep[Int]
+            val F = { (i: Rep[Int], bb: ArrayBuffer[TensorR]) => shift { (k: ArrayBuffer[TensorR] => Unit) =>
 
+              lazy val func: Rep[Int] => (ArrayBuffer[TensorR] => Unit) => ArrayBuffer[TensorR] => Unit = FUNlm { (i: Rep[Int]) => (k: ArrayBuffer[TensorR] => Unit) => (x: ArrayBuffer[TensorR]) =>
+
+                def sh_func: ((Rep[Int], ArrayBuffer[TensorR]) => ArrayBuffer[TensorR] @diff) = (i: Rep[Int], x: ArrayBuffer[TensorR]) => shift {k: (ArrayBuffer[TensorR] => Unit) => func(i)(k)(x)}
+
+                RST(k( com(body)(envR + ("i" -> LitR(i), x2 -> ABase(bb), f -> AFunc2(sh_func))) ))
               }
+              func(i)(k)(bb)
             }}
+            printDebug(s"next >> $r")
+            com(r)(envR + (f -> AFunc2(F)))
           }
-          case x1::Nil => {
+
+          case x1::Nil => { // TODO: (Fei Wang) This function is wrong, because it is not yet recursive
             val F = { (x: TensorR) => shift { (k: TensorR => Unit) =>
               lazy val func = FUN0 { (k: TensorR => Unit) => (x: TensorR) =>
                 // printDebug(s"in body >>> $body")
@@ -129,7 +142,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             com(r)(envR + (f -> Func1(F)))
           }
           case x1::x2::Nil => shift{(k: ValueR => Unit) => ???}
-          case x1::x2::x3::Nil => {
+          case x1::x2::x3::Nil => { // TODO: (Fei Wang) this function is wrong, because the F and sh_func should have the same type
             // now we need to stage this function (maybe recursive)
             // TODO: (Fei Wang) Problem! type of F is determined by types of args!!
             val F = { (init: TensorR, lch: Rep[Array[Int]], rch: Rep[Array[Int]]) => shift { (k: TensorR => Unit) =>
@@ -155,7 +168,6 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
           case x :: y :: z :: Nil => com(x); com(y); com(z)
           case _ => shift{(k: ValueR => Unit) => ???}
         }
-
         /*
         val res = seq.Cps.foldLeft(None: Option[ValueR]){
           //case (agg, "None") => agg
@@ -163,71 +175,161 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
         }
         res.get
         */
+
+      case "let"::(x: String)::"new"::b =>
+        com(b)(envR + (x -> ABase(ArrayBuffer[TensorR]())))
       case "let"::(x: String)::a::b =>
         com(b)(envR + (x -> com(a)))
 
       case "call"::t =>
         t match {
-          case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::(r:List[Any]) =>
-            assert(r.size == 0, "TODO: tensor_randinit cannot handle dims that is not of size 2")
+          case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::Nil =>
             Base(TensorR(Tensor.randinit(dim0, dim1, scale)))
-          case "tensor_zeros"::(dim0:Int)::(r: List[Any]) =>
-            assert(r.size == 0, "TODO: tensor_zeros cannot handle dims that is not of size 1")
+          case "tensor_zeros"::(dim0:Int)::Nil =>
             Base(TensorR(Tensor.zeros(dim0)))
-          case "tuple"::(x:String)::(y:String)::(z:String)::(r:List[Any]) =>
-            assert(r.size == 0, "TODO: tuple only support 3-tuples")
-            val (Base(xx), Base(yy), Base(zz)) = (envR(x), envR(y), envR(z))
-            Tup3(xx, yy, zz)
-
-
+          case "tuple"::(x:String)::(y:String)::(z:String)::Nil =>
+            val (Base(xx: TensorR), Base(yy: TensorR), Base(zz: TensorR)) = (com(x), com(y), com(z))
+            ABase(ArrayBuffer(xx, yy, zz))
+          case "new_tuple"::Nil =>
+            ABase(ArrayBuffer[TensorR]())
+          case "tensor"::(x:String)::(y:Int)::Nil =>
+            val LitR(array: Rep[Array[Float]]) = com(x)
+            Base(TensorR(Tensor(array, y)))
+          case "append"::(x:String)::(y:String)::Nil =>
+            val ABase(xx: ArrayBuffer[TensorR]) = com(x)
+            val Base(yy: TensorR) = com(y)
+            xx.append(yy)
+            Cons(())
+          case (x:String)::"sigmoid"::Nil =>
+            val Base(xx: TensorR) = com(x)
+            Base(xx.sigmoid())
+          case (x:String)::"tanh"::Nil =>
+            val Base(xx: TensorR) = com(x)
+            Base(xx.tanh())
+          case (x:String)::"exp"::Nil =>
+            val Base(xx: TensorR) = com(x)
+            Base(xx.exp())
+          case (x:String)::"sum"::Nil =>
+            val Base(xx: TensorR) = com(x)
+            Base(xx.sum())
+          case (x:String)::"log"::Nil =>
+            val Base(xx: TensorR) = com(x)
+            Base(xx.log())
         }
+
+      case "dot"::n::m::Nil =>
+        printDebug(s"dot $n, $m")
+        val Base(nn: TensorR) = com(n)
+        val Base(mm: TensorR) = com(m)
+        Base(nn dot mm)
 
       case "*"::n::m::Nil =>
         printDebug(s"* $n, $m")
-        val nn = com(n)
-        val mm = com(m)
-        if (nn.isInstanceOf[Base] && mm.isInstanceOf[Base]) {
-          val Base(vn) = nn
-          val Base(vm) = mm
-          Base(vn * vm)
-        } else { shift{(k: ValueR => Unit) => ???} }
-      case "+"::n::m::Nil => (com(n), com(m)) match { case (Base(n: TensorR), Base(m: TensorR)) => Base(n + m) }
-      case "-"::n::m::Nil => (com(n), com(m)) match { case (Base(n: TensorR), Base(m: TensorR)) => Base(n - m) }
+        val Base(nn: TensorR) = com(n)
+        val Base(mm: TensorR) = com(m)
+        Base(nn * mm)
+      case "+"::n::m::Nil =>
+        printDebug(s"+ $n, $m")
+        val Base(nn: TensorR) = com(n)
+        val Base(mm: TensorR) = com(m)
+        Base(nn + mm)
+      case "-"::n::m::Nil =>
+        printDebug(s"- $n, $m")
+        val Base(nn: TensorR) = com(n)
+        val Base(mm: TensorR) = com(m)
+        Base(nn - mm)
+      case "/"::n::m::Nil =>
+        printDebug(s"/ $n, $m")
+        val Base(nn: TensorR) = com(n)
+        val Base(mm: TensorR) = com(m)
+        Base(nn / mm)
+      case "<"::n::m::Nil =>
+        printDebug(s"< $n, $m")
+        val vn: Rep[Int] = com(n) match {
+          case LitR(nn: Rep[Int]) => nn
+          case Cons(nn: Int) => nn
+        }
+        val vm: Rep[Int] = com(m) match {
+          case LitR(mm: Rep[Int]) => mm
+          case Cons(mm: Int) => mm
+        }
+        LitR(vn < vm)
+      case ">="::n::m::Nil =>
+        printDebug(s">= $n, $m")
+        val vn: Rep[Int] = com(n) match {
+          case LitR(nn: Rep[Int]) => nn
+          case Cons(nn: Int) => nn
+        }
+        val vm: Rep[Int] = com(m) match {
+          case LitR(mm: Rep[Int]) => mm
+          case Cons(mm: Int) => mm
+        }
+        LitR(vn >= vm)
 
-      case x: Int => LitR(unit(x))
-      case x: String => envR(x)
+      case "array-set"::(array:String)::"data"::(index:String)::(value:Int)::Nil =>
+        val Base(arr: TensorR) = com(array)
+        val LitR(idx: Rep[Int]) = com(index)
+        val Cons(vlu: Int) = com(value)
+        arr.x.data(idx) = vlu
+        Cons(())
+
+      case "if"::c::t::e::Nil =>
+        val LitR(rc: Rep[Boolean]) = com(c)
+        // TODO: (Fei Wang): if t and e return TensorR type, we should use IF. If they return ArrayBuffer[TensorR] type, we should use IFm
+        com(t) match {
+          case Base(tt) =>
+            val Base(ee) = com(e)
+            Base(IF (rc) { tt } { ee })
+          case ABase(tt) =>
+            val ABase(ee) = com(e)
+            ABase(IFm (rc) { tt } { ee })
+        }
+      case "idx"::arr::idx::Nil =>
+        com(arr) match {
+          case ABase(array: ArrayBuffer[TensorR]) =>
+            val Cons(i: Int) = com(idx)
+            Base(array(i))
+          case LitR(array: Rep[Array[Int]]) =>
+            val LitR(i: Rep[Int]) = com(idx)
+            LitR(array(i))
+        }
+
+      case x: Int => Cons(x)
+      case x: String =>
+        printDebug(s"EnvR >> x > $x")
+        envR(x)
       case x::Nil =>
-        printDebug(s"shrink >> $x")
+        printDebug(s"single >> x > $x")
         com(x)
 
       case f::(x: List[Any]) =>
         printDebug(s"f >> $f")
         printDebug(s"x >> $x")
-        val nf = com(f).get
+        val nf = com(f)
         printDebug(s"nf >> $nf")
         (nf, x) match {
           case (Func1(f: (TensorR => TensorR @diff)), a::Nil) =>
             com(a) match {
               case Base(aa: TensorR) => Base(f(aa))
             }
+          // TODO: (Fei Wang) this case is shadowed by the case above !!!! Try other methods??
           case (Func1(f: (Rep[Int] => TensorR @diff)), a::Nil) =>
             com(a) match {
               case LitR(aa: Rep[Int]) => Base(f(aa))
+              case Cons(aa: Int) => Base(f(aa))
+            }
+          case (AFunc2(f: ((Rep[Int], ArrayBuffer[TensorR]) => ArrayBuffer[TensorR] @diff)), a::b::Nil) =>
+            printDebug(s"in function >> nf > $f, x > $x")
+            val ABase(bb: ArrayBuffer[TensorR]) = com(b)
+            com(a) match {
+              case LitR(aa: Rep[Int]) =>
+                printDebug(s"before application >> nf > $f, aa > $aa, bb > $bb")
+                ABase(f(aa, bb))
+              case Cons(aa: Int) =>
+                printDebug(s"before application >> nf > $f, aa > $aa, bb > $bb")
+                ABase(f(aa, bb))
             }
         }
-
-        /*
-        val args = x.Cps.map(com(_) match {
-          case Base(v) => v
-          case Func1(v) => v
-          case Func3(v) => v
-        })
-        printDebug(s"args >> $args")
-        (nf, args) match {
-          case (Func1(f: (Rep[Int] => TensorR @diff)), (x1: Rep[Int])::Nil) => Base(f(x1))
-          case (Func3(f: ((TensorR, Rep[Array[Int]], Rep[Array[Int]]) => TensorR @diff)),
-                (x1:TensorR)::(x2:Rep[Array[Int]])::(x3:Rep[Array[Int]])::Nil) => Base(f(x1, x2, x3))
-        }*/
 
       case todo => {printDebug(s"todo>>>$todo"); shift{(k: ValueR => Unit) => ???} }
     }
