@@ -120,7 +120,10 @@ def stage(func):
             self.code = "(def {} (in) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            try:
+                self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            except Exception as e:
+                print('Unable to generate C code due to error:\n{}\n'.format(str(e)))
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
@@ -140,7 +143,10 @@ def stageTensor(func):
             self.code = "(def {} ({}) (begin {}))".format(func.__name__, ' '.join(self.args), str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
-            # self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)
+            try:
+                self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            except Exception as e:
+                print('Unable to generate C code due to error:\n{}\n'.format(str(e)))
 
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
