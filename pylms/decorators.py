@@ -103,6 +103,12 @@ def toSexpr(l):
     else:
         return l
 
+def staged(func):
+    class Snippet(object):
+        def __init__(self):
+            print('instantiation of {}'.format(func.__name__))
+    return Snippet()
+
 def stage(func):
     if not isinstance(func, types.FunctionType):
         return NotImplemented
@@ -129,8 +135,9 @@ def stageTensor(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
-            self.pcode = toSexpr(reify(lambda: func(*[RepTensor("in{}".format(i)) for i in range(len(inspect.signature(func).parameters))])))
-            self.code = "(def {} (in1 in2 in3 in4 in5) (begin {}))".format(func.__name__, str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+            self.args = ["in{}".format(i + 1) for i in range(len(inspect.signature(func).parameters))]
+            self.pcode = toSexpr(reify(lambda: func(*[RepTensor(a) for a in self.args])))
+            self.code = "(def {} ({}) (begin {}))".format(func.__name__, ' '.join(self.args), str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
             self.gateway = JavaGateway()
             self.moduleName = 'module_{}'.format(func.__name__)
             # self.Ccode = self.gateway.jvm.sneklms.Main.genT(self.code, "gen", self.moduleName)

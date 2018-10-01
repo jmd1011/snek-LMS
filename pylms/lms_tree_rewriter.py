@@ -46,7 +46,6 @@ class ScopeAnalysis(ast.NodeVisitor):
         self.generic_visit(node)
         self.fundef = node.parent
 
-
 class StagingRewriter(ast.NodeTransformer):
     """
     StagingRewriter does two things:
@@ -83,6 +82,9 @@ class StagingRewriter(ast.NodeTransformer):
 
         self.generic_visit(node)
 
+        if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
+            self.recs.append(node.name)
+
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
         inits = (ast.Assign(targets=[ast.Name(id=id, ctx=ast.Store())],
@@ -96,7 +98,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                                                        body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                                                       orelse=[],
                                                       finalbody=[])],
-                                         decorator_list=list(filter(lambda n: n.id!='lms', node.decorator_list)),
+                                         decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list)),
                                          ),
                           node)
         ast.fix_missing_locations(new_node)
@@ -126,9 +128,17 @@ class StagingRewriter(ast.NodeTransformer):
                 return new_node
             self.generic_visit(node)
             return node
-        elif isinstance(node.targets[0], ast.Call):
+        elif isinstance(node.targets[0], ast.Name):
             self.generic_visit(node)
-            return node
+            mod = []
+            if isinstance(node.value, list) and len(node.value) is 2: # Added recursive call
+                def_node = node.value[0]
+                ast.copy_location(def_node, node)
+                ast.fix_missing_locations(def_node)
+                node.value = node.value[1]
+                mod.append(def_node)
+            mod.append(node)
+            return mod
 
         id = node.targets[0].id
 
@@ -148,7 +158,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
 
-        return [new_node]
+        return new_node
 
     def visit_Name(self, node):
         self.generic_visit(node)
@@ -361,6 +371,7 @@ class StagingRewriter(ast.NodeTransformer):
         if not isinstance(node.func, ast.Name):
             return node
 
+        # Recursive Call
         if self.fundef is not None and self.fundef.name == node.func.id:
             if node.func.id not in self.recs:
                 self.recs += [node.func.id]
@@ -371,13 +382,20 @@ class StagingRewriter(ast.NodeTransformer):
             ast.fix_missing_locations(new_node)
             return new_node
 
+        # Entering recursive call
         if node.func.id in self.recs:
-            new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+            call_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
                                 keywords=node.keywords)
-            ast.copy_location(new_node, node)
-            ast.fix_missing_locations(new_node)
-            return new_node
+            ast.copy_location(call_node, node)
+            ast.fix_missing_locations(call_node)
+
+            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
+                                args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+                                keywords=node.keywords))
+            ast.copy_location(def_node, call_node)
+            ast.fix_missing_locations(def_node)
+            return [def_node, call_node]
 
         if node.func.id is 'SnekTuple':
             new_node = ast.Call(func=ast.Name(id='rep_tuple', ctx=ast.Load()),
@@ -459,27 +477,8 @@ class StagingRewriter(ast.NodeTransformer):
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
 
-        mod = new_node
 
-        # TODO(James): Fix this hacky nonsense (also, need to do something similar for Assign, etc.)
-        if isinstance(node.value, ast.Subscript) and isinstance(node.value.value, ast.Call) and node.value.value.func.id is '__call_staged':
-            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
-                                args=node.value.value.args,
-                                keywords=node.value.value.keywords))
-
-            ast.copy_location(def_node,new_node)
-            ast.fix_missing_locations(def_node)
-            mod = [def_node, new_node]
-
-        elif isinstance(node.value, ast.Call) and node.value.func.id is '__call_staged':
-            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
-                                args=node.value.args,
-                                keywords=node.value.keywords))
-
-            ast.copy_location(def_node,new_node)
-            ast.fix_missing_locations(def_node)
-            mod = [def_node, new_node]
-        return mod
+        return new_node
 
     def visit_For(self, node):
         self.generic_visit(node)

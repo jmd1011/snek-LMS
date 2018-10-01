@@ -35,6 +35,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 	tWhy = Tensor.randinit(output_size, hidden_size, 0.01)
 	tby = Tensor.zeros(output_size)
 
+	@staged
 	def lossFun(scores, words, lefts, rights, dummy):
 		initial_loss = Tensor.zeros(1)
 		initial_hidd = Tensor.zeros(hidden_size)
@@ -58,7 +59,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 				tArg = Tensor.zeros(output_size)
 				score = scores[i]
 				tArg.data[score] = 1
-				# ret = new_tuple()
+				ret = new_tuple()
 
 				if lefts[i] < 0:
 					word = words[i]
@@ -74,11 +75,11 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					pred2 = pred1 / pred1.sum()
 					res = pred2.dot(tArg)
 					loss = lossL + lossR - res.log()
-					ret = rep_tuple(loss, hidden, cell)
-					#ret.append(loss)
-					#ret.append(hidden)
-					#ret.append(cell)
-					return ret
+					# ret = rep_tuple(loss, hidden, cell)
+					ret.append(loss)
+					ret.append(hidden)
+					ret.append(cell)
+					# return ret
 				else:
 					i_gate1 = (tU0i.dot(hiddenL) + tU1i.dot(hiddenR) + tbbi).sigmoid()
 					fl_gate = (tU00f.dot(hiddenL) + tU01f.dot(hiddenR) + tbbf).sigmoid()
@@ -91,18 +92,17 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					pred21 = pred11 / pred11.sum()
 					res1 = pred21.dot(tArg)
 					loss1 = lossL + lossR - res1.log()
-					ret1 = rep_tuple(loss1, hidden1, cell1)
-					#ret.append(loss1)
-					#ret.append(hidden1)
-					#ret.append(cell1)
-					return ret1
-				return None
+					ret.append(loss1)
+					ret.append(hidden1)
+					ret.append(cell1)
+					# return ret1
+				return ret # None
 			else:
 				return init
 
-		return outputs(Rep(0), init)[0]
-	__def_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
-	x = __call_staged(lossFun, in_scores,in_words,in_lefts,in_rights,in_dummy)
+		z = outputs(Rep(0), init)
+		return z[0]
+	x = lossFun(in_scores,in_words,in_lefts,in_rights,in_dummy)
 	return lantern_train(x)
 
 print("==============================================================")
