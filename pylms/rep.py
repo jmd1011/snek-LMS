@@ -3,6 +3,7 @@ import inspect
 __all__ = [
     'reflect', 'reflectTensor', 'reify', 'fresh', 'rep_tuple', 'new_tuple',
     'Rep', 'RepTensor', 'newTensor', 'freshTensor', 'RepTuple', 'reflectTuple', 'reflectDef',
+    'RepArray', 'newArray',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
@@ -57,6 +58,10 @@ def reflect(s):
 def reflectTensor(args):
     rep = reflect(args)
     return RepTensor(rep.n)
+
+def reflectArray(args):
+    rep = reflect(args)
+    return RepArray(rep.n)
 
 def reflectTuple(args):
     rep = reflect(args)
@@ -146,6 +151,23 @@ class RepTensor(Rep):
         return reflectTensor(["call",self,"exp"])
     def log(self):
         return reflectTensor(["call",self,"log"])
+
+class RepArray(Rep):
+    def __init__(self, n):
+        super().__init__(n)
+    def __getitem__(self, i):
+        return reflectArray(["array-get",self,i])
+
+stArrayFresh = 0
+
+def freshArray():
+    global stArrayFresh
+    stArrayFresh += 1
+    return RepArray("a"+str(stArrayFresh-1))
+
+def newArray(*vals):
+    rep = reflect(["call","array","{}".format(", ".join(list(map(str,vals))))])
+    return RepArray(rep.n)
 
 stTensorFresh = 0
 
