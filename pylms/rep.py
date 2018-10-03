@@ -249,8 +249,12 @@ def __def_staged(f, *args):
     return reflectDef(f.__name__, nargs, reify(lambda: f(*fargs))) # ['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
 
 def __call_staged(f, *args):
-    if f.__name__ is 'outputs':
-        return reflectTensor([f.__name__, *args])
+    if 'return' in f.__annotations__:
+        ret = f.__annotations__['return'].__name__
+        if ret is 'RepTensor':
+            return reflectTensor([f.__name__, *args])
+        elif ret is 'Tuple':
+            return reflectTuple([f.__name__, *args])
     return reflect([f.__name__, *args])
 
 def __printf(s, vs):

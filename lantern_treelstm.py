@@ -43,7 +43,8 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 
 		init = rep_tuple(initial_loss, initial_hidd, initial_cell)
 
-		def outputs(i, init):
+		@staged
+		def outputs(i, init) -> Tensor:
 			if (i >= 0):
 				left = outputs(lefts[i], init)
 				right = outputs(rights[i], init)

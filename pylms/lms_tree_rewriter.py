@@ -84,6 +84,22 @@ class StagingRewriter(ast.NodeTransformer):
 
         if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
             self.recs.append(node.name)
+            if node.returns is not None:
+                if isinstance(node.returns, ast.Name):
+                    if node.returns.id is 'Tensor':
+                        node.returns.id = 'RepTensor'
+                    elif node.returns.id is 'Tuple':
+                        node.returns.id = 'RepTuple'
+                    elif node.returns.id is 'Array':
+                        node.returns.id = 'RepArray'
+                else:
+                    for r in node.returns:
+                        if r.id is 'Tensor':
+                            r.id = 'RepTensor'
+                        elif r.id is 'Tuple':
+                            r.id = 'RepTuple'
+                        elif r.id is 'Array':
+                            r.id = 'RepArray'
 
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
@@ -99,6 +115,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                       orelse=[],
                                                       finalbody=[])],
                                          decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list)),
+                                         returns=node.returns if hasattr(node, 'returns') else None
                                          ),
                           node)
         ast.fix_missing_locations(new_node)
