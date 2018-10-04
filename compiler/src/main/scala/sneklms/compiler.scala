@@ -19,6 +19,7 @@ import scala.collection.mutable.ListBuffer
 
 import lantern._
 
+// TODO (Fei Wang): the Serializable part is not working in LMS!!
 trait CpsConv extends Serializable {
   implicit class Cps[T](simple: Iterable[T]) extends Serializable {
 
@@ -55,7 +56,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
 
   implicit val pos = implicitly[SourceContext]
 
-
+  // for value
   abstract class Value {
     def get = this
   }
@@ -82,7 +83,110 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     printDebug("==================")
   }
 
+  @virtualize
+  def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
+    case "None" => unit(-1)
+    case "new" => Mut(var_new(0))
+    case "set"::(x: String)::a::Nil =>
+      val Mut(vx: Var[Int]) = env(x)
+      var_assign(vx, compile(a) match { case Literal(a: Rep[Int]) => a })
+      unit(())
+    case "get"::(x: String)::Nil =>
+      val Mut(vx: Var[Int]) = env(x)
+      Literal(readVar(vx))
+    case "while"::t::body::Nil =>
+      while (compile(t) match { case Literal(t: Rep[Boolean]) => t })
+        compile(body) match { case Literal(b: Rep[Unit]) => b }
+      unit(())
+    case x: Int => unit(x)
+    case x: String => {env(x)}
+    case Str(x) => Literal(unit(x))
+    case "*"::n::m::Nil =>
+      compile[Int,Int](n, m)(_ * _)
+    case "+"::n::m::Nil =>
+      compile[Int,Int](n, m)(_ + _)
+    case "-"::n::m::Nil =>
+      compile[Int,Int](n, m)(_ - _)
+    case "=="::n::m::Nil =>
+      compile[Int,Boolean](n, m)(_ == _)
+    case "<"::n::m::Nil =>
+      compile[Int,Boolean](n, m)(_ < _)
+    case "if"::c::t::e::Nil =>
+      val Literal(rc: Rep[Boolean]) = compile(c)
+      Literal(if (rc) compile(t) match { case Literal(t: Rep[Int]) => t } else compile(e) match { case Literal(e: Rep[Int]) => e })
+    case "let"::(x: String)::a::b =>
+      compile(b)(env + (x -> compile(a)))
+    case "return"::x::Nil =>
+      val Literal(rx: Rep[Any]) = compile(x)
+      return rx
+    case "print"::x::Nil =>
+      val arg = compile(x) match { case Literal(x: Rep[String]) => x }
+      printf("%s\\n", arg)
+      unit(1)
+    case "call"::t =>
+      t match {
+        case "numpy"::"zeros"::x::Nil =>
+          compile(x) match {
+            case Literal(x: Rep[Int]) => NewArray[Int](x)
+          }
+      }
+    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
+      printDebug(s"body >> $body")
+      printDebug(s"r    >> $r")
+      val func = args match {
+        case x1::Nil =>
+          val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) ) match {
+              case Literal(n: Rep[Int]) => n
+            }
+          }
+          Literal(fptr)
+        case x1::x2::Nil =>
+          val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
+              case Literal(n: Rep[Int]) => n
+            }
+          }
+          Literal(fptr)
+      }
+      printDebug(s"******************$f")
+      printDebug(s"******************$r")
+      compile(r)(env + (f -> func))
 
+
+    case "lambda"::(f: String)::(x: String)::e::Nil =>
+      lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
+        compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
+          case Literal(n: Rep[Int]) => n
+        }
+      }
+      Literal(fptr)
+    case "begin"::seq =>
+      printDebug(s"seq >> $seq")
+      val res = ((None: Option[Value]) /: seq) {
+        case (agg, exp) => Some(compile(exp))
+      }
+      res.get
+    case x::Nil =>
+      compile(x)
+    case f::(x: List[Any]) =>
+      printDebug(s"f >> $f")
+      printDebug(s"x >> $x")
+      val args = x map(compile(_) match { case Literal(x: Rep[Int]) => x })
+      printDebug(s"args >> $args")
+      val nf = compile(f).get
+      printEnv
+      printDebug(s"nf >> $nf")
+      (nf, args) match {
+        case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
+        case (Literal(f: Rep[((Int, Int)) => Int]), x1::x2::Nil) => f((x1, x2))
+      }
+    case Nil => // no main
+      val x = unit(0)
+      return x
+  }
+
+  // for valueR
   abstract class ValueR {
     def get = this
   }
@@ -100,12 +204,22 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   case class ABase(v: ArrayBuffer[TensorR]) extends ValueR
   case class AFunc1[A](v: A => ArrayBuffer[TensorR] @diff) extends ValueR
   case class AFunc2[A, B](v: (A, B) => ArrayBuffer[TensorR] @diff) extends ValueR
-  implicit def getArrayBuffer(a: ABase): ArrayBuffer[TensorR] = a.v
+  implicit def getArrayBuffer(a: ValueR): ArrayBuffer[TensorR] = a match {
+    case ABase(v) => v
+  }
+
+  abstract class Model
+  case class Bare(f: TensorR => TensorR @diff) extends Model
+  case class F1TensorR(f: TensorR => TensorR => TensorR @diff) extends Model
+  case class F2TensorR(f: TensorR => TensorR => TensorR => TensorR @diff) extends Model
+  case class F1Array(f: Rep[Array[Float]] => TensorR => TensorR @diff) extends Model
+  case class F3Array(f: Rep[Array[Float]] => Rep[Array[Int]] => Rep[Array[Int]] => TensorR => TensorR @diff) extends Model
+  case class F4Array(f: Rep[Array[Int]] => Rep[Array[Int]] => Rep[Array[Int]] => Rep[Array[Int]] => TensorR => TensorR @diff) extends Model
 
   def compileModel(exp: Any)(env: Map[String, ValueR]) = {
 
     val ("def":: (f:String) :: (args: List[String]) :: (body: List[List[Any]]) :: Nil) = exp
-    assert (args.size == 5, s"TODO: we only handle models with 5 inputs: 4 inputs for training data, 1 input for dummy Tensor, but args is $args")
+    // assert (args.size == 5, s"TODO: we only handle models with 5 inputs: 4 inputs for training data, 1 input for dummy Tensor, but args is $args")
     printDebug(s"main body >> $body")
 
     // now the body part should evaluates to TensorR @diff
@@ -115,18 +229,14 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
         printDebug(s"def >> $f $args $body $r")
         args match {
 
-          case "i"::(x2:String)::Nil => { // TODO: (Fei Wang) We assume that "i" means type Rep[Int]
-            val F = { (i: Rep[Int], bb: ArrayBuffer[TensorR]) => shift { (k: ArrayBuffer[TensorR] => Unit) =>
-
+          case "i"::(x2:String)::Nil => { // TODO: (Fei Wang) We assume that "i" means type Rep[Int], and assume that x2 is ArrayBuffer[TensorR] -- init
+            val F = (i: Rep[Int], init: ArrayBuffer[TensorR]) => shift { (k: ArrayBuffer[TensorR] => Unit) =>
               lazy val func: Rep[Int] => (ArrayBuffer[TensorR] => Unit) => ArrayBuffer[TensorR] => Unit = FUNlm { (i: Rep[Int]) => (k: ArrayBuffer[TensorR] => Unit) => (x: ArrayBuffer[TensorR]) =>
-
                 def sh_func: ((Rep[Int], ArrayBuffer[TensorR]) => ArrayBuffer[TensorR] @diff) = (i: Rep[Int], x: ArrayBuffer[TensorR]) => shift {k: (ArrayBuffer[TensorR] => Unit) => func(i)(k)(x)}
-
-                RST(k( com(body)(envR + ("i" -> LitR(i), x2 -> ABase(bb), f -> AFunc2(sh_func))) ))
+                RST(k( com(body)(envR + ("i" -> LitR(i), x2 -> ABase(init), f -> AFunc2(sh_func))) match {case ABase(a) => a} ))
               }
-              func(i)(k)(bb)
-            }}
-            printDebug(s"next >> $r")
+              func(i)(k)(init)
+            }
             com(r)(envR + (f -> AFunc2(F)))
           }
 
@@ -276,22 +386,18 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       case "if"::c::t::e::Nil =>
         val LitR(rc: Rep[Boolean]) = com(c)
         // TODO: (Fei Wang): if t and e return TensorR type, we should use IF. If they return ArrayBuffer[TensorR] type, we should use IFm
-        com(t) match {
-          case Base(tt) =>
-            val Base(ee) = com(e)
-            Base(IF (rc) { tt } { ee })
-          case ABase(tt) =>
-            val ABase(ee) = com(e)
-            ABase(IFm (rc) { tt } { ee })
-        }
+        ABase(IFm(rc){com(t) match {case ABase(v) => v}}{com(e) match {case ABase(v) => v}})
       case "idx"::arr::idx::Nil =>
         com(arr) match {
           case ABase(array: ArrayBuffer[TensorR]) =>
             val Cons(i: Int) = com(idx)
             Base(array(i))
-          case LitR(array: Rep[Array[Int]]) =>
+          case LitR(array: Rep[Array[Any]]) =>
             val LitR(i: Rep[Int]) = com(idx)
             LitR(array(i))
+          // case LitR(array: Rep[Array[Array[Float]]]) =>
+          //   val LitR(i: Rep[Int]) = com(idx)
+          //   LitR(array(i))
         }
 
       case x: Int => Cons(x)
@@ -335,117 +441,24 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     }
 
     // TODO: (Fei Wang): this is assuming the knowledge about the types of args
-    {(scores: Rep[Array[Int]], words: Rep[Array[Int]], lchs: Rep[Array[Int]], rchs: Rep[Array[Int]]) => { x: TensorR =>
-      val envR = env + (args(0) -> LitR(scores), args(1) -> LitR(words), args(2) -> LitR(lchs), args(3) -> LitR(rchs), args(4) -> Base(x))
-      com(body)(envR) match { case Base(v) => v }
-    }}
-
+    if (args.size == 2) {
+      // assume that it is the tensor mul tensor case
+      F1TensorR {(base: TensorR) => (x: TensorR) =>
+        com(body)(env + (args(0) -> Base(base), args(1) -> Base(x))) match {case Base(v) => v}
+      }
+    } else if (args.size == 3) { // assume that it is the tensor mul tensor case with dummy input
+      F2TensorR {(base: TensorR) => (base1: TensorR) => (x: TensorR) =>
+        com(body)(env + (args(0) -> Base(base), args(1) -> Base(base1), args(2) -> Base(x))) match { case Base(v) => v}
+      }
+    } else { // assume that it is treeLSTM case
+      F4Array{ scores: Rep[Array[Int]] => words: Rep[Array[Int]] => lchs: Rep[Array[Int]] => rchs: Rep[Array[Int]] => x: TensorR =>
+        val envR = env + (args(0) -> LitR(scores), args(1) -> LitR(words), args(2) -> LitR(lchs), args(3) -> LitR(rchs), args(4) -> Base(x))
+        com(body)(envR) match { case Base(v) => v }
+      }
+    }
   }
 
-
-  @virtualize
-  def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
-    case "None" => unit(-1)
-    case "new" => Mut(var_new(0))
-    case "set"::(x: String)::a::Nil =>
-      val Mut(vx: Var[Int]) = env(x)
-      var_assign(vx, compile(a) match { case Literal(a: Rep[Int]) => a })
-      unit(())
-    case "get"::(x: String)::Nil =>
-      val Mut(vx: Var[Int]) = env(x)
-      Literal(readVar(vx))
-    case "while"::t::body::Nil =>
-      while (compile(t) match { case Literal(t: Rep[Boolean]) => t })
-        compile(body) match { case Literal(b: Rep[Unit]) => b }
-      unit(())
-    case x: Int => unit(x)
-    case x: String => {env(x)}
-    case Str(x) => Literal(unit(x))
-    case "*"::n::m::Nil =>
-      compile[Int,Int](n, m)(_ * _)
-    case "+"::n::m::Nil =>
-      compile[Int,Int](n, m)(_ + _)
-    case "-"::n::m::Nil =>
-      compile[Int,Int](n, m)(_ - _)
-    case "=="::n::m::Nil =>
-      compile[Int,Boolean](n, m)(_ == _)
-    case "<"::n::m::Nil =>
-      compile[Int,Boolean](n, m)(_ < _)
-    case "if"::c::t::e::Nil =>
-      val Literal(rc: Rep[Boolean]) = compile(c)
-      Literal(if (rc) compile(t) match { case Literal(t: Rep[Int]) => t } else compile(e) match { case Literal(e: Rep[Int]) => e })
-    case "let"::(x: String)::a::b =>
-      compile(b)(env + (x -> compile(a)))
-    case "return"::x::Nil =>
-      val Literal(rx: Rep[Any]) = compile(x)
-      return rx
-    case "print"::x::Nil =>
-      val arg = compile(x) match { case Literal(x: Rep[String]) => x }
-      printf("%s\\n", arg)
-      unit(1)
-    case "call"::t =>
-      t match {
-        case "numpy"::"zeros"::x::Nil =>
-          compile(x) match {
-            case Literal(x: Rep[Int]) => NewArray[Int](x)
-          }
-      }
-    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
-      printDebug(s"body >> $body")
-      printDebug(s"r    >> $r")
-      val func = args match {
-        case x1::Nil =>
-          val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) ) match {
-              case Literal(n: Rep[Int]) => n
-            }
-          }
-          Literal(fptr)
-        case x1::x2::Nil =>
-          val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
-              case Literal(n: Rep[Int]) => n
-            }
-          }
-          Literal(fptr)
-      }
-      printDebug(s"******************$f")
-      printDebug(s"******************$r")
-      compile(r)(env + (f -> func))
-
-
-    case "lambda"::(f: String)::(x: String)::e::Nil =>
-      lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
-        compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
-          case Literal(n: Rep[Int]) => n
-        }
-      }
-      Literal(fptr)
-    case "begin"::seq =>
-      printDebug(s"seq >> $seq")
-      val res = ((None: Option[Value]) /: seq) {
-        case (agg, exp) => Some(compile(exp))
-      }
-      res.get
-    case x::Nil =>
-      compile(x)
-    case f::(x: List[Any]) =>
-      printDebug(s"f >> $f")
-      printDebug(s"x >> $x")
-      val args = x map(compile(_) match { case Literal(x: Rep[Int]) => x })
-      printDebug(s"args >> $args")
-      val nf = compile(f).get
-      printEnv
-      printDebug(s"nf >> $nf")
-      (nf, args) match {
-        case (Literal(f: Rep[Int => Int]), x1::Nil) => f(x1)
-        case (Literal(f: Rep[((Int, Int)) => Int]), x1::x2::Nil) => f((x1, x2))
-      }
-    case Nil => // no main
-      val x = unit(0)
-      return x
-  }
-
+  // for valueT (deprecated)
   abstract class ValueT {
     def get = this
   }
@@ -462,11 +475,6 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   class Result[+T](v: () => T @diff) {
     var x: Int = -1
     def apply() = {
-      // if (x == -1) {
-      //   x = variables.length
-      //   variables += v()
-      // }
-      // variables(x)
       v()
     }
   }
@@ -867,26 +875,68 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
       val sA = remap(typ[A])
 
       withStream(out) {
-        stream.println(s"""/*****************************************/
-         |#include <stdio.h>
-         |#include <stdlib.h>
-         |#include <stdint.h>
-         |#include <math.h>
-         |#include <unistd.h>
-         |#include <sys/types.h>
-         |#include <sys/stat.h>
-         |#include <fcntl.h>
-         |#include <sys/mman.h>
-          |#include <errno.h>
-          |#include <err.h>
-          |#include <sys/time.h>
-          |#include <time.h>
-          |#include <functional>
-          |#include <memory>
-          |#include <random>
-         |#include "lantern.h"
-         |#include "$moduleName.h"
-         |using namespace std;""".stripMargin)
+        stream.println(s"""/**************************/
+#include <stdio.h>
+#include <iostream>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <errno.h>
+#include <err.h>
+#include <sys/time.h>
+#include <time.h>
+#include <functional>
+#include <memory>
+#include <random>
+#include "lantern.h"
+#include "$moduleName.h"
+"""
++
+"""using namespace std;
+#ifndef MAP_FILE
+#define MAP_FILE MAP_SHARED
+#endif
+int printll(char* s) {
+  while (*s != '\n' && *s != ',' && *s != '\t') {
+    putchar(*s++);
+  }
+  return 0;
+}
+long hash(char *str0, int len)
+{
+  unsigned char* str = (unsigned char*)str0;
+  unsigned long hash = 5381;
+  int c;
+
+  while ((c = *str++) && len--)
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+  return hash;
+}
+
+void entrypoint(char*);
+
+std::random_device rd{};
+std::mt19937 gen{rd()};
+std::normal_distribution<> d{0,1};
+
+int main(int argc, char *argv[])
+{
+
+  if (argc != 2) {
+    printf("usage: query <filename>\n");
+    return 0;
+  }
+  entrypoint(argv[1]);
+  return 0;
+}
+
+      """.stripMargin)
 
         emitFunctions(dir, moduleName)
 
@@ -902,6 +952,11 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
         stream.println("/*******************************************/")
       }
       Nil
+    }
+
+    override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+      case afs@ArrayFromSeq(xs) => stream.println(remap(afs.m) + " " + quote(sym) + "[" + xs.length + "] = {" + (xs map quote mkString ",") + "}; // ;)")
+      case _ => super.emitNode(sym,rhs)
     }
     def tmpremap[A](m: Typ[A]): String = m.toString match {
       case "Int" => "int"
@@ -1014,15 +1069,16 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
     }
   }
 
-  def eval(a:A): Unit = { // TBD: should read result of type B?
-    val out = new java.io.PrintWriter("/tmp/snippet.c")
+  def eval[A](a:A): Unit = { // TBD: should read result of type B?
+    val filename = "/home/fei/bitbucket/snek-LMS/compiler/gen/snippet.cpp"
+    val out = new java.io.PrintWriter(filename)
     out.println(code)
     out.close
     //TODO: use precompile
     (new java.io.File("/tmp/snippet")).delete
     import scala.sys.process._
-    (s"gcc -std=c99 -O3 /tmp/snippet.c -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
+    (s"g++ -std=c++11 -O3 $filename -o /tmp/snippet":ProcessBuilder).lines.foreach(Console.println _)
     (s"/tmp/snippet $a":ProcessBuilder).lines.foreach(Console.println _)
   }
-}
 
+}

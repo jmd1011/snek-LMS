@@ -3,21 +3,20 @@ from pylms.rep import *
 from pylms.nn_staging import *
 # import numpy
 
-@lms
-def run(x, y):
-	def mul(a, b):
-		return a * b
-	# return mul(x, 3)
-	return __call_staged(mul, x, y)
+# @lms
+# def run(x, y):
+#   def mul(a):
+#       return a * a
+#   return __call_staged(mul, x, y)
 
-@lms
-def runpower(z):
-	def power(x, n):
-	    if n == 0:
-	        return 1
-	    else:
-	        return x * power(x, n - 1)
-	return power(2, z)
+# @lms
+# def runpower(z):
+#   def power(x, n):
+#       if n == 0:
+#           return 1
+#       else:
+#           return x * power(x, n - 1)
+#   return power(2, z)
 
 # @stage
 # def runX(x):
@@ -47,17 +46,25 @@ def runpower(z):
 # def power3(x):
 #     return power(x, 3)
 
+# @lms
+# def run(x):
+#   def mul(a):
+#     return a * a
+#   __def_staged(mul, x)
+#   return __call_staged(mul, x)
+
 @lms
-def run(x):
-  def mul(a):
-    return a * a
-  return __call_staged(mul, x)
+def run(base, base1, x):
+  @staged
+  def mul():
+    return base * base1
+  z = mul()
+  y = z.sum()
+  return y
 
 @stage
-def runX(x):
-    return run(x)
-
-
+def runX(base, base1, x):
+  return run(base, base1, x)
 
 print("======= Power original code =======")
 print(run.original_src)
@@ -65,9 +72,9 @@ print("======= Power converted code ========")
 print(run.src)
 print("\n")
 
-@stage
-def runX(x, y):
-	return run(x, y)
+# @stage
+# def runX(x, y):
+#   return run(x, y)
 
 print("======= Power3 IR ========")
 print(runX.code)
@@ -75,12 +82,12 @@ print(runX.code)
 # print("======= Power3 C/C++ code ========")
 # print(runX.Ccode)
 
-@stage
-def runPower(x):
-	return runpower(x)
+# @stage
+# def runPower(x):
+#   return runpower(x)
 
 print("======= Power original code =======")
-print(runpower.original_src)
+print(runX.original_src)
 print("======= Power converted code ========")
 print(runpower.src)
 print("\n")
