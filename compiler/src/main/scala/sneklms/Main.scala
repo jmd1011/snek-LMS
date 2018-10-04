@@ -3,6 +3,22 @@ package sneklms
 import lantern.ScannerLowerExp
 import scala.collection.mutable.ArrayBuffer
 
+import scala.util.continuations._
+import scala.util.continuations
+
+import org.scala_lang.virtualized.virtualize
+import org.scala_lang.virtualized.SourceContext
+
+import scala.virtualization.lms._
+
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.{Seq => NSeq}
+import scala.math._
+
+import java.io.PrintWriter;
+import java.io.File;
+
+
 object Main {
 
   import Base._
@@ -11,7 +27,56 @@ object Main {
 
   def main(args: Array[String]) = {
     val code = genTreeLSTM(args(0), "gen", "snek")
+    //val code = genMini(args(0), "gen", "snek")
+    //val code = genTensor(args(0), "gen", "snek")
     println(code)
+  }
+
+  def genMini(arg: String, dir: String, moduleName: String) = {
+    val prog_val = parseExp(arg)
+    println(prog_val)
+
+    val driver = new SnekDslDriverC[Double, Double](dir, moduleName) with CompilerMini {
+      def snippet(x: Rep[Double]): Rep[Double] = {
+        val array  = Array(4.0, 3.0, 1.5, 2.0)
+        val values = Array(5.0, 3.0, 4.0)
+        val lchs   = Array(1, -1, -1)
+        val rchs   = Array(2, -1, -1)
+        val base   = new NumR(2.5, var_new(0.0))
+        val lossFun = compileModel(prog_val)(Map()) match {
+          case Bare(f: (NumR => NumR @diff)) => f
+          case F1Array(f: (Rep[Array[Double]] => NumR => NumR @diff)) => f(array)
+          case F1NumR(f: (NumR => NumR => NumR @diff)) => f(base)
+          case F3Array(f: (Rep[Array[Double]] => Rep[Array[Int]] => Rep[Array[Int]] => NumR => NumR @diff)) => f(values)(lchs)(rchs)
+        }
+        gradR(lossFun)(x)
+      }
+    }
+    if (driver.gen)
+      driver.code
+    else
+      "Error"
+  }
+
+  def genTensor(arg: String, dir: String, moduleName: String) = {
+    val prog_val = parseExp(arg)
+    println(prog_val)
+
+    val driver = new SnekDslDriverC[String, Unit](dir, moduleName) with Compiler {
+      def snippet(x: Rep[String]): Rep[Unit] = {
+        val base   = TensorR(Tensor.ones(5) * 2.0f)
+        val lossFun = compileModel(prog_val)(Map()) match {
+          case F2TensorR(f: (TensorR => TensorR => TensorR => TensorR @diff)) => f(base)(base)
+        }
+        val loss = gradR_loss(lossFun)(Tensor.zeros(1))
+        printf("%f\\n", base.d(0))
+      }
+    }
+
+    if (driver.gen)
+      driver.code
+    else
+      "Error"
   }
 
   def gen(arg: String, dir: String, moduleName: String) = {
@@ -54,11 +119,9 @@ object Main {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    //val root_dir = "src/out/ICFP18evaluation/"
-    //val file_dir = "evaluationTreeLSTM/Lantern/Lantern.cpp"
-
     val sentimental_lstm = new SnekDslDriverC[String, Unit](dir, moduleName) with Compiler with ScannerLowerExp {
 
+      @virtualize
       def snippet(a: Rep[String]): Rep[Unit] = {
 
         val startTime = get_time()
@@ -183,7 +246,64 @@ object Main {
         )
 
         // lossFun is here:
-        val lossFun = compileModel(prog_val)(ext_map)
+        val lossFun = compileModel(prog_val)(ext_map) match {
+          case F4Array(f: (Rep[Array[Int]] => Rep[Array[Int]] => Rep[Array[Int]] => Rep[Array[Int]] => TensorR => TensorR @diff)) => f
+        }
+
+        // def lossFun(scores: Rep[Array[Int]], words: Rep[Array[Int]], lchs: Rep[Array[Int]], rchs: Rep[Array[Int]]) = { (dummy: TensorR) =>
+
+        //   val initial_loss = TensorR(Tensor.zeros(1))
+        //   val initial_hidd = TensorR(Tensor.zeros(hidden_size))
+        //   val initial_cell = TensorR(Tensor.zeros(hidden_size))
+        //   val inBuffer     = new ArrayBuffer[TensorR]()
+        //   inBuffer.append(initial_loss); inBuffer.append(initial_hidd); inBuffer.append(initial_cell)
+
+        //   val outBuffer = LOOPTM(0)(inBuffer)(lchs, rchs) { (l: ArrayBuffer[TensorR], r: ArrayBuffer[TensorR], i: Rep[Int]) =>
+
+        //     val lossl = l(0); val hiddenl = l(1); val celll = l(2)
+        //     val lossr = r(0); val hiddenr = r(1); val cellr = r(2)
+
+        //     val targ = Tensor.zeros(output_size); targ.data(scores(i)) = 1; val targ1 = TensorR(targ)
+
+        //     IFm (lchs(i) < 0) {
+        //       val embedding_tensor = TensorR(Tensor(word_embedding_data(words(i)), word_embedding_size))
+        //       val iGate = (tWi.dot(embedding_tensor) + tbi).sigmoid()
+        //       val oGate = (tWo.dot(embedding_tensor) + tbo).sigmoid()
+        //       val uValue = (tWu.dot(embedding_tensor) + tbu).tanh()
+        //       val cell = iGate * uValue
+
+        //       val hidden = oGate * cell.tanh()
+        //       val pred1 = (tWhy.dot(hidden) + tby).exp()
+        //       val pred2 = pred1 / pred1.sum()
+        //       val loss = lossl + lossr - (pred2 dot targ1).log()
+
+        //       val out = ArrayBuffer[TensorR]()
+        //       out.append(loss)
+        //       out.append(hidden)
+        //       out.append(cell)
+        //       out
+        //     } {
+        //       val iGate = (tU0i.dot(hiddenl) + tU1i.dot(hiddenr) + tbbi).sigmoid()
+        //       val flGate = (tU00f.dot(hiddenl) + tU01f.dot(hiddenr) + tbbf).sigmoid()
+        //       val frGate = (tU10f.dot(hiddenl) + tU11f.dot(hiddenr) + tbbf).sigmoid()
+        //       val oGate = (tU0o.dot(hiddenl) + tU1o.dot(hiddenr) + tbbo).sigmoid()
+        //       val uValue = (tU0u.dot(hiddenl) + tU1u.dot(hiddenr) + tbbu).tanh()
+        //       val cell = iGate * uValue + flGate * celll + frGate * cellr
+
+        //       val hidden = oGate * cell.tanh()
+        //       val pred1 = (tWhy.dot(hidden) + tby).exp()
+        //       val pred2 = pred1 / pred1.sum()
+        //       val loss = lossl + lossr - (pred2 dot targ1).log()
+
+        //       val out = ArrayBuffer[TensorR]()
+        //       out.append(loss)
+        //       out.append(hidden)
+        //       out.append(cell)
+        //       out
+        //     }
+        //   }
+        //   outBuffer(0)
+        // }
 
         val lr = learning_rate
         val hp = 1e-8f
@@ -222,7 +342,7 @@ object Main {
 
         for (epoc <- (0 until 30): Rep[Range]) {
 
-          var average_loss: Rep[Float] = 0.0f
+          var average_loss = 0.0f
 
           for (n <- (0 until tree_number): Rep[Range]) {
 
@@ -231,7 +351,8 @@ object Main {
             val words    = tree_data(index * 4 + 1)
             val leftchs  = tree_data(index * 4 + 2)
             val rightchs = tree_data(index * 4 + 3)
-            val loss = gradR_loss(lossFun(scores, words, leftchs, rightchs))(Tensor.zeros(1))
+            val loss = gradR_loss(lossFun(scores)(words)(leftchs)(rightchs))(Tensor.zeros(1))
+            //val loss = gradR_loss(lossFun(scores, words, leftchs, rightchs))(Tensor.zeros(1))
             val loss_value = loss.data(0)  // we suppose the loss is scala (Tensor of size 1)
             average_loss = average_loss * (n) / (n+1) + loss_value / (n+1)
 
