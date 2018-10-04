@@ -72,33 +72,33 @@ def toSexpr(l):
         return l
     if len(l) > 0 and isinstance(l[0], list):
         stm = l[0]
-        if stm[0] == 'let':
+        if stm[0] is 'let':
             rhs = toSexpr(stm[2])
             body = toSexpr(l[1:])
             return ['let', stm[1], rhs, body]
-        elif stm[0] == 'def':
+        elif stm[0] is 'def':
             args = toSexpr(stm[2])
             fbody = toSexpr(stm[3])
             body = toSexpr(l[1:])
             return ['def', stm[1], args if isinstance(args, list) else [args] , fbody, body]
         else:
             raise Exception()
-    elif len(l) > 3 and l[0] == 'def':
+    elif len(l) > 3 and l[0] is 'def':
         return ['def', l[1], l[2], toSexpr(l[3])]
-    elif len(l) > 3 and l[0] == 'for_dataloader':
+    elif len(l) > 3 and l[0] is 'for_dataloader':
         return ['for_dataloader', l[1], l[2], toSexpr(l[3])]
-    elif len(l) > 2 and l[0] == 'while':
+    elif len(l) > 2 and l[0] is 'while':
         cond = toSexpr(l[1])
         body = toSexpr(l[2])
         return ['while', cond, body]
-    elif len(l) > 1 and str(l[0]) == 'begin':
+    elif len(l) > 1 and str(l[0]) is 'begin':
         return  ['begin'] + [toSexpr(l[1:])]
-    elif len(l) > 3 and str(l[0]) == 'if':
+    elif len(l) > 3 and str(l[0]) is 'if':
         cond = toSexpr(l[1])
         then = toSexpr(l[2])
         oelse = toSexpr(l[3])
         return ['if', cond, then, oelse]
-    elif len(l) == 1:
+    elif len(l) is 1:
         return l[0]
     else:
         return l
@@ -106,7 +106,7 @@ def toSexpr(l):
 def staged(func):
     class Snippet(object):
         def __init__(self):
-            print('instantiation of {}'.format(func.__name__))
+            self.original = func
     return Snippet()
 
 def stage(func):
@@ -132,29 +132,29 @@ def stage(func):
 
     return Snippet()
 
-def stageTensor(func):
-    if not isinstance(func, types.FunctionType):
-        return NotImplemented
+# def stageTensor(func):
+#     if not isinstance(func, types.FunctionType):
+#         return NotImplemented
 
-    class Snippet(object):
-        def __init__(self):
-            self.original = func
-            self.args = ["in{}".format(i + 1) for i in range(len(inspect.signature(func).parameters))]
-            self.pcode = toSexpr(reify(lambda: func(*[RepTensor(a) for a in self.args])))
-            self.code = "(def {} ({}) (begin {}))".format(func.__name__, ' '.join(self.args), str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-            self.gateway = JavaGateway()
-            self.moduleName = 'module_{}'.format(func.__name__)
-            try:
-                self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
-            except Exception as e:
-                print('Unable to generate C code due to error:\n{}\n'.format(str(e)))
+#     class Snippet(object):
+#         def __init__(self):
+#             self.original = func
+#             self.args = ["in{}".format(i + 1) for i in range(len(inspect.signature(func).parameters))]
+#             self.pcode = toSexpr(reify(lambda: func(*[RepTensor(a) for a in self.args])))
+#             self.code = "(def {} ({}) (begin {}))".format(func.__name__, ' '.join(self.args), str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
+#             self.gateway = JavaGateway()
+#             self.moduleName = 'module_{}'.format(func.__name__)
+#             try:
+#                 self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+#             except Exception as e:
+#                 print('Unable to generate C code due to error:\n{}\n'.format(str(e)))
 
-        def __call__(self, *args): #TODO naming
-            exec("import {} as foo".format(self.moduleName), globals())
-            return foo.x1(*args)
-            # return None
+#         def __call__(self, *args): #TODO naming
+#             exec("import {} as foo".format(self.moduleName), globals())
+#             return foo.x1(*args)
+#             # return None
 
-    return Snippet()
+#     return Snippet()
 
 def lanternRun(func):
     if not isinstance(func, types.FunctionType):

@@ -1,9 +1,8 @@
 import inspect
 
 __all__ = [
-    'reflect', 'reflectTensor', 'reify', 'fresh', 'rep_tuple', 'new_tuple',
-    'Rep', 'RepTensor', 'newTensor', 'freshTensor', 'RepTuple', 'reflectTuple', 'reflectDef',
-    'RepArray', 'newArray',
+    'reflect', 'reify', 'fresh',
+    'Rep', 'reflectDef', 'Tensor', 'Tuple',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
     '__var', '__assign', '__read', '__len',
@@ -55,21 +54,10 @@ def reflect(s):
     stBlock += [["let", id, s]]
     return id
 
-def reflectTensor(args):
-    rep = reflect(args)
-    return RepTensor(rep.n)
-
-def reflectArray(args):
-    rep = reflect(args)
-    return RepArray(rep.n)
-
-def reflectTuple(args):
-    rep = reflect(args)
-    return RepTuple(rep.n)
-
 class Rep(object):
-    def __init__(self, n):
+    def __init__(self, n, *dims):
         self.n = n
+        self.dims = dims
     def __add__(self, m):
         return reflect(["+",self,m])
     def __sub__(self, m):
@@ -96,113 +84,52 @@ class Rep(object):
         return reflect([">",self,m])
     def __repr__(self):
         return str(self.n)
+
+    # RepFunction
     def __call__(self):
+        # TODO
         return str(self.n)
 
-class RepTensor(Rep):
-    def __init__(self, n):
-        super().__init__(n)
-    def __add__(self, m):
-        return reflectTensor(["+",self,m])
-    def __mul__(self, m):
-        return reflectTensor(["*",self,m])
-    def __truediv__(self, m):
-        return reflectTensor(["/",self,m])
+    ## Tensor Functions
     def __getitem__(self, i):
-        return reflectTensor(["idx",self,i])
+        return reflect(["array-get",self,i])
     def __setitem__(self,i,v):
-        return reflectTensor(["set-idx",self,i,v])
-
+        return reflect(["array-get",self,i,v])
     @property
     def data(self):
-        return reflectTensor(["getattr",self,"data"])
-
+        return reflect(["getattr",self,"data"])
     @data.setter
     def data(self, v):
-        return reflectTensor(["setattr",self,"data",v])
-
+        return reflect(["setattr",self,"data",v])
     def data_get(self, i):
-        return reflectTensor(["array-get",self,"data",i])
+        return reflect(["array-get",self,"data",i])
     def data_set(self, i, v):
-        return reflectTensor(["array-set",self,"data",i,v])
+        return reflect(["array-set",self,"data",i,v])
     def dot(self, t):
-        return reflectTensor(["dot",self,t])
-    def backward(self):
-        return reflectTensor(["call",self,"backward"])
-    def conv2d(self, kernel):
-        return reflectTensor(["call",self,"conv2d",kernel])
-    def view(self, *dims):
-        return reflectTensor(["call",self,"view",dims])
-    def print(self):
-        return reflectTensor(["call",self,"print"])
-    def max(self, n, keepDim=False):
-        return reflectTensor(["call",self,"max",[n,keepDim]])
-    def eq(self,m):
-        return reflectTensor(["call",self,"eq"])
-    def view_as(self,m):
-        return reflectTensor(["call",self,"view_as",m])
-    def sum(self):
-        return reflectTensor(["call",self,"sum"])
-    def sigmoid(self):
-        return reflectTensor(["call",self,"sigmoid"])
-    def tanh(self):
-        return reflectTensor(["call",self,"tanh"])
-    def exp(self):
-        return reflectTensor(["call",self,"exp"])
-    def log(self):
-        return reflectTensor(["call",self,"log"])
+        return reflect(["dot",self,t])
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            return reflect(["call",self,name,','.join([str(a) for a in args]),','.join([str(kwargs[a]) for a in kwargs])])
+        return wrapper
 
-class RepArray(Rep):
-    def __init__(self, n):
-        super().__init__(n)
-    def __getitem__(self, i):
-        return reflectArray(["array-get",self,i])
-
-stArrayFresh = 0
-
-def freshArray():
-    global stArrayFresh
-    stArrayFresh += 1
-    return RepArray("a"+str(stArrayFresh-1))
-
-def newArray(*vals):
-    rep = reflect(["call","array","{}".format(", ".join(list(map(str,vals))))])
-    return RepArray(rep.n)
-
-stTensorFresh = 0
-
-def freshTensor():
-    global stTensorFresh
-    stTensorFresh += 1
-    return RepTensor("t"+str(stTensorFresh-1))
-
-def newTensor(*dims):
-    rep = reflect(["call", "tensor", "{}".format(", ".join(list(map(str, dims))))])
-    return RepTensor(rep.n)
-
-class RepTuple(Rep):
-    def __init__(self, n):
-        super().__init__(n)
+    ## Tuple Functions
     @property
     def _1(self):
-        return reflectTensor(["getattr",self,"_1"])
+        return reflect(["getattr",self,"_1"])
     @property
     def _2(self):
-        return reflectTensor(["getattr",self,"_2"])
+        return reflect(["getattr",self,"_2"])
     @property
     def _3(self):
-        return reflectTensor(["getattr",self,"_3"])
+        return reflect(["getattr",self,"_3"])
 
-    def append(self,t):
-        return reflectTuple(["call","append",self,t])
+def Tensor(*dims):
+    tmp = reflect(["call","tensor",*dims])
+    return Rep(tmp.n, dims)
 
-def rep_tuple(*args):
-    tmp = reflectTuple(["call", "tuple", *args])
-    return RepTuple(tmp.n)
-
-def new_tuple():
-    tmp = reflectTuple(["call","new_tuple"])
-    return RepTuple(tmp.n)
+def Tuple(*args):
+    tmp = reflect(["call","tuple",*args])
+    return Rep(tmp.n)
 
 class NonLocalReturnValue(Exception):
     def __init__(self, value):
@@ -232,29 +159,10 @@ def reflectDef(name, args, f):
     return id
 
 def __def_staged(f, *args):
-    import copy
-    sig = inspect.signature(f)
-    params = list(sig.parameters)
-    nargs = []
-    fargs = copy.deepcopy(args)
-    if len(sig.parameters) is not len(args):
-        raise NotImplemented
-    for i in range(len(args)):
-        if isinstance(args[i], Rep):
-            fargs[i].n = params[i]
-            nargs.append(params[i])
-        else:
-            nargs.append("{}:{}".format(params[i], type(args[i]).__name__))
-
-    return reflectDef(f.__name__, nargs, reify(lambda: f(*fargs))) # ['def', f.__name__, [*nargs], reify(lambda: f(*fargs))])
+    nargs = [fresh() for _ in args]
+    return reflectDef(f.__name__, nargs, reify(f, *nargs))
 
 def __call_staged(f, *args):
-    if 'return' in f.__annotations__:
-        ret = f.__annotations__['return'].__name__
-        if ret is 'RepTensor':
-            return reflectTensor([f.__name__, *args])
-        elif ret is 'Tuple':
-            return reflectTuple([f.__name__, *args])
     return reflect([f.__name__, *args])
 
 def __printf(s, vs):
@@ -269,7 +177,7 @@ def __assign(name, value):
 
 def __read(name):
     if isinstance(name, RepTensor):
-        return reflectTensor(["get", name])
+        return reflect(["get", name])
     return reflect(["get", name])
 
 def __len(name):

@@ -9,7 +9,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 	hidden_size = 150
 	output_size = 5
 	learning_rate = 0.05
-	word_embedding_data = newTensor() # check this
+	word_embedding_data = Tensor() # check this
 	tWi = Tensor.randinit(hidden_size, word_embedding_size, 0.01)
 	tbi = Tensor.zeros(hidden_size)
 	tWo = Tensor.randinit(hidden_size, word_embedding_size, 0.01)
@@ -41,10 +41,10 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 		initial_hidd = Tensor.zeros(hidden_size)
 		initial_cell = Tensor.zeros(hidden_size)
 
-		init = rep_tuple(initial_loss, initial_hidd, initial_cell)
+		init = Tuple(initial_loss, initial_hidd, initial_cell)
 
 		@staged
-		def outputs(i, init) -> Tensor:
+		def outputs(i, init):
 			if (i >= 0):
 				left = outputs(lefts[i], init)
 				right = outputs(rights[i], init)
@@ -60,12 +60,12 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 				tArg = Tensor.zeros(output_size)
 				score = scores[i]
 				tArg.data[score] = 1
-				ret = new_tuple()
+				ret = Tuple()
 
 				if lefts[i] < 0:
 					word = words[i]
 					word_data = word_embedding_data[word]
-					embedding_tensor = newTensor(word_data, word_embedding_size)
+					embedding_tensor = Tensor(word_data, word_embedding_size)
 
 					i_gate = (tWi.dot(embedding_tensor) + tbi).sigmoid()
 					o_gate = (tWo.dot(embedding_tensor) + tbo).sigmoid()
@@ -116,7 +116,7 @@ print("========================STAGED SOURCE=========================")
 print("==============================================================")
 print(run.src)
 
-@stageTensor
+@stage
 def runX(in_scores,in_words,in_lefts,in_rights,in_dummy):
 	return run(in_scores,in_words,in_lefts,in_rights,in_dummy)
 

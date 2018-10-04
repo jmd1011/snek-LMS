@@ -84,22 +84,6 @@ class StagingRewriter(ast.NodeTransformer):
 
         if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
             self.recs.append(node.name)
-            if node.returns is not None:
-                if isinstance(node.returns, ast.Name):
-                    if node.returns.id is 'Tensor':
-                        node.returns.id = 'RepTensor'
-                    elif node.returns.id is 'Tuple':
-                        node.returns.id = 'RepTuple'
-                    elif node.returns.id is 'Array':
-                        node.returns.id = 'RepArray'
-                else:
-                    for r in node.returns:
-                        if r.id is 'Tensor':
-                            r.id = 'RepTensor'
-                        elif r.id is 'Tuple':
-                            r.id = 'RepTuple'
-                        elif r.id is 'Array':
-                            r.id = 'RepArray'
 
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
@@ -114,8 +98,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                                                        body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                                                       orelse=[],
                                                       finalbody=[])],
-                                         decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list)),
-                                         returns=node.returns if hasattr(node, 'returns') else None
+                                         decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list))
                                          ),
                           node)
         ast.fix_missing_locations(new_node)
@@ -311,7 +294,7 @@ class StagingRewriter(ast.NodeTransformer):
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             if node.func.value.id is 'torch':
                 if node.func.attr is 'Tensor':
-                    new_node = ast.Call(func=ast.Name(id='newTensor', ctx=ast.Load()),
+                    new_node = ast.Call(func=ast.Name(id='Tensor', ctx=ast.Load()),
                                         args=node.args,
                                         keywords=node.keywords)
                     ast.copy_location(new_node, node)

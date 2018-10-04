@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 __all__ = [
-    'RepTensor',
     'torch_loader', 'torch_abs', 'torch_add', 'torch_mul', 'torch_sum',
     'nn_conv2d', 'nn_linear',
     'F_dropout', 'F_log_softmax', 'F_max_pool2d',
@@ -42,22 +41,22 @@ def torch_loader(name, train, download, transforms):
     return RepLoader(tmp.n)
 
 def torch_abs(t1):
-    return reflectTensor(["call", "abs", [t1]])
+    return reflect(["call", "abs", [t1]])
 
 def torch_add(t1, t2):
-    return reflectTensor(["call", "add", [t1, t2]])
+    return reflect(["call", "add", [t1, t2]])
 
 def torch_cat(t1, dim):
-    return reflectTensor(["call", "cat", [t1, dim]])
+    return reflect(["call", "cat", [t1, dim]])
 
 def torch_mul(t1, t2):
-    return reflectTensor(["call", "mul", [t1, t2]])
+    return reflect(["call", "mul", [t1, t2]])
 
 def torch_split(iou, size, dim):
     return reflectTuple(["call", "split", [iou, size, dim]])
 
 def torch_sum(t1, t2):
-    return reflectTensor(["call", "sum", [t1, t2]])
+    return reflect(["call", "sum", [t1, t2]])
 
 
 #############################################################
@@ -118,43 +117,43 @@ def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.dropout(tensor)
     else:
-        return reflectTensor(["call", "dropout", [tensor]])
+        return reflect(["call", "dropout", [tensor]])
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        return reflectTensor(["call", "log_softmax", [tensor, dim]])
+        return reflect(["call", "log_softmax", [tensor, dim]])
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
         return F.max_pool2d(tensor, x)
     else:
-        return reflectTensor(["call", "max_pool2d", [tensor]])
+        return reflect(["call", "max_pool2d", [tensor]])
 
 def F_nll_loss(output, target, size_average=True):
     if isinstance(output, Variable):
         return F.nll_loss(output, target, size_average)
     else:
-        return reflectTensor(["call", "nll_loss", [output, target, size_average]])
+        return reflect(["call", "nll_loss", [output, target, size_average]])
 
 def F_relu(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.relu(tensor)
     else:
-        return reflectTensor(["call", "relu", [tensor]])
+        return reflect(["call", "relu", [tensor]])
 
 def F_sigmoid(t1, t2):
     if isinstance(t1, torch.Tensor) and isinstance(t2, torch.Tensor):
         return F.sigmoid(t1, t2)
     else:
-        return reflectTensor(["call", "sigmoid", [t1, t2]])
+        return reflect(["call", "sigmoid", [t1, t2]])
 
 def F_tanh(t):
     if isinstance(tensor, torch.Tensor):
         return F.tanh(tensor)
     else:
-        return reflectTensor(["call", "tanh", [tensor]])
+        return reflect(["call", "tanh", [tensor]])
 
 
 ###################################################
@@ -169,10 +168,10 @@ def optim_SGD(params, lr, momentum):
             return str(self.n)
 
         def zero_grad(self):
-            return reflectTensor(["call",self,"zero_grad"])
+            return reflect(["call",self,"zero_grad"])
 
         def step(self):
-            return reflectTensor(["call",self,"step"])
+            return reflect(["call",self,"step"])
 
     if isinstance(params, list):
         if isinstance(params[0], torch.Tensor):
