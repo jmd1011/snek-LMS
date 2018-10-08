@@ -4,19 +4,19 @@ from pylms.rep import *
 from pylms.lantern_staging import *
 
 @lms
-def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
+def run(word_data_path, tree_data_path, in_scores,in_words,in_lefts,in_rights):
 	word_embedding_size = 300
 	hidden_size = 150
 	output_size = 5
 	learning_rate = 0.05
-	word_embedding_data = Tensor() # check this
+	word_embedding_data = lantern_read(word_data_path) # check this
+	tree_data = lantern_read(tree_data_path)
 	tWi = Tensor.randinit(hidden_size, word_embedding_size, 0.01)
 	tbi = Tensor.zeros(hidden_size)
 	tWo = Tensor.randinit(hidden_size, word_embedding_size, 0.01)
 	tbo = Tensor.zeros(hidden_size)
 	tWu = Tensor.randinit(hidden_size, word_embedding_size, 0.01)
 	tbu = Tensor.zeros(hidden_size)
-
 	tU0i = Tensor.randinit(hidden_size, hidden_size, 0.01)
 	tU1i = Tensor.randinit(hidden_size, hidden_size, 0.01)
 	tbbi = Tensor.zeros(hidden_size)
@@ -31,12 +31,11 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 	tU0u = Tensor.randinit(hidden_size, hidden_size, 0.01)
 	tU1u = Tensor.randinit(hidden_size, hidden_size, 0.01)
 	tbbu = Tensor.zeros(hidden_size)
-
 	tWhy = Tensor.randinit(output_size, hidden_size, 0.01)
 	tby = Tensor.zeros(output_size)
 
 	@staged
-	def lossFun(scores, words, lefts, rights, dummy):
+	def lossFun(scores, words, lefts, rights):
 		initial_loss = Tensor.zeros(1)
 		initial_hidd = Tensor.zeros(hidden_size)
 		initial_cell = Tensor.zeros(hidden_size)
@@ -75,7 +74,7 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					pred2 = pred1 / pred1.sum()
 					res = pred2.dot(tArg)
 					loss = lossL + lossR - res.log()
-					return rep_tuple(loss, hidden, cell)
+					return Tuple(loss, hidden, cell)
 				else:
 					i_gate1 = (tU0i.dot(hiddenL) + tU1i.dot(hiddenR) + tbbi).sigmoid()
 					fl_gate = (tU00f.dot(hiddenL) + tU01f.dot(hiddenR) + tbbf).sigmoid()
@@ -88,15 +87,15 @@ def run(in_scores,in_words,in_lefts,in_rights,in_dummy):
 					pred21 = pred11 / pred11.sum()
 					res1 = pred21.dot(tArg)
 					loss1 = lossL + lossR - res1.log()
-					return rep_tuple(loss1, hidden1, cell1)
+					return Tuple(loss1, hidden1, cell1)
 				return None
 			else:
 				return init
 
-		z = outputs(Rep(0), init)
-		return initial_loss  #z[0]
-	x = lossFun(in_scores,in_words,in_lefts,in_rights,in_dummy)
-	return lantern_train(x)
+		z = outputs(0, init)
+		return z[0]
+	x = lossFun(in_scores,in_words,in_lefts,in_rights)
+	return lantern_train(word_data_path, tree_data_path, x, tWi,tbi,tWo,tbo,tWu,tbu,tU0i,tU1i,tbbi,tU00f,tU01f,tU10f,tU11f,tbbf,tU0o,tU1o,tbbo,tU0u,tU1u,tbbu,tWhy,tby)
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
@@ -109,8 +108,8 @@ print("==============================================================")
 print(run.src)
 
 @stage
-def runX(in_scores,in_words,in_lefts,in_rights,in_dummy):
-	return run(in_scores,in_words,in_lefts,in_rights,in_dummy)
+def runX(in_scores,in_words,in_lefts,in_rights):
+	return run("words.words", "tree_data.tree", in_scores,in_words,in_lefts,in_rights)
 
 print("==============================================================")
 print("===========================IR CODE============================")

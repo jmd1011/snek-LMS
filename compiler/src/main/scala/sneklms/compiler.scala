@@ -65,6 +65,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   case class Wrap(var v: Value) extends Value {
     override def get = v.get
   }
+  case class Tens(v: TensorR) extends Value
+  case class ArrayV[T](v: ArrayBuffer[T]) extends Value
   case object VError extends Value
 
   type Env = Map[String,Value]
@@ -129,31 +131,102 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
           compile(x) match {
             case Literal(x: Rep[Int]) => NewArray[Int](x)
           }
-      }
-    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
-      printDebug(s"body >> $body")
-      printDebug(s"r    >> $r")
-      val func = args match {
-        case x1::Nil =>
-          val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) ) match {
-              case Literal(n: Rep[Int]) => n
-            }
-          }
-          Literal(fptr)
-        case x1::x2::Nil =>
-          val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
-            compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
-              case Literal(n: Rep[Int]) => n
-            }
-          }
-          Literal(fptr)
-      }
-      printDebug(s"******************$f")
-      printDebug(s"******************$r")
-      compile(r)(env + (f -> func))
+        case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::Nil =>
+          Tens(TensorR(Tensor.randinit(dim0, dim1, scale)))
+        case "tensor_zeros"::(dim0:Int)::Nil =>
+          Tens(TensorR(Tensor.zeros(dim0)))
+        case "tuple"::(args: List[String])::Nil => args match {
+          case Nil => ArrayV(ArrayBuffer[TensorR]())
+          case (x: String)::(y: String)::(z: String)::Nil =>
+            val (Tens(xx), Tens(yy), Tens(zz)) = (compile(x), compile(y), compile(z))
+            ArrayV(ArrayBuffer(xx, yy, zz))
+          case _ => ???
+        }
+        case "tensor"::(args: List[Any])::Nil => args match {
+          case Nil => Tens(TensorR(Tensor()))
+          case (x: String)::(y: Int)::Nil =>
+            val (Literal(array:Rep[Array[Float]])) = compile(x)
+            Tens(TensorR(Tensor(array, y)))
+        }
+        case "lantern_read"::(filename: String)::Nil =>
+          if (filename.endsWith(".words")) {
+            val readSlot = NewArray[Int](1)
+            val fp = openf(filename, "r")
+            getInt(fp, readSlot, 0)
+            val word_embedding_length = readSlot(0)
+            val word_embedding_data = NewArray[Array[Float]](word_embedding_length)
 
+            for (i <- (0 until word_embedding_length): Rep[Range]) {
+              word_embedding_data(i) = NewArray[Float](word_embedding_size)
+              for (j <- (0 until word_embedding_size): Rep[Range]) {
+                getFloat(fp, word_embedding_data(i), j)
+              }
+            }
+            closef(fp)
+            Literal(word_embedding_data)
+          } else if (filename.endsWith(".tree")) {
+            val readSlot = NewArray[Int](1) // need a new readingSlot, other wise have error
+            val fp = openf(filename, "r")
+            getInt(fp1, readSlot, 0)
+            val tree_number = readSlot(0)
+            val tree_data = NewArray[Array[Int]](tree_number * 4) // each tree data has 4 lines (score, word, lch, rch)
 
+            val readSlot1 = NewArray[Int](1) // yet another readingSlot, not sure if this one can be reused
+            for (i <- (0 until tree_number): Rep[Range]) {
+              getInt(fp1, readSlot1, 0)
+              for (j <- (0 until 4): Rep[Range]) {
+                tree_data(i * 4 + j) = NewArray[Int](readSlot1(0))
+                for (k <- (0 until readSlot1(0)): Rep[Range]) {
+                  getInt(fp1, tree_data(i * 4 + j), k)
+                }
+              }
+            }
+            closef(fp1)
+            Literal(tree_data)
+          }
+        case "lantern_train"::(args: List[String])::Nil => ???
+      }
+    case e@("def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r) =>
+      f match {
+        case "lossFun" =>
+          val model = compileModel(e)(env map { case (k,v) =>
+            v match {
+              case t:Tens =>
+                (k -> Base(t.v))
+            }
+          })
+          model
+          ???
+        case _ =>
+          printDebug(s"body >> $body")
+          printDebug(s"r    >> $r")
+          val func = args match {
+            case x1::Nil =>
+              val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+                compile(body)(env + (x1 -> Literal(x1v)) ) match {
+                  case Literal(n: Rep[Int]) => n
+                }
+              }
+              Literal(fptr)
+            case x1::x2::Nil =>
+              val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+                compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
+                  case Literal(n: Rep[Int]) => n
+                }
+              }
+              Literal(fptr)
+            case x1::x2::x3::x4::Nil =>
+              val fptr: Rep[((Array[Float], Array[Float], Array[Float], Array[Float])) => Unit] = fun {
+                (x1v: Rep[Array[Float]], x2v: Rep[Array[Float]], x3v: Rep[Array[Float]], x4v: Rep[Array[Float]]) =>
+                  compile(body)(env + (x1 -> Literal(x2v)) + (x2 -> Literal(x2v)) + (x3 -> Literal(x3v)) + (x4 -> Literal(x4v)))
+                  unit(())
+              }
+            Literal(fptr)
+          }
+          printDebug(s"******************$f")
+          printDebug(s"******************$r")
+          compile(r)(env + (f -> func))
+      }
     case "lambda"::(f: String)::(x: String)::e::Nil =>
       lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
         compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {
@@ -233,7 +306,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             val F = (i: Rep[Int], init: ArrayBuffer[TensorR]) => shift { (k: ArrayBuffer[TensorR] => Unit) =>
               lazy val func: Rep[Int] => (ArrayBuffer[TensorR] => Unit) => ArrayBuffer[TensorR] => Unit = FUNlm { (i: Rep[Int]) => (k: ArrayBuffer[TensorR] => Unit) => (x: ArrayBuffer[TensorR]) =>
                 def sh_func: ((Rep[Int], ArrayBuffer[TensorR]) => ArrayBuffer[TensorR] @diff) = (i: Rep[Int], x: ArrayBuffer[TensorR]) => shift {k: (ArrayBuffer[TensorR] => Unit) => func(i)(k)(x)}
-                RST(k( com(body)(envR + ("i" -> LitR(i), x2 -> ABase(init), f -> AFunc2(sh_func))) match {case ABase(a) => a} ))
+                RST(k(com(body)(envR + ("i" -> LitR(i), x2 -> ABase(init), f -> AFunc2(sh_func))) match {case ABase(a) => a} ))
               }
               func(i)(k)(init)
             }
@@ -244,7 +317,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             val F = { (x: TensorR) => shift { (k: TensorR => Unit) =>
               lazy val func = FUN0 { (k: TensorR => Unit) => (x: TensorR) =>
                 // printDebug(s"in body >>> $body")
-                RST{k( com(body)(envR + (x1 -> Base(x))) match {case Base(v) => v} )}
+                RST{k(com(body)(envR + (x1 -> Base(x))) match {case Base(v) => v} )}
               }
               func(k)(x)
             }}

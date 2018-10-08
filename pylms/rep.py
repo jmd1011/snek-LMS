@@ -60,6 +60,8 @@ class Rep(object):
         self.dims = dims
     def __add__(self, m):
         return reflect(["+",self,m])
+    def __radd__(self, m):
+        return reflect(["+",m,self])
     def __sub__(self, m):
         return reflect(["-",self,m])
     def __mul__(self, m):
@@ -86,9 +88,9 @@ class Rep(object):
         return str(self.n)
 
     # RepFunction
-    def __call__(self):
+    def __call__(self,*args):
         # TODO
-        return str(self.n)
+        return reflect(["call",self,','.join([str(a) for a in args])])
 
     ## Tensor Functions
     def __getitem__(self, i):
@@ -107,10 +109,6 @@ class Rep(object):
         return reflect(["array-set",self,"data",i,v])
     def dot(self, t):
         return reflect(["dot",self,t])
-    def __getattr__(self, name):
-        def wrapper(*args, **kwargs):
-            return reflect(["call",self,name,','.join([str(a) for a in args]),','.join([str(kwargs[a]) for a in kwargs])])
-        return wrapper
 
     ## Tuple Functions
     @property
@@ -122,6 +120,11 @@ class Rep(object):
     @property
     def _3(self):
         return reflect(["getattr",self,"_3"])
+
+    def __getattr__(self, name):
+        def wrapper(*args, **kwargs):
+            return reflect(["call",self,name,','.join([str(a) for a in args]),','.join([str(kwargs[a]) for a in kwargs])])
+        return wrapper
 
 def Tensor(*dims):
     tmp = reflect(["call","tensor",*dims])

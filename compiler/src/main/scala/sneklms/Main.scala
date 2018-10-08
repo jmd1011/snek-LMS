@@ -1,26 +1,18 @@
 package sneklms
 
+import java.io.File;
+import java.io.PrintWriter;
 import lantern.ScannerLowerExp
-import scala.collection.mutable.ArrayBuffer
-
-import scala.util.continuations._
-import scala.util.continuations
-
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
-
+import scala.collection.{Seq => NSeq}
+import scala.collection.mutable.ArrayBuffer
+import scala.math._
+import scala.util.continuations
+import scala.util.continuations._
 import scala.virtualization.lms._
 
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.{Seq => NSeq}
-import scala.math._
-
-import java.io.PrintWriter;
-import java.io.File;
-
-
 object Main {
-
   import Base._
   import Lisp._
   import Matches._
@@ -130,7 +122,7 @@ object Main {
         val word_embedding_size   = 300
 
         val readingSlot1 = NewArray[Int](1) // this is a slot of memory used for reading from file
-        val fp = openf("small_glove.txt", "r")
+        val fp = openf("small_glove.words", "r")
         getInt(fp, readingSlot1, 0) // read the first number in the file, which is "How many rows"
         val word_embedding_length = readingSlot1(0)
 
@@ -144,7 +136,7 @@ object Main {
 
         // read in the data for trees
         val readingSlot2 = NewArray[Int](1) // need a new readingSlot, other wise have error
-        val fp1 = openf("array_tree.txt", "r")
+        val fp1 = openf("array_tree.tree", "r")
         getInt(fp1, readingSlot2, 0)
         val tree_number = readingSlot2(0)
         val tree_data = NewArray[Array[Int]](tree_number * 4) // each tree data has 4 lines (score, word, lch, rch)

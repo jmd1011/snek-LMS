@@ -132,30 +132,6 @@ def stage(func):
 
     return Snippet()
 
-# def stageTensor(func):
-#     if not isinstance(func, types.FunctionType):
-#         return NotImplemented
-
-#     class Snippet(object):
-#         def __init__(self):
-#             self.original = func
-#             self.args = ["in{}".format(i + 1) for i in range(len(inspect.signature(func).parameters))]
-#             self.pcode = toSexpr(reify(lambda: func(*[RepTensor(a) for a in self.args])))
-#             self.code = "(def {} ({}) (begin {}))".format(func.__name__, ' '.join(self.args), str(self.pcode).replace('[','(').replace(']',')').replace("'", '').replace(',', ''))
-#             self.gateway = JavaGateway()
-#             self.moduleName = 'module_{}'.format(func.__name__)
-#             try:
-#                 self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
-#             except Exception as e:
-#                 print('Unable to generate C code due to error:\n{}\n'.format(str(e)))
-
-#         def __call__(self, *args): #TODO naming
-#             exec("import {} as foo".format(self.moduleName), globals())
-#             return foo.x1(*args)
-#             # return None
-
-#     return Snippet()
-
 def lanternRun(func):
     if not isinstance(func, types.FunctionType):
         return NotImplemented
