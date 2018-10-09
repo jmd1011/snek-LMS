@@ -1,23 +1,17 @@
 package sneklms
 
-import Lisp._
 import Base._
-
-import scala.util.continuations._
-import scala.util.continuations
-
+import java.io.{File, PrintWriter}
+import lantern._
+import Lisp._
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
-
-import scala.virtualization.lms._
-import scala.virtualization.lms.common._
-
-import java.io.{PrintWriter, File}
-
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.ListBuffer
-
-import lantern._
+import scala.util.continuations
+import scala.util.continuations._
+import scala.virtualization.lms._
+import scala.virtualization.lms.common._
 
 // TODO (Fei Wang): the Serializable part is not working in LMS!!
 trait CpsConv extends Serializable {
@@ -52,8 +46,7 @@ trait CpsConv extends Serializable {
   }
 }
 
-trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
-
+trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with ScannerLowerBase {
   implicit val pos = implicitly[SourceContext]
 
   // for value
@@ -153,6 +146,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             val readSlot = NewArray[Int](1)
             val fp = openf(filename, "r")
             getInt(fp, readSlot, 0)
+            val word_embedding_size = 300
             val word_embedding_length = readSlot(0)
             val word_embedding_data = NewArray[Array[Float]](word_embedding_length)
 
@@ -167,22 +161,24 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
           } else if (filename.endsWith(".tree")) {
             val readSlot = NewArray[Int](1) // need a new readingSlot, other wise have error
             val fp = openf(filename, "r")
-            getInt(fp1, readSlot, 0)
+            getInt(fp, readSlot, 0)
             val tree_number = readSlot(0)
             val tree_data = NewArray[Array[Int]](tree_number * 4) // each tree data has 4 lines (score, word, lch, rch)
 
             val readSlot1 = NewArray[Int](1) // yet another readingSlot, not sure if this one can be reused
             for (i <- (0 until tree_number): Rep[Range]) {
-              getInt(fp1, readSlot1, 0)
+              getInt(fp, readSlot1, 0)
               for (j <- (0 until 4): Rep[Range]) {
                 tree_data(i * 4 + j) = NewArray[Int](readSlot1(0))
                 for (k <- (0 until readSlot1(0)): Rep[Range]) {
-                  getInt(fp1, tree_data(i * 4 + j), k)
+                  getInt(fp, tree_data(i * 4 + j), k)
                 }
               }
             }
-            closef(fp1)
+            closef(fp)
             Literal(tree_data)
+          } else {
+            ???
           }
         case "lantern_train"::(args: List[String])::Nil => ???
       }

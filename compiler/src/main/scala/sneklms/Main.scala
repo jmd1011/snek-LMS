@@ -1,7 +1,6 @@
 package sneklms
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.{File, PrintWriter};
 import lantern.ScannerLowerExp
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
@@ -18,64 +17,64 @@ object Main {
   import Matches._
 
   def main(args: Array[String]) = {
-    val code = genTreeLSTM(args(0), "gen", "snek")
+    val code = gen(args(0), "gen", "snek")
     //val code = genMini(args(0), "gen", "snek")
     //val code = genTensor(args(0), "gen", "snek")
     println(code)
   }
 
-  def genMini(arg: String, dir: String, moduleName: String) = {
-    val prog_val = parseExp(arg)
-    println(prog_val)
+  // def genMini(arg: String, dir: String, moduleName: String) = {
+  //   val prog_val = parseExp(arg)
+  //   println(prog_val)
 
-    val driver = new SnekDslDriverC[Double, Double](dir, moduleName) with CompilerMini {
-      def snippet(x: Rep[Double]): Rep[Double] = {
-        val array  = Array(4.0, 3.0, 1.5, 2.0)
-        val values = Array(5.0, 3.0, 4.0)
-        val lchs   = Array(1, -1, -1)
-        val rchs   = Array(2, -1, -1)
-        val base   = new NumR(2.5, var_new(0.0))
-        val lossFun = compileModel(prog_val)(Map()) match {
-          case Bare(f: (NumR => NumR @diff)) => f
-          case F1Array(f: (Rep[Array[Double]] => NumR => NumR @diff)) => f(array)
-          case F1NumR(f: (NumR => NumR => NumR @diff)) => f(base)
-          case F3Array(f: (Rep[Array[Double]] => Rep[Array[Int]] => Rep[Array[Int]] => NumR => NumR @diff)) => f(values)(lchs)(rchs)
-        }
-        gradR(lossFun)(x)
-      }
-    }
-    if (driver.gen)
-      driver.code
-    else
-      "Error"
-  }
+  //   val driver = new SnekDslDriverC[Double, Double](dir, moduleName) with CompilerMini {
+  //     def snippet(x: Rep[Double]): Rep[Double] = {
+  //       val array  = Array(4.0, 3.0, 1.5, 2.0)
+  //       val values = Array(5.0, 3.0, 4.0)
+  //       val lchs   = Array(1, -1, -1)
+  //       val rchs   = Array(2, -1, -1)
+  //       val base   = new NumR(2.5, var_new(0.0))
+  //       val lossFun = compileModel(prog_val)(Map()) match {
+  //         case Bare(f: (NumR => NumR @diff)) => f
+  //         case F1Array(f: (Rep[Array[Double]] => NumR => NumR @diff)) => f(array)
+  //         case F1NumR(f: (NumR => NumR => NumR @diff)) => f(base)
+  //         case F3Array(f: (Rep[Array[Double]] => Rep[Array[Int]] => Rep[Array[Int]] => NumR => NumR @diff)) => f(values)(lchs)(rchs)
+  //       }
+  //       gradR(lossFun)(x)
+  //     }
+  //   }
+  //   if (driver.gen)
+  //     driver.code
+  //   else
+  //     "Error"
+  // }
 
-  def genTensor(arg: String, dir: String, moduleName: String) = {
-    val prog_val = parseExp(arg)
-    println(prog_val)
+  // def genTensor(arg: String, dir: String, moduleName: String) = {
+  //   val prog_val = parseExp(arg)
+  //   println(prog_val)
 
-    val driver = new SnekDslDriverC[String, Unit](dir, moduleName) with Compiler {
-      def snippet(x: Rep[String]): Rep[Unit] = {
-        val base   = TensorR(Tensor.ones(5) * 2.0f)
-        val lossFun = compileModel(prog_val)(Map()) match {
-          case F2TensorR(f: (TensorR => TensorR => TensorR => TensorR @diff)) => f(base)(base)
-        }
-        val loss = gradR_loss(lossFun)(Tensor.zeros(1))
-        printf("%f\\n", base.d(0))
-      }
-    }
+  //   val driver = new SnekDslDriverC[String, Unit](dir, moduleName) with Compiler {
+  //     def snippet(x: Rep[String]): Rep[Unit] = {
+  //       val base   = TensorR(Tensor.ones(5) * 2.0f)
+  //       val lossFun = compileModel(prog_val)(Map()) match {
+  //         case F2TensorR(f: (TensorR => TensorR => TensorR => TensorR @diff)) => f(base)(base)
+  //       }
+  //       val loss = gradR_loss(lossFun)(Tensor.zeros(1))
+  //       printf("%f\\n", base.d(0))
+  //     }
+  //   }
 
-    if (driver.gen)
-      driver.code
-    else
-      "Error"
-  }
+  //   if (driver.gen)
+  //     driver.code
+  //   else
+  //     "Error"
+  // }
 
   def gen(arg: String, dir: String, moduleName: String) = {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
+    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler with ScannerLowerExp {
       def snippet(n: Rep[Int]): Rep[Int] = {
         compile(prog_val)(Map("arg" -> Literal(n))) match {
           case Literal(n: Rep[Int]) => n
@@ -388,21 +387,21 @@ object Main {
       "Error"
   }
 
-  def genT(arg: String, dir: String, moduleName: String) = {
-    println(s"Input: $arg")
-    val prog_val = parseExp(arg)
-    println(prog_val)
+  // def genT(arg: String, dir: String, moduleName: String) = {
+  //   println(s"Input: $arg")
+  //   val prog_val = parseExp(arg)
+  //   println(prog_val)
 
-    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
-      def snippet(n: Rep[Int]): Rep[Int] = {
-        compileT(prog_val)(Map("arg" -> LiteralT(n))) match {
-          case LiteralT(n: Rep[Int]) => n
-        }
-      }
-    }
-    if (driver.gen)
-      driver.code
-    else
-      "Error"
-  }
+  //   val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
+  //     def snippet(n: Rep[Int]): Rep[Int] = {
+  //       compileT(prog_val)(Map("arg" -> LiteralT(n))) match {
+  //         case LiteralT(n: Rep[Int]) => n
+  //       }
+  //     }
+  //   }
+  //   if (driver.gen)
+  //     driver.code
+  //   else
+  //     "Error"
+  // }
 }
