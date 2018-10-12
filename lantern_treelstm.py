@@ -94,8 +94,7 @@ def run(word_data_path, tree_data_path, in_scores,in_words,in_lefts,in_rights):
 
 		z = outputs(0, init)
 		return z[0]
-	x = lossFun(in_scores,in_words,in_lefts,in_rights)
-	return lantern_train(word_data_path, tree_data_path, x, tWi,tbi,tWo,tbo,tWu,tbu,tU0i,tU1i,tbbi,tU00f,tU01f,tU10f,tU11f,tbbf,tU0o,tU1o,tbbo,tU0u,tU1u,tbbu,tWhy,tby)
+	return lantern_train(tree_data, lossFun, tWi,tbi,tWo,tbo,tWu,tbu,tU0i,tU1i,tbbi,tU00f,tU01f,tU10f,tU11f,tbbf,tU0o,tU1o,tbbo,tU0u,tU1u,tbbu,tWhy,tby)
 
 print("==============================================================")
 print("=======================ORIGINAL SOURCE========================")
