@@ -23,5 +23,5 @@ def runX(x):
 print("======= SExpr ========")
 print(runX.code)
 print("\n")
-print("======= C/C++ code ========")
-print(runX.Ccode)
+# print("======= C/C++ code ========")
+# print(runX.Ccode)
