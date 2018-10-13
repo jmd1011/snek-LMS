@@ -106,8 +106,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with Scann
         val loss_value = loss.data(0)  // we suppose the loss is scalar (Tensor of size 1)
         average_loss = average_loss * (n) / (n+1) + loss_value / (n+1)
 
-        val pars = ArrayBuffer(args map {x => x})
-        val mems = ArrayBuffer(args map {x => Tensor.zeros_like(x.x)})
+        val pars = ArrayBuffer(args : _*)
+        val mems = ArrayBuffer((args map {x => Tensor.zeros_like(x.x)}) : _*)
 
         for ((par, mem) <- pars.zip(mems)) {
           par.clip_grad(5.0f)
