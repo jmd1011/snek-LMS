@@ -148,9 +148,7 @@ def __break(): raise NonLocalBreak()
 def __continue(): raise NonLocalContinue()
 
 def __print(value): # TODO HACK!
-    if isinstance(value, RepTensor):
-        return value.print()
-    elif isinstance(value, str):
+    if isinstance(value, str):
         return reflect(["print", '"{}"'.format(value)])
     else:
         return reflect(["print", value])
@@ -179,8 +177,6 @@ def __assign(name, value):
     return reflect(["set", name, value])
 
 def __read(name):
-    if isinstance(name, RepTensor):
-        return reflect(["get", name])
     return reflect(["get", name])
 
 def __len(name):

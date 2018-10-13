@@ -98,9 +98,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with Scann
         val words    = tree_data(index * 4 + 1)
         val leftchs  = tree_data(index * 4 + 2)
         val rightchs = tree_data(index * 4 + 3)
-        var loss = lossFun match {
+        val loss = lossFun match {
           case outerFun:F4Array => gradR_loss(outerFun.f(scores)(words)(leftchs)(rightchs))(Tensor.zeros(1))
-          case _ => ???
         }
         //val loss = gradR_loss(lossFun(scores, words, leftchs, rightchs))(Tensor.zeros(1))
         val loss_value = loss.data(0)  // we suppose the loss is scalar (Tensor of size 1)
