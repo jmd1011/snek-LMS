@@ -756,7 +756,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
         // From the MNIST pytorch example
         val mean = 0.1307f
         val std = 0.3081f
-        DatasetV(new DataLoader(dataset, train == "True", mean, std, 1, 28, 28))
+        DatasetV(new DataLoader(dataset, train == "True", mean, std, Seq(1, 28, 28)))
     }
     case "SGD"::(_::(l: Float)::_::(m: Float)::Nil)::Nil =>
       lr = l
