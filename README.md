@@ -488,3 +488,8 @@ Snek-LMS requires a working installation of Swig to load generated C code.
     make test                       # run testsuite
 
     python3 demo.py                 # Run the power3 example shown above
+
+In case of errors with resolving dependencies in SBT, do the following:
+- run `rm -rf ~/.iv2`
+- delete the folder `snek-lms/compiler/project`
+- run `make build_compiler` in the root directory.
