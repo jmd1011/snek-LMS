@@ -247,8 +247,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             unit(())
         }
       }
-    case lFun@("def"::(f: String)::(args: List[String])::(body: List[List[Any]]))::r =>
-      f match {
+    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
+      {System.out.println(s"adding $f"); f} match {
         case "lossFun" =>
           System.out.println("we're in lossfun area")
           val nenv = env filter { case (_,v) => v.isInstanceOf[Tens]} map { case (k,v: Tens) => (k -> Base(v.v))}
@@ -263,14 +263,14 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
           printDebug(s"r    >> $r")
           val func = args match {
             case x1::Nil =>
-              val fptr: Rep[Int => Int] = fun { (x1v: Rep[Int]) =>
+              val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
                 compile(body)(env + (x1 -> Literal(x1v)) ) match {
                   case Literal(n: Rep[Int]) => n
                 }
               }
               Literal(fptr)
             case x1::x2::Nil =>
-              val fptr: Rep[((Int, Int)) => Int] = fun { (x1v: Rep[Int], x2v: Rep[Int]) =>
+              val fptr: Rep[(Int, Int) => Int] = uninlinedFunc2 { (x1v: Rep[Int], x2v: Rep[Int]) =>
                 compile(body)(env + (x1 -> Literal(x1v)) + (x2 -> Literal(x2v)) ) match {
                   case Literal(n: Rep[Int]) => n
                 }
@@ -1053,7 +1053,7 @@ long hash(char *str0, int len)
   return hash;
 }
 
-void entrypoint(char*);
+int entrypoint(int);
 
 std::random_device rd{};
 std::mt19937 gen{rd()};
@@ -1066,8 +1066,7 @@ int main(int argc, char *argv[])
     printf("usage: query <filename>\n");
     return 0;
   }
-  entrypoint(argv[1]);
-  return 0;
+  return entrypoint(atoi(argv[1]));
 }
 
       """.stripMargin)
