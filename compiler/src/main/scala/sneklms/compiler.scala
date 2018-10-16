@@ -79,65 +79,65 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     printDebug("==================")
   }
 
-  def lantern_train(tree_data: Rep[Array[Array[Int]]], lossFun: Model, args: List[TensorR]) = {
-    val startTime = get_time()
-    val learning_rate = 0.05f
-    val lr = learning_rate
-    val hp = 1e-8f
-    val loss_save = NewArray[Double](30)
-    val addr = getMallocAddr() // remember current allocation pointer here
-    val loopStart = get_time()
-    val tree_number = tree_data.length / 4
+  // def lantern_train(tree_data: Rep[Array[Array[Int]]], lossFun: Model, args: List[TensorR]) = {
+  //   val startTime = get_time()
+  //   val learning_rate = 0.05f
+  //   val lr = learning_rate
+  //   val hp = 1e-8f
+  //   val loss_save = NewArray[Double](30)
+  //   val addr = getMallocAddr() // remember current allocation pointer here
+  //   val loopStart = get_time()
+  //   val tree_number = tree_data.length / 4
 
-    for (epoc <- (0 until 30): Rep[Range]) {
-      var average_loss = 0.0f
+  //   for (epoc <- (0 until 30): Rep[Range]) {
+  //     var average_loss = 0.0f
 
-      for (n <- (0 until tree_number): Rep[Range]) {
-        val index    = n % tree_number
-        val scores   = tree_data(index * 4)
-        val words    = tree_data(index * 4 + 1)
-        val leftchs  = tree_data(index * 4 + 2)
-        val rightchs = tree_data(index * 4 + 3)
-        val loss = lossFun match {
-          case outerFun:F4Array => gradR_loss(outerFun.f(scores)(words)(leftchs)(rightchs))(Tensor.zeros(1))
-        }
-        //val loss = gradR_loss(lossFun(scores, words, leftchs, rightchs))(Tensor.zeros(1))
-        val loss_value = loss.data(0)  // we suppose the loss is scalar (Tensor of size 1)
-        average_loss = average_loss * (n) / (n+1) + loss_value / (n+1)
+  //     for (n <- (0 until tree_number): Rep[Range]) {
+  //       val index    = n % tree_number
+  //       val scores   = tree_data(index * 4)
+  //       val words    = tree_data(index * 4 + 1)
+  //       val leftchs  = tree_data(index * 4 + 2)
+  //       val rightchs = tree_data(index * 4 + 3)
+  //       val loss = lossFun match {
+  //         case outerFun:F4Array => gradR_loss(outerFun.f(scores)(words)(leftchs)(rightchs))(Tensor.zeros(1))
+  //       }
+  //       //val loss = gradR_loss(lossFun(scores, words, leftchs, rightchs))(Tensor.zeros(1))
+  //       val loss_value = loss.data(0)  // we suppose the loss is scalar (Tensor of size 1)
+  //       average_loss = average_loss * (n) / (n+1) + loss_value / (n+1)
 
-        val pars = ArrayBuffer(args : _*)
-        val mems = ArrayBuffer((args map {x => Tensor.zeros_like(x.x)}) : _*)
+  //       val pars = ArrayBuffer(args : _*)
+  //       val mems = ArrayBuffer((args map {x => Tensor.zeros_like(x.x)}) : _*)
 
-        for ((par, mem) <- pars.zip(mems)) {
-          par.clip_grad(5.0f)
-          mem += par.d * par.d
-          par.x -= par.d * lr / (mem + hp).sqrt()
-          par.clear_grad()
-        }
+  //       for ((par, mem) <- pars.zip(mems)) {
+  //         par.clip_grad(5.0f)
+  //         mem += par.d * par.d
+  //         par.x -= par.d * lr / (mem + hp).sqrt()
+  //         par.clear_grad()
+  //       }
 
-        resetMallocAddr(addr)  // reset malloc_addr to the value when we remember allocation pointer
-      }
+  //       resetMallocAddr(addr)  // reset malloc_addr to the value when we remember allocation pointer
+  //     }
 
-      loss_save(epoc) = average_loss
-      val tempTime = get_time()
-      printf("epoc %d, average_loss %f, time %lf\\n", epoc, average_loss, (tempTime - loopStart))
+  //     loss_save(epoc) = average_loss
+  //     val tempTime = get_time()
+  //     printf("epoc %d, average_loss %f, time %lf\\n", epoc, average_loss, (tempTime - loopStart))
 
-    }
+  //   }
 
-    val loopEnd = get_time()
-    val prepareTime = loopStart - startTime
-    val loopTime = loopEnd - loopStart
-    val timePerEpoc = loopTime / 30
+  //   val loopEnd = get_time()
+  //   val prepareTime = loopStart - startTime
+  //   val loopTime = loopEnd - loopStart
+  //   val timePerEpoc = loopTime / 30
 
-    val fp2 = openf("results.txt", "w")
-    fprintf(fp2, "unit: %s\\n", "1 epoch")
-    for (i <- (0 until loss_save.length): Rep[Range]) {
-      //printf("loss_saver is %lf \\n", loss_save(i))
-      fprintf(fp2, "%lf\\n", loss_save(i))
-    }
-    fprintf(fp2, "run time: %lf %lf\\n", prepareTime, timePerEpoc)
-    closef(fp2)
-  }
+  //   val fp2 = openf("results.txt", "w")
+  //   fprintf(fp2, "unit: %s\\n", "1 epoch")
+  //   for (i <- (0 until loss_save.length): Rep[Range]) {
+  //     //printf("loss_saver is %lf \\n", loss_save(i))
+  //     fprintf(fp2, "%lf\\n", loss_save(i))
+  //   }
+  //   fprintf(fp2, "run time: %lf %lf\\n", prepareTime, timePerEpoc)
+  //   closef(fp2)
+  // }
 
   @virtualize
   def compile(exp: Any)(implicit env: Env = Map.empty): Value = { printDebug(s"exp >> $exp"); exp } match {
@@ -243,7 +243,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
           }
         case "lantern_train"::(args: List[String])::Nil => args match {
           case (tree_data: String)::(lFun: String)::(tensors:List[String]) =>
-            lantern_train(env(tree_data) match { case x:Literal[Array[Array[Int]]] => x.v }, env(lFun) match { case x:ModelV => x.f }, (tensors map {env(_) match { case x:Tens => x.v }}))
+            // lantern_train(env(tree_data) match { case x:Literal[Array[Array[Int]]] => x.v }, env(lFun) match { case x:ModelV => x.f }, (tensors map {env(_) match { case x:Tens => x.v }}))
             unit(())
         }
       }
