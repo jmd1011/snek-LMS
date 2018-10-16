@@ -1,7 +1,6 @@
 package sneklms
 
 import java.io.{File, PrintWriter};
-import lantern.ScannerLowerExp
 import org.scala_lang.virtualized.virtualize
 import org.scala_lang.virtualized.SourceContext
 import scala.collection.{Seq => NSeq}
@@ -74,7 +73,7 @@ object Main {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler with ScannerLowerExp {
+    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
       def snippet(n: Rep[Int]): Rep[Int] = {
         compile(prog_val)(Map("arg" -> Literal(n))) match {
           case Literal(n: Rep[Int]) => n

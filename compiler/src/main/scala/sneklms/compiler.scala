@@ -46,7 +46,7 @@ trait CpsConv extends Serializable {
   }
 }
 
-trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with ScannerLowerBase {
+trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   implicit val pos = implicitly[SourceContext]
 
   // for value
@@ -197,7 +197,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with Scann
           case _ => ???
         }
         case "tensor"::(args: List[Any])::Nil => args match {
-          case Nil => Tens(TensorR(Tensor()))
+          // case Nil => Tens(TensorR(Tensor()))
           case (x: String)::(y: Int)::Nil =>
             val (Literal(array:Rep[Array[Float]])) = compile(x)
             Tens(TensorR(Tensor(array, y)))
@@ -796,7 +796,7 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with Scann
 
     case "len"::x::Nil => compileT(x) match {
       case DatasetV(loader) => LiteralT(loader.length)
-      case TensorV(tensor) => LiteralT(tensor.dims(0))
+      case TensorV(tensor) => LiteralT(tensor.shape(0))
     }
     case "printf"::(Str(format)::args)::Nil =>
       LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
@@ -824,41 +824,41 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv with Scann
 }
 
 @virtualize
-trait UninlinedFunctionOps { this: Dsl =>
-  def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]): Rep[Unit=>B]
-  def uninlinedFunc1[A:Typ,B:Typ](f: Rep[A]=>Rep[B])(implicit pos: SourceContext): Rep[A => B]
-  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: Function2[Rep[A1],Rep[A2],Rep[B]]): Rep[(A1,A2)=>B]
-  // implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B]
-  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]): Rep[(A1,A2,A3)=>B]
-  // implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B]
+trait UninlinedFunctionOps { this: DslOps =>
+  def uninlinedFunc0[B:Manifest](f: Function0[Rep[B]]): Rep[Unit=>B]
+  def uninlinedFunc1[A:Manifest,B:Manifest](f: Rep[A]=>Rep[B])(implicit pos: SourceContext): Rep[A => B]
+  def uninlinedFunc2[A1:Manifest,A2:Manifest,B:Manifest](f: Function2[Rep[A1],Rep[A2],Rep[B]]): Rep[(A1,A2)=>B]
+  // implicit def funManifest2[A1:Manifest,A2:Manifest,B:Manifest]: Manifest[(A1,A2) => B]
+  def uninlinedFunc3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]): Rep[(A1,A2,A3)=>B]
+  // implicit def funManifest3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest]: Manifest[(A1,A2,A3) => B]
 }
 
 @virtualize
 trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
 
-  case class UninlinedFunc0[B:Typ](b: Block[B]) extends Def[Unit => B] {
-    val mB = typ[B]
+  case class UninlinedFunc0[B:Manifest](b: Block[B]) extends Def[Unit => B] {
+    val mB = manifest[B]
   }
-  case class UninlinedFunc1[A:Typ,B:Typ](s:Sym[A], b: Block[B]) extends Def[A => B] {
-    val mA = typ[A]
-    val mB = typ[B]
+  case class UninlinedFunc1[A:Manifest,B:Manifest](s:Sym[A], b: Block[B]) extends Def[A => B] {
+    val mA = manifest[A]
+    val mB = manifest[B]
   }
-  case class UninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], b: Block[B]) extends Def[(A1,A2) => B] {
-    val mA1 = typ[A1]
-    val mA2 = typ[A2]
-    val mB = typ[B]
+  case class UninlinedFunc2[A1:Manifest,A2:Manifest,B:Manifest](s1:Sym[A1], s2:Sym[A2], b: Block[B]) extends Def[(A1,A2) => B] {
+    val mA1 = manifest[A1]
+    val mA2 = manifest[A2]
+    val mB = manifest[B]
   }
-  // implicit def funTyp2[A1:Typ,A2:Typ,B:Typ]: Typ[(A1,A2) => B] = {
-  //   manifestTyp
+  // implicit def funManifest2[A1:Manifest,A2:Manifest,B:Manifest]: Manifest[(A1,A2) => B] = {
+  //   manifestManifest
   // }
-  case class UninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1:Sym[A1], s2:Sym[A2], s3:Sym[A3], b: Block[B]) extends Def[(A1,A2,A3) => B] {
-    val mA1 = typ[A1]
-    val mA2 = typ[A2]
-    val mA3 = typ[A3]
-    val mB = typ[B]
+  case class UninlinedFunc3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](s1:Sym[A1], s2:Sym[A2], s3:Sym[A3], b: Block[B]) extends Def[(A1,A2,A3) => B] {
+    val mA1 = manifest[A1]
+    val mA2 = manifest[A2]
+    val mA3 = manifest[A3]
+    val mB = manifest[B]
   }
-  //implicit def funTyp3[A1:Typ,A2:Typ,A3:Typ,B:Typ]: Typ[(A1,A2,A3) => B] = {
-  //  manifestTyp
+  //implicit def funManifest3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest]: Manifest[(A1,A2,A3) => B] = {
+  //  manifestManifest
   //}
   // override def boolean_or(lhs: Exp[Boolean], rhs: Exp[Boolean])(implicit pos: SourceContext) : Exp[Boolean] = lhs match {
   //   case Const(false) => rhs
@@ -871,8 +871,8 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
 
   //   case class GenerateComment(l: String) extends Def[Unit]
   //   def generate_comment(l: String) = reflectEffect(GenerateComment(l))
-  //   case class Comment[A:Typ](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
-  //   def comment[A:Typ](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
+  //   case class Comment[A:Manifest](l: String, verbose: Boolean, b: Block[A]) extends Def[A]
+  //   def comment[A:Manifest](l: String, verbose: Boolean)(b: => Rep[A]): Rep[A] = {
   //     val br = reifyEffects(b)
   //     val be = summarizeEffects(br)
   //     reflectEffect[A](Comment(l, verbose, br), be)
@@ -883,7 +883,7 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
   //     case _ => super.boundSyms(e)
   //   }
 
-  //   override def array_apply[T:Typ](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
+  //   override def array_apply[T:Manifest](x: Exp[Array[T]], n: Exp[Int])(implicit pos: SourceContext): Exp[T] = (x,n) match {
   //     case (Def(StaticData(x:Array[T])), Const(n)) =>
   //       val y = x(n)
   //       if (y.isInstanceOf[Int]) unit(y) else staticData(y)
@@ -891,9 +891,9 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
   //   }
 
   //   // TODO: should this be in LMS?
-  //   override def isPrimitiveType[T](m: Typ[T]) = (m == typ[String]) || super.isPrimitiveType(m)
+  //   override def isPrimitiveManifeste[T](m: Manifest[T]) = (m == manifest[String]) || super.isPrimitiveManifeste(m)
 
-  override def doApply[A:Typ,B:Typ](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
+  override def doApply[A:Manifest,B:Manifest](f: Exp[A => B], x: Exp[A])(implicit pos: SourceContext): Exp[B] = {
     val x1 = unbox(x)
     val x1_effects = x1 match {
       case UnboxedTuple(l) => l.foldLeft(Pure())((b,a)=>a match {
@@ -913,18 +913,18 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
   val functionList1 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Block[Any])]()
   val functionList2 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Block[Any])]()
   val functionList3 = new scala.collection.mutable.HashMap[Sym[Any],(Sym[Any],Sym[Any],Sym[Any],Block[Any])]()
-  def uninlinedFunc0[B:Typ](f: Function0[Rep[B]]) = {
+  def uninlinedFunc0[B:Manifest](f: Function0[Rep[B]]) = {
     val b = reifyEffects(f())
     uninlinedFunc0(b)
   }
-  def uninlinedFunc0[B:Typ](b: Block[B]) = {
+  def uninlinedFunc0[B:Manifest](b: Block[B]) = {
     val l = reflectEffect(UninlinedFunc0(b), Pure())
     functionList0 += (l.asInstanceOf[Sym[Any]] -> b)
     l
   }
 
   val topfunTable = new scala.collection.mutable.HashMap[Any,Sym[Any]]()
-  def uninlinedFunc1[A:Typ,B:Typ](f: Exp[A] => Exp[B])(implicit pos: SourceContext): Exp[A => B] = {
+  def uninlinedFunc1[A:Manifest,B:Manifest](f: Exp[A] => Exp[B])(implicit pos: SourceContext): Exp[A => B] = {
     val can = canonicalize(f)
     topfunTable.get(can) match {
       case Some(funSym) =>
@@ -945,7 +945,7 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
     s.toString()
   }
 
-  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](f: (Rep[A1],Rep[A2])=>Rep[B]) = {
+  def uninlinedFunc2[A1:Manifest,A2:Manifest,B:Manifest](f: (Rep[A1],Rep[A2])=>Rep[B]) = {
     val can = canonicalize1(f)
     topfunTable.get(can) match {
       case Some(funSym) =>
@@ -960,14 +960,14 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
         funSym
     }
   }
-  def uninlinedFunc2[A1:Typ,A2:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], b: Block[B]) = {
+  def uninlinedFunc2[A1:Manifest,A2:Manifest,B:Manifest](s1: Sym[A1], s2: Sym[A2], b: Block[B]) = {
     // val l = reflectEffect(UninlinedFunc2(s1,s2,b), Pure())
     // functionList2 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,b))
     // l
     ???
   }
 
-  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]) = {
+  def uninlinedFunc3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](f: Function3[Rep[A1],Rep[A2],Rep[A3],Rep[B]]) = {
     // val s1 = fresh[A1]
     // val s2 = fresh[A2]
     // val s3 = fresh[A3]
@@ -975,14 +975,14 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
     // uninlinedFunc3(s1,s2,s3,b)
     ???
   }
-  def uninlinedFunc3[A1:Typ,A2:Typ,A3:Typ,B:Typ](s1: Sym[A1], s2: Sym[A2], s3: Sym[A3], b: Block[B]) = {
+  def uninlinedFunc3[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](s1: Sym[A1], s2: Sym[A2], s3: Sym[A3], b: Block[B]) = {
     // val l = reflectEffect(UninlinedFunc3(s1,s2,s3,b), Pure())
     // functionList3 += (l.asInstanceOf[Sym[Any]] -> (s1,s2,s3,b))
     // l
     ???
   }
   /*
-  override def doLambdaDef[A:Typ,B:Typ](f: Exp[A] => Exp[B]) : Def[A => B] = {
+  override def doLambdaDef[A:Manifest,B:Manifest](f: Exp[A] => Exp[B]) : Def[A => B] = {
     val x = unboxedFresh[A]
     val y = reifyEffects(f(x)) // unfold completely at the definition site.
     //???
@@ -992,7 +992,7 @@ trait UninlinedFunctionOpsExp extends UninlinedFunctionOps { this: DslExp =>
 }
 
 @virtualize
-abstract class SnekDslSnippet[A:Manifest,B:Manifest] extends Dsl {
+abstract class SnekDslSnippet[A:Manifest,B:Manifest] extends DslOps {
   def snippet(x: Rep[A]): Rep[B]
 }
 
@@ -1004,9 +1004,9 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
     var dir: String = ""
     var moduleName: String = ""
 
-    override def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
+    override def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
 
-      val sA = remap(typ[A])
+      val sA = remap(manifest[A])
 
       withStream(out) {
         stream.println(s"""/**************************/
@@ -1092,7 +1092,7 @@ int main(int argc, char *argv[])
       case afs@ArrayFromSeq(xs) => stream.println(remap(afs.m) + " " + quote(sym) + "[" + xs.length + "] = {" + (xs map quote mkString ",") + "}; // ;)")
       case _ => super.emitNode(sym,rhs)
     }
-    def tmpremap[A](m: Typ[A]): String = m.toString match {
+    def tmpremap[A](m: Manifest[A]): String = m.toString match {
       case "Int" => "int"
       case _ => remap(m)
     }
