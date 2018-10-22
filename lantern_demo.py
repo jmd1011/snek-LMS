@@ -1,5 +1,5 @@
 from __future__ import print_function
-from pylms import stage
+from pylms import stage, lms
 
 @lms
 def run(dummy):
