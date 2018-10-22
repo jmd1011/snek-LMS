@@ -1,6 +1,5 @@
 from __future__ import print_function
-from pylms import lms, stage, stageTensor
-from pylms.rep import Rep
+from pylms import stage
 
 @lms
 def run(dummy):
@@ -12,8 +11,6 @@ def run(dummy):
     from torchvision import datasets, transforms
     from torch.autograd import Variable
     import time
-    from pylms import lms, stage
-    from pylms.rep import Rep
 
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
