@@ -8,6 +8,7 @@ def run(x):
     while k > 0:
       n = n * k
       k = k - 1
+    return n
     # if k == 0:
     #   return 1
     # else:
