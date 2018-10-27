@@ -100,13 +100,15 @@ def nn_conv2d(outSize, inSize, kernel_size, bias):
 #############################################################
 
 def trans_compose(ts):
-    return reflect(["transform","compose",["{}".format(", ".join([str(t) for t in ts]))]])
+    return reflect(["transform","compose",
+        ["{}".format(", ".join([str(t) for t in ts]))]])
 
 def trans_to_tensor():
     return reflect(["transform","toTensor"])
 
 def trans_normalize(*tups):
-    return reflect(["transform","normalize", ["{}".format(", ".join([str(i) for j in tups for i in j]))]])
+    return reflect(["transform","normalize",
+        ["{}".format(", ".join([str(i) for j in tups for i in j]))]])
 
 
 ##############################################################

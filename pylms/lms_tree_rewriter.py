@@ -219,21 +219,19 @@ class StagingRewriter(ast.NodeTransformer):
         tFun = ast.FunctionDef(name=tFun_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=[ast.Return(node.test)],
-                                  decorator_list=[],
-                                  returns=[])
+                                  decorator_list=[])
         bFun = ast.FunctionDef(name=bFun_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=node.body,
-                                  decorator_list=[],
-                                  returns=[])
+                                  body=[ast.Nonlocal(names=[]), node.body],
+                                  decorator_list=[])
         ast.fix_missing_locations(tFun)
         ast.fix_missing_locations(bFun)
 
-        self.scope.visit(tFun)
-        self.scope.visit(bFun)
+        # self.scope.visit(tFun)
+        # self.scope.visit(bFun)
 
-        self.visit(tFun)
-        self.visit(bFun)
+        self.generic_visit(tFun)
+        self.generic_visit(bFun)
 
         new_node = ast.Expr(ast.Call(
             func=ast.Name(id='__while', ctx=ast.Load()),
@@ -372,15 +370,15 @@ class StagingRewriter(ast.NodeTransformer):
             return node
 
         # Recursive Call
-        if self.fundef is not None and self.fundef.name == node.func.id:
-            if node.func.id not in self.recs:
-                self.recs += [node.func.id]
-            new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
-                                args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
-                                keywords=node.keywords)
-            ast.copy_location(new_node, node)
-            ast.fix_missing_locations(new_node)
-            return new_node
+        # if self.fundef is not None and self.fundef.name == node.func.id:
+        #     if node.func.id not in self.recs:
+        #         self.recs += [node.func.id]
+        #     new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+        #                         args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
+        #                         keywords=node.keywords)
+        #     ast.copy_location(new_node, node)
+        #     ast.fix_missing_locations(new_node)
+        #     return new_node
 
         # Entering recursive call
         if node.func.id in self.recs:

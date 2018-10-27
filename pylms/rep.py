@@ -1,5 +1,3 @@
-import inspect
-
 __all__ = [
     'reflect', 'reify', 'fresh',
     'Rep', 'reflectDef', 'Tensor', 'Tuple',

@@ -77,7 +77,7 @@ print("========================STAGED SOURCE=========================")
 print("==============================================================")
 print(run.src)
 
-@stageTensor
+@stage
 def runX(x):
     return run(x)
 
