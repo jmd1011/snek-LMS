@@ -87,9 +87,7 @@ class StagingRewriter(ast.NodeTransformer):
                 self.fundef.locals[arg_name] += 1
 
         if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
-            print('adding1 {}'.format(node.name))
             self.recs.append(node.name)
-            print('recs1: {}'.format(self.recs))
 
         self.generic_visit(node)
 
@@ -140,20 +138,6 @@ class StagingRewriter(ast.NodeTransformer):
                 return new_node
             self.generic_visit(node)
             return node
-        # elif isinstance(node.targets[0], ast.Name):
-        #     print('testing')
-        #     self.generic_visit(node)
-        #     mod = []
-        #     if isinstance(node.value, list) and len(node.value) is 2: # Added recursive call
-        #         def_node = node.value[0]
-        #         ast.copy_location(def_node, node)
-        #         ast.fix_missing_locations(def_node)
-        #         node.value = node.value[1]
-        #         mod.append(def_node)
-        #     mod.append(node)
-        #     return mod
-
-        # print('look fei it happened')
 
         if isinstance(node.targets[0], ast.Call):
             id = node.targets[0].args[0].id
@@ -161,7 +145,6 @@ class StagingRewriter(ast.NodeTransformer):
             id = node.targets[0].id
 
         # NOTE: grab id before -- recursive call will replace lhs with __read!!
-        # print(ast.dump(node))
         self.generic_visit(node)
 
         mod = []
@@ -178,7 +161,6 @@ class StagingRewriter(ast.NodeTransformer):
             mod.append(node)
             return mod
 
-        # print('assigning with {}'.format(id))
         new_node = ast.Expr(ast.Call(
             func=ast.Name(id='__assign', ctx=ast.Load()),
             args=[ast.Name(id=id, ctx=ast.Load()),
@@ -190,7 +172,6 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(new_node)
         mod.append(new_node)
 
-        print(ast.dump(new_node))
         return mod
 
     def visit_Name(self, node):
@@ -472,7 +453,6 @@ class StagingRewriter(ast.NodeTransformer):
         if isinstance(node.value, ast.Attribute):
             if isinstance(node.value.value, ast.Call):
                 if node.value.attr is 'data':
-                # print("{}".format(ast.dump(node)))
                 # if node.value.value.func.value.id is 'F' and node.value.value.attr is 'data':
                     new_node = ast.Call(func=ast.Attribute(value=node.value.value, attr='data_get', ctx=ast.Load()), args=[node.slice.value], keywords=[])
                     # new_node.value.func.attr = 'data_get'
