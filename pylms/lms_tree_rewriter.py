@@ -222,7 +222,7 @@ class StagingRewriter(ast.NodeTransformer):
                                   decorator_list=[])
         bFun = ast.FunctionDef(name=bFun_name,
                                   args=ast.arguments(args=[], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
-                                  body=[ast.Nonlocal(names=[]), node.body],
+                                  body=[ast.Nonlocal(names=['n','k'])] + node.body,
                                   decorator_list=[])
         ast.fix_missing_locations(tFun)
         ast.fix_missing_locations(bFun)
@@ -230,7 +230,7 @@ class StagingRewriter(ast.NodeTransformer):
         # self.scope.visit(tFun)
         # self.scope.visit(bFun)
 
-        self.generic_visit(tFun)
+        # self.generic_visit(tFun)
         self.generic_visit(bFun)
 
         new_node = ast.Expr(ast.Call(
@@ -515,8 +515,7 @@ class StagingRewriter(ast.NodeTransformer):
                                                                          targetToFlatList(node.target.elts))),
                                                            vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                         body=node.body,
-                                        decorator_list=[],
-                                        returns=[])
+                                        decorator_list=[])
             ast.fix_missing_locations(outer_fun)
 
             self.scope.visit(outer_fun)
@@ -534,8 +533,7 @@ class StagingRewriter(ast.NodeTransformer):
             bFun = ast.FunctionDef(name=bFun_name,
                                   args=[], # ast.arguments(args=[ast.arg(arg='self', annotation=None)], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[],
-                                  returns=[])
+                                  decorator_list=[])
             ast.fix_missing_locations(bFun)
 
             self.scope.visit(bFun)
