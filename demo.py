@@ -4,17 +4,14 @@ from pylms.nn_staging import *
 
 @lms
 def run(x):
+  @staged
   def power(n, k):
-    while k > 0:
-      n = n * k
-      k = k - 1
-    return n
-    # if k == 0:
-    #   return 1
-    # else:
-    #   return n * \
-    #     power(n, k - 1)
-  res = power(x, 2)
+    if k == 0:
+      return 1
+    else:
+      return n * \
+        power(n, k - 1)
+  res = power(x, 3)
   return res
 
 print("======= Original code =======")

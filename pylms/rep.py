@@ -218,8 +218,9 @@ def __while(test, body):
     #             z = test()
             #do other stuff
 
-    if isinstance(test, bool): #test = x < 3
-        while test: #is this evaluating correctly? I don't think it is -- might need to pass this as a function as well
+    ttest = test()
+    if isinstance(ttest, bool): #test = x < 3
+        while test(): #is this evaluating correctly? I don't think it is -- might need to pass this as a function as well
             try: body()
             except NonLocalBreak as e:
                 return None
@@ -227,7 +228,7 @@ def __while(test, body):
                 return e.value
             except NonLocalContinue as e:
                 pass
-        pass
+        return
 
     # We don't currently support return inside while
     def capture(f):
