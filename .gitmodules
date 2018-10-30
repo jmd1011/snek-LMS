@@ -1,6 +1,6 @@
 [submodule "compiler/Lantern"]
 	path = compiler/Lantern
-	url = https://github.com:feiwang3311/Lantern.git
+	url = git@github.com:feiwang3311/Lantern.git
 [submodule "lambda-py"]
 	path = lambda-py
 	url = https://github.com/brownplt/lambda-py.git
