@@ -28,12 +28,12 @@ cache:
 
 before_script:
   - rm -rf $HOME/tmp/*
-  - wget https://github.com/sbt/sbt/releases/download/v1.0.3/sbt-1.0.3.zip -O $HOME/tmp/sbt-1.0.3.zip
-  - unzip $HOME/tmp/sbt-1.0.3.zip -d $HOME/tmp
-  - mkdir -p $HOME/.sbt/launchers/1.0.3/
+  - wget https://github.com/sbt/sbt/releases/download/v1.2.6/sbt-1.2.6.zip -O $HOME/tmp/sbt-1.2.6.zip
+  - unzip $HOME/tmp/sbt-1.2.6.zip -d $HOME/tmp
+  - mkdir -p $HOME/.sbt/launchers/1.2.6/
   - ls -l $HOME/tmp/sbt/bin/
-  - cp $HOME/tmp/sbt/bin/sbt-launch.jar $HOME/.sbt/launchers/1.0.3/
-  - ls -l $HOME/.sbt/launchers/1.0.3/
+  - cp $HOME/tmp/sbt/bin/sbt-launch.jar $HOME/.sbt/launchers/1.2.6/
+  - ls -l $HOME/.sbt/launchers/1.2.6/
   - pip3 install http://download.pytorch.org/whl/cpu/torch-0.3.1-cp36-cp36m-linux_x86_64.whl
   - pip3 install torchvision
 
