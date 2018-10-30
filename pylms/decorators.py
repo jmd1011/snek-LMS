@@ -32,9 +32,9 @@ def ast(func):
             visitor = AstVisitor()
             visitor.visit(self.ast)
             self.code = visitor.result().replace('\n','').replace('  ',' ').replace('( ','(').replace(' )',')').replace(')(',') (')
-            self.gateway = JavaGateway()
-            self.moduleName = 'module_{}'.format(func.__name__)
-            self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
+            # self.gateway = JavaGateway()
+            # self.moduleName = 'module_{}'.format(func.__name__)
+            # self.Ccode = self.gateway.jvm.sneklms.Main.gen(self.code, "gen", self.moduleName)
 
         def __call__(self,*args):
             # return None
@@ -100,6 +100,11 @@ def toSexpr(l):
         return ['if', cond, then, oelse]
     elif len(l) is 1:
         return l[0]
+    elif len(l) > 3 and str(l[0]) is 'for':
+        i = toSexpr(l[1])
+        it = toSexpr(l[2])
+        body = toSexpr(l[3])
+        return ['for', i, 'in', it, body]
     else:
         return l
 
@@ -148,7 +153,6 @@ def lanternRun(func):
         def __call__(self, *args): #TODO naming
             exec("import {} as foo".format(self.moduleName), globals())
             return foo.x1(*args)
-            # return None
 
     return Snippet()
 

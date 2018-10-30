@@ -533,9 +533,12 @@ class StagingRewriter(ast.NodeTransformer):
         else:
             bFun_name = self.freshName("body")
             bFun = ast.FunctionDef(name=bFun_name,
-                                  args=[], # ast.arguments(args=[ast.arg(arg='self', annotation=None)], vararg=None, kwonlyargs=[], kwarg=None, defaults=[], kw_defaults=[]),
+                                  args=ast.arguments(args=[ast.arg(arg=node.target.id, annotation=None)], vararg=None,
+                                    kwonlyargs=[], kwarg=None, defaults=[],
+                                    kw_defaults=[]),
                                   body=node.body,
-                                  decorator_list=[])
+                                  decorator_list=[],
+                                  returns=None)
             ast.fix_missing_locations(bFun)
 
             self.scope.visit(bFun)
@@ -543,8 +546,7 @@ class StagingRewriter(ast.NodeTransformer):
 
             new_node = ast.Expr(ast.Call(
                 func=ast.Name(id='__for', ctx=ast.Load()),
-                args=[node.target,
-                      node.iter,
+                args=[node.iter,
                       ast.Name(id=bFun_name, ctx=ast.Load())],
                 keywords=[]))
             ast.copy_location(new_node, node)

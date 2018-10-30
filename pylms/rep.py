@@ -245,28 +245,27 @@ def __while(test, body):
     else:
         raise Exception("while: return in body not allowed")
 
-def __for(target, it, body):
+def __for(it, body):
     if isinstance(it, list):
-        for target in it:
-            try: body()
+        for i in it:
+            try: body(i)
             except NonLocalBreak as e:
                 return None
             except NonLocalReturnValue as e:
                 return e.value
             except NonLocalContinue as e:
                 pass
-        pass
+        return
 
-    def capture(f):
-        try: return (False, reify(f))
+    def capture(f, i):
+        try: return (False, reify(f, i))
         except NonLocalReturnValue as e:
             return e.value
 
-    targetret, targetp = capture(target)
-    itret, itp = capture(it)
-    bodyret, bodyp = capture(body)
-    rval = reflect(["for", targetp, itp, bodyp])
-    if (not targetret) & (not bodyret):
+    i = fresh()
+    bodyret, bodyp = capture(body, i)
+    rval = reflect(["for", i, it, bodyp])
+    if not bodyret:
         return rval
     else:
         raise Exception("for: return in body not allowed")
