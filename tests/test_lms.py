@@ -125,17 +125,18 @@ def test_loop1():
 def test_loop1_staged():
     assert(lmscompile(loop1).code ==
 """
-['begin', ['let', x5, ['new']],
- ['let', x6, ['set', x5, 0]],
- ['let', x7, ['while',
-    ['begin', ['let', x7, ['get', x5]],
-     ['let', x8, ['<', x7, in]],
-     x8],
-    ['begin', ['let', x7, ['get', x5]],
-     ['let', x8, ['+', x7, 1]],
-     ['let', x9, ['set', x5, x8]],
-     None]]],
- ['let', x8, ['get', x5]], x8]
+['begin', ['let', x0, ['new']],
+    ['let', x1, ['set', x0, 0]],
+    ['let', x2, ['get', x0]],
+    ['let', x3, ['<', x2, in]],
+    ['let', x4, ['while',['begin',
+        ['let', x4, ['get', x0]],
+        ['let', x5, ['<', x4, in]], x5],
+        ['begin', ['let', x4, ['get', x0]],
+        ['let', x5, ['+', x4, 1]],
+        ['let', x6, ['set', x0, x5]],
+        None]]],
+    ['let', x5, ['get', x0]], x5]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
 def test_loop1_rewrite():
