@@ -125,18 +125,18 @@ def test_loop1():
 def test_loop1_staged():
     assert(lmscompile(loop1).code ==
 """
-['begin', ['let', x0, ['new']],
-    ['let', x1, ['set', x0, 0]],
-    ['let', x2, ['get', x0]],
-    ['let', x3, ['<', x2, in]],
-    ['let', x4, ['while',['begin',
-        ['let', x4, ['get', x0]],
-        ['let', x5, ['<', x4, in]], x5],
-        ['begin', ['let', x4, ['get', x0]],
-        ['let', x5, ['+', x4, 1]],
-        ['let', x6, ['set', x0, x5]],
+['begin', ['let', x7, ['new']],
+    ['let', x8, ['set', x7, 0]],
+    ['let', x9, ['get', x7]],
+    ['let', x10, ['<', x9, in]],
+    ['let', x11, ['while',['begin',
+        ['let', x11, ['get', x7]],
+        ['let', x12, ['<', x11, in]], x12],
+        ['begin', ['let', x11, ['get', x7]],
+        ['let', x12, ['+', x11, 1]],
+        ['let', x6, ['set', x7, x12]],
         None]]],
-    ['let', x5, ['get', x0]], x5]
+    ['let', x12, ['get', x7]], x12]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
 
 def test_loop1_rewrite():
