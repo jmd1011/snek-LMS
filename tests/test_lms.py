@@ -129,12 +129,12 @@ def test_loop1_staged():
     ['let', x8, ['set', x7, 0]],
     ['let', x9, ['get', x7]],
     ['let', x10, ['<', x9, in]],
-    ['let', x11, ['while',['begin',
+    ['let', x11, ['while', ['begin',
         ['let', x11, ['get', x7]],
         ['let', x12, ['<', x11, in]], x12],
         ['begin', ['let', x11, ['get', x7]],
         ['let', x12, ['+', x11, 1]],
-        ['let', x6, ['set', x7, x12]],
+        ['let', x13, ['set', x7, x12]],
         None]]],
     ['let', x12, ['get', x7]], x12]
 """.replace('\n','').replace('  ',' ').replace('  ',' ').replace('  ',' '))
