@@ -17,12 +17,14 @@ object Lisp {
     }
     def B(x:Boolean) = ???
     def I(x:Int) = x
+    def F(f:Float) = f
     val N = Nil
 
     lazy val exp: Parser[Any] =
         "#f" ^^ { case _ => B(false) } |
         "#t" ^^ { case _ => B(true) } |
         wholeNumber ^^ { case s => I(s.toInt) } |
+        floatingPointNumber ^^ { case s => F(s.toFloat) } |
         """[^\s\(\)'"]+""".r ^^ { case s => S(s) } |
         stringLiteral ^^ { case s => Str2(s.substring(1, s.length-1)) } |
         "'" ~> exp ^^ { case s => P(S("quote"), s, N) } |

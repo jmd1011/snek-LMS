@@ -16,3 +16,9 @@ int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval 
   result->tv_usec = diff % 1000000;
   return (diff<0);
 }
+
+int fsize(int fd) {
+  struct stat stat;
+  int res = fstat(fd,&stat);
+  return stat.st_size;
+}

@@ -2,7 +2,10 @@
 __pycache__
 compiler/target
 compiler/project/target
+compiler/project/project
+compiler/project/project/target
 .*.sw*
 *.pyc
 gen/
 .snek*.log
+data/

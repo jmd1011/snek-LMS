@@ -1,6 +1,9 @@
 init:
 	pip3 install -r requirements.txt
 
+data:
+	python3 gen_data.py
+
 build_compiler: kill_server
 	(cd compiler; sbt assembly)
 

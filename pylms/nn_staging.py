@@ -5,55 +5,69 @@ import torch.nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['nn_linear', 'nn_conv2d', 'newTensor', 'RepTensor', 'optim_SGD', 'F_nll_loss', '__variable', 'rep_train_loader_tensor', 'rep_train_loader_fresh', '__for_dataloader', 'F_relu', 'F_dropout', 'F_max_pool2d', 'F_log_softmax']
+__all__ = [
+    'torch_loader', 'torch_abs', 'torch_add', 'torch_mul', 'torch_sum',
+    'nn_conv2d', 'nn_linear',
+    'F_dropout', 'F_log_softmax', 'F_max_pool2d',
+    'F_nll_loss', 'F_relu', 'F_sigmoid', 'F_tanh',
+    'trans_compose', 'trans_to_tensor', 'trans_normalize',
+    'optim_SGD',
+    'rep_variable', '__for_dataloader',
+    ]
 
-stFresh = 0
 
-def freshTensor():
-    global stFresh
-    stFresh += 1
-    return RepTensor("t"+str(stFresh-1))
+#############################################################
+####################### torch Methods #######################
+#############################################################
 
-def newTensor(*dims):
-    rep = reflect(["tensor", "[{}]".format(", ".join(list(map(str, dims))))])
-    return RepTensor(rep.n)
+# def torch_loader(dataset, batch_size, shuffle, **kwargs):
+def torch_loader(name, train, download, transforms):
+    class RepLoader(object):
+        def __init__(self, n):
+            self.n = n
 
-def reflectTensor(args):
-    rep = reflect(args)
-    return RepTensor(rep.n)
+        @property
+        def dataset(self):
+            return reflect(["getattr",self,"dataset"])
 
-class RepTensor(Rep):
-    def __init__(self, n):
-        super().__init__(n)
-    def __add__(self, m):
-        return reflectTensor(["+",self,m])
-    def __mul__(self, m):
-        return reflectTensor(["dot",self,m])
+        @dataset.setter
+        def setdataset(self,v):
+            return reflect(["setattr",self,"dataset",v])
 
-    def data_get(self, i):
-        return reflectTensor(["array-get",self,"data",i]);
-    def backward(self):
-        return reflectTensor(["call",self,"backward"]);
-    def conv2d(self, kernel):
-        return reflectTensor(["call",self,"conv2d",kernel.n]);
-    def view(self, *dims):
-        return reflectTensor(["call",self,"view",dims]);
-    def print(self):
-        return reflectTensor(["call",self,"print"])
+        def __repr__(self):
+            return str(self.n)
 
-def rep_train_loader_tensor():
-    rept = reflect(freshTensor(None))
-    return rept
+    tmp = reflect(["loader", [name, train, download, transforms]])
+    return RepLoader(tmp.n)
 
-def rep_train_loader_fresh():
-    return fresh()
+def torch_abs(t1):
+    return reflect(["call", "abs", [t1]])
 
+def torch_add(t1, t2):
+    return reflect(["call", "add", [t1, t2]])
+
+def torch_cat(t1, dim):
+    return reflect(["call", "cat", [t1, dim]])
+
+def torch_mul(t1, t2):
+    return reflect(["call", "mul", [t1, t2]])
+
+def torch_split(iou, size, dim):
+    return reflectTuple(["call", "split", [iou, size, dim]])
+
+def torch_sum(t1, t2):
+    return reflect(["call", "sum", [t1, t2]])
+
+
+#############################################################
+###################### torch.nn Methods #####################
+#############################################################
 
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
-            self.weight = newTensor(outsize, hlsize)
-            self.bias =  newTensor(outsize)
+            self.weight = rep_variable(newTensor(outsize, hlsize))
+            self.bias   = rep_variable(newTensor(outsize))
             self.linear = None
 
         def __call__(self, tensor):
@@ -64,86 +78,128 @@ def nn_linear(hlsize, outsize):
                 return self.linear(tensor)
             else: #staged
                 return self.weight * tensor + self.bias
-
     return Linear()
 
 def nn_conv2d(outSize, inSize, kernel_size, bias):
     class Conv2d(object):
         def __init__(self):
             self.kernel = newTensor(outSize, inSize, kernel_size, kernel_size)
-            self.cond2d = None
+            self.conv2d = None
 
         def __call__(self, tensor):
             if isinstance(tensor, torch.Tensor): #unstaged
-                if self.cond2d is None:
+                if self.conv2d is None:
                     self.conv2d = nn.Conv2d(hlsize, outsize, kernel_size=kernel_size, bias=bias)
-
                 return self.conv2d(tensor)
             else: #staged
                 return tensor.conv2d(self.kernel)
     return Conv2d()
 
-def optim_SGD(params, lr, momentum):
-    class RepSGD(Rep):
-        def __init__(self, n):
-            super().__init__(n)
-            if isinstance(params, list):
-                self.staged = False
-                self.optim = optim.SGD(params, lr, momentum)
-            else:
-                self.staged = True
-                self.optim = reflect([self, [lr, momentum]])
+#############################################################
+################## torch.transforms Methods #################
+#############################################################
 
-        def zero_grad(self):
-            if self.staged:
-                return reflectTensor(["call",self,"zero_grad"])
-            else:
-                return self.optim.zero_grad()
+def trans_compose(ts):
+    return reflect(["transform","compose",
+        ["{}".format(", ".join([str(t) for t in ts]))]])
 
-        def step(self):
-            if self.staged:
-                return reflectTensor(["call",self,"step"])
-            else:
-                return self.optim.step()
+def trans_to_tensor():
+    return reflect(["transform","toTensor"])
 
-    return RepSGD("SGD")
+def trans_normalize(*tups):
+    return reflect(["transform","normalize",
+        ["{}".format(", ".join([str(i) for j in tups for i in j]))]])
 
-def F_nll_loss(output, target, size_average=True):
-    if isinstance(output, Variable):
-        return F.nll_loss(output, target, size_average)
-    else:
-        return reflectTensor(["call", "nll_loss", [output, target, size_average]])
 
-def F_relu(tensor):
-    if isinstance(tensor, torch.Tensor):
-        return F.relu(tensor)
-    else:
-        return reflectTensor(["call", "relu", [tensor]])
+##############################################################
+################ torch.nn.functional Methods #################
+##############################################################
 
 def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.dropout(tensor)
     else:
-        return reflectTensor(["call", "dropout", [tensor]])
-
-def F_max_pool2d(tensor, x):
-    if isinstance(tensor, torch.Tensor):
-        return F.max_pool2d(tensor, x)
-    else:
-        return reflectTensor(["call", "max_pool2d", [tensor]])
+        return reflect(["call", "dropout", [tensor]])
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        return reflectTensor(["call", "log_softmax", [tensor, dim]])
+        return reflect(["call", "log_softmax", [tensor, dim]])
 
-def __variable(tensor):
-    return reflectTensor(["variable", tensor])
+def F_max_pool2d(tensor, x):
+    if isinstance(tensor, torch.Tensor):
+        return F.max_pool2d(tensor, x)
+    else:
+        return reflect(["call", "max_pool2d", [tensor]])
+
+def F_nll_loss(output, target, size_average=True):
+    if isinstance(output, Variable):
+        return F.nll_loss(output, target, size_average)
+    else:
+        return reflect(["call", "nll_loss", [output, target, size_average]])
+
+def F_relu(tensor):
+    if isinstance(tensor, torch.Tensor):
+        return F.relu(tensor)
+    else:
+        return reflect(["call", "relu", [tensor]])
+
+def F_sigmoid(t1, t2):
+    if isinstance(t1, torch.Tensor) and isinstance(t2, torch.Tensor):
+        return F.sigmoid(t1, t2)
+    else:
+        return reflect(["call", "sigmoid", [t1, t2]])
+
+def F_tanh(t):
+    if isinstance(tensor, torch.Tensor):
+        return F.tanh(tensor)
+    else:
+        return reflect(["call", "tanh", [tensor]])
+
+###################################################
+################## Miscellaneous ##################
+###################################################
+
+def optim_SGD(params, lr, momentum):
+    class RepSGD(object):
+        def __init__(self, n):
+            self.n = n
+        def __repr__(self):
+            return str(self.n)
+
+        def zero_grad(self):
+            return reflect(["call",self,"zero_grad"])
+
+        def step(self):
+            return reflect(["call",self,"step"])
+
+    if isinstance(params, list):
+        if isinstance(params[0], torch.Tensor):
+            return optim.SGD(params, lr, momentum)
+
+    tmp = reflect(["SGD",[lr,momentum]])
+    return RepSGD(tmp.n)
+
+def rep_variable(tensor, volatile=False):
+    class RepVariable(RepTensor):
+        def __init__(self, n):
+            self.n = n
+
+        @property
+        def grad(self):
+            return reflect(["getattr",self,"grad"])
+
+        @grad.setter
+        def grad(self, v):
+            return reflect(["setattr",self,"grad",v])
+
+    tmp = reflectTensor(["variable", tensor, volatile])
+    return RepVariable(tmp.n)
 
 def __for_dataloader(src_file, bdfun):
     var_idx = fresh()
-    var_data = RepTensor(reflect(freshTensor()).n)
+    var_data = freshTensor()
     var_target = fresh()
 
     def capture(f):
@@ -157,4 +213,3 @@ def __for_dataloader(src_file, bdfun):
         return rval
     else:
         raise Exception("while: return in body not allowed")
-
