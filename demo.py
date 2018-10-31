@@ -4,7 +4,6 @@ from pylms.nn_staging import *
 
 @lms
 def run(x):
-  @staged
   def power(n, k):
     if k == 0:
       return 1
@@ -29,4 +28,8 @@ print(runX.code)
 print("\n")
 print("======= C/C++ code ========")
 print(runX.Ccode)
-print(runX(-1))
+# print(runX(2))
+
+val = runX(2)
+print(val)
+assert(val == 8)
