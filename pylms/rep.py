@@ -181,7 +181,7 @@ def __len(name):
     return reflect(["len", name])
 
 def __if(test, body, orelse):
-    if isinstance(test, bool):
+    if not isinstance(test, Rep):
         if test:
             return body()
         else:
@@ -209,18 +209,17 @@ def __if(test, body, orelse):
             raise Exception("if/else: branches must either both return or none of them")
 
 def __while(test, body):
-    # z = test()
-
-    # if isinstance(z, bool):
-    #     while z:
-    #         try:
-    #             body()
-    #             z = test()
-            #do other stuff
+    # We don't currently support return inside while
+    def capture(f):
+        try: return (False, reify(f))
+        except NonLocalReturnValue as e:
+            return (True, e.value)
+        except NonLocalContinue as e:
+            return (False, __while(test, f)) #f must be body if we hit a continue
 
     ttest = test()
-    if isinstance(ttest, bool): #test = x < 3
-        while test(): #is this evaluating correctly? I don't think it is -- might need to pass this as a function as well
+    if not isinstance(ttest, Rep):
+        while test():
             try: body()
             except NonLocalBreak as e:
                 return None
@@ -230,13 +229,6 @@ def __while(test, body):
                 pass
         return
 
-    # We don't currently support return inside while
-    def capture(f):
-        try: return (False, reify(f))
-        except NonLocalReturnValue as e:
-            return (True, e.value)
-        except NonLocalContinue as e:
-            return (False, __while(test, f)) #f must be body if we hit a continue
     testret, testp = capture(test)
     bodyret, bodyp = capture(body)
     rval = reflect(["while", testp, bodyp])

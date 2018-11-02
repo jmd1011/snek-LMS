@@ -79,38 +79,59 @@ class StagingRewriter(ast.NodeTransformer):
     def visit_FunctionDef(self, node):
         node.parent = self.fundef
         self.fundef = node
-        for arg in node.args.args:
-            arg_name = arg.arg
-            if self.fundef.locals.get(arg_name) is None:
-                self.fundef.locals[arg_name] = 1
-            else:
-                self.fundef.locals[arg_name] += 1
+        # for arg in node.args.args:
+            # arg_name = arg.arg
+            # if self.fundef.locals.get(arg_name) is None:
+            # self.fundef.locals[arg_name] = 1
+            # else:
+                # self.fundef.locals[arg_name] += 1
 
         if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
             self.recs.append(node.name)
 
         self.generic_visit(node)
 
+        param_nodes = []
+
+        for arg in node.args.args:
+            arg_name = arg.arg
+            try:
+                if self.fundef.locals[arg_name] > 0:
+                    p_node = ast.Assign(targets=[ast.Name(id=self.freshName('x'),ctx=ast.Store())],
+                                        value=ast.Name(id=arg_name,ctx=ast.Load()))
+                    ast.fix_missing_locations(p_node)
+                    param_nodes.append(p_node)
+                self.fundef.locals[arg_name] += 1
+            except KeyError as e:
+                pass
+
         # generate code to pre-initialize staged vars
         # we stage all vars that are written to more than once
-        inits = (ast.Assign(targets=[ast.Name(id=id, ctx=ast.Store())],
-            value=ast.Call(
-                func=ast.Name(id='__var', ctx=ast.Load()),
-                args=[],
-                keywords=[])) \
-            for id in node.locals if node.locals[id] > 1)
+        inits = [ast.Assign(targets=[ast.Name(id=id, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Name(id='__var', ctx=ast.Load()),
+                        args=[],
+                        keywords=[])) \
+                    for id in node.locals if node.locals[id] > 1]
 
-        new_node = ast.copy_location(ast.FunctionDef(name=node.name,
-                                         args=node.args,
-                                         body=[ast.Try(body=list(inits) + node.body,
-                                                      handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()),
-                                                                                       name='r',
-                                                                                       body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
-                                                      orelse=[],
-                                                      finalbody=[])],
-                                         decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list))
-                                         ),
-                          node)
+        a_nodes = [ast.Expr(
+                    ast.Call(
+                        func=ast.Name(id='__assign', ctx=ast.Load()),
+                        args=[p_node.value, ast.Name(id=p_node.targets[0].id,ctx=ast.Load())],
+                        keywords=[])) \
+                    for p_node in param_nodes]
+
+        new_node = ast.FunctionDef(name=node.name,
+                                    args=node.args,
+                                    body=[ast.Try(body=param_nodes + inits + a_nodes + node.body,
+                                              handlers=[ast.ExceptHandler(type=ast.Name(id='NonLocalReturnValue', ctx=ast.Load()),
+                                                                               name='r',
+                                                                               body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
+                                              orelse=[],
+                                              finalbody=[])],
+                                    decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list))
+                                    )
+        ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
         self.fundef = node.parent
         return new_node
@@ -143,6 +164,12 @@ class StagingRewriter(ast.NodeTransformer):
             id = node.targets[0].args[0].id
         else:
             id = node.targets[0].id
+
+        # if not isinstance(node.value, ast.Name):
+        #     try:
+        #         self.fundef.locals[id] -= 1
+        #     except:
+        #         pass
 
         # NOTE: grab id before -- recursive call will replace lhs with __read!!
         self.generic_visit(node)
