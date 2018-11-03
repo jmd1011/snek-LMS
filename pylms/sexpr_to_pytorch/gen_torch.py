@@ -7,9 +7,6 @@
 from constants import *
 
 def parseFunction(genCode, reader):
-    # read "def"
-    reader.getNextWord()
-
     # read function name
     fname = reader.getNextWord()
 
@@ -31,29 +28,28 @@ def parseFunction(genCode, reader):
     genCode.append("\n)\n")
 
 def parseBegin(genCode, reader):
-    # read "begin"
-    reader.getNextWord()
-
     # read body
     body = genTorch(genCode, reader)
     if(body != None): 
         genCode.append("{}".format(body))
 
 def parseLet(genCode, reader):
-    # read "let"
-    reader.getNextWord()
-
+    # get var name
     varName = reader.getNextWord()
     genCode.append("{} = ".format(varName))
+
+    # parse rhs
     genTorch(genCode, reader)
     genCode.append("\n")
+
+    # parse body
     genTorch(genCode, reader)
 
 def parseLiteral(genCode, reader):
     lit = reader.getNextWord()
     genCode.append(lit + " ")
 
-builtins = {
+parsers = {
     "def": parseFunction,
     "begin": parseBegin,
     "let": parseLet
@@ -68,7 +64,7 @@ def genTorch(genCode, reader):
     reader.acceptChar(OPEN_NODE)
 
     # call respective parsers for keywords
-    keyword = reader.peekNextWord()    
-    builtins[keyword](genCode, reader)
+    keyword = reader.getNextWord()    
+    parsers[keyword](genCode, reader)
 
     reader.acceptChar(CLOSE_NODE);
