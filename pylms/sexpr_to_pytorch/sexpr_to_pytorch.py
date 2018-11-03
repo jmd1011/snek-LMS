@@ -1,5 +1,5 @@
 from utils import *
-from gen_torch import genTorch
+from gen_torch import parseNode
 
 def torchTheSnake(sexpr):
     if not isinstance(sexpr, str):
@@ -9,7 +9,7 @@ def torchTheSnake(sexpr):
     genCode = GenCode()
     reader = Reader(sexpr)
 
-    genTorch(genCode, reader)
+    parseNode(genCode, reader)
     genCode.display()
 
 torchTheSnake("(def fname (in1) (begin))")
