@@ -6,7 +6,7 @@ void *mallocAddr = mallocBase;
 void *waterMark  = mallocBase;
 void* myMalloc(size_t bytes) {
   void* res = mallocAddr;
-  mallocAddr += bytes;
+  mallocAddr = (void *) ((char *)mallocAddr + bytes);
   return res;
 }
 
