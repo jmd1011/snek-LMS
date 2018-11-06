@@ -33,7 +33,7 @@ from pylms.nn_staging import *
 @lms
 def testWhile(x):
   z = 3
-  while z < x:
+  while z < x and x < 11:
     z = z + 1
   return z
 

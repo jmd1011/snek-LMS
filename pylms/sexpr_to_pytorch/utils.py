@@ -33,6 +33,9 @@ class Reader:
             idx_space = self.str.find(DELIM, self.i)
             idx_close = self.str.find(CLOSE_NODE, self.i)
 
+            if(idx_close == -1 and idx_space == -1):
+                raise Exception("Malformed expression")
+                
             #absorb space but not CLOSE_NODE
             if(idx_close < idx_space or idx_space == -1): 
                 word = self.str[self.i: idx_close]
@@ -51,7 +54,7 @@ class Reader:
             idx_close = self.str.find(CLOSE_NODE, self.i)
 
             #absorb space but not CLOSE_NODE
-            if(idx_close < idx_space or idx_space == -1): 
+            if(idx_close < idx_space or idx_close != -1): 
                 word = self.str[self.i: idx_close]
             else:
                 word = self.str[self.i: idx_space]

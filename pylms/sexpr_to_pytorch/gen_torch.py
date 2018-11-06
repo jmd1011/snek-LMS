@@ -41,37 +41,133 @@ def parseLet(genCode, reader):
 
 def parseLiteral(genCode, reader):
     lit = reader.getNextWord()
-    genCode.append(lit + " ")
+    genCode.append(lit)
 
 def parseWhile(genCode, reader):
-    return
+    genCode.append("while (")
+    
     #parse condition
+    parseNode(genCode, reader)
+
+    genCode.append(") (\n")
+
+    #parse body
+    parseNode(genCode, reader)
+
+    genCode.append("\n)\n")
+
+def parseArrayGet(genCode, reader):
+    #parse array var
+    parseNode(genCode, reader)
+
+    genCode.append("[")
+
+    #parse index
+    parseNode(genCode, reader)
+
+    genCode.append("]")
+
+def parseArraySet(genCode, reader):
+    #parse array var
+    parseNode(genCode, reader)
+
+    genCode.append("[")
+
+    #parse index
+    parseNode(genCode, reader)
+
+    genCode.append("] = ")    
+
+    #parse rhs
+    parseNode(genCode, reader)
+
+def parseDot(genCode, reader):
+    #parse var
+    parseNode(genCode, reader)
+
+    genCode.append(".")
+
+    #parse attribute
+    parseNode(genCode, reader)
+
+def parseSet(genCode, reader):
+    #parse name
+    parseNode(genCode, reader)
+
+    genCode.append(" = ")
+
+    #parse rhs
+    parseNode(genCode, reader)
+
+def parseGet(genCode, reader):
+    #parse name
+    parseNode(genCode, reader)
+
+def parseLen(genCode, reader):
+    genCode.append("len(")
+    
+    #parse name
+    parseNode(genCode, reader)
+
+    genCode.append(")")
+
+def parseIf(genCode, reader):
+    genCode.append("if (")
+    
+    #parse condition
+    parseNode(genCode, reader)
+
+    genCode.append(") (\n")
+
+    #parse then
+    parseNode(genCode, reader)
+
+    genCode.append("else (\n")
+
+    #parse else
+    parseNode(genCode, reader)
+
+    genCode.append("\n)\n")
+
+def parseNew(genCode, reader):
+    # TODO: Check with James
+    genCode.append("None")
+
+def parseBinaryOp(genCode, reader, op):
+    # eval lhs
+    parseNode(genCode, reader)
+
+    genCode.append(" {} ".format(op))
+
+    #eval rhs
+    parseNode(genCode, reader)
+
 
 parsers = {
     "def": parseFunction,
     "begin": parseBegin,
     "let": parseLet,
     "call": "",
-    "while": "",
+    "while": parseWhile,
     "for": "",
     "for_dataloader": "",
-    "if": "",
-    "array-get": "",
-    "array-set": "",
+    "if": parseIf,
+    "array-get": parseArrayGet,
+    "array-set": parseArraySet,
     "getattr": "",
     "setattr": "",
-    "dot": "",
+    "dot": parseDot,
     "tensor": "",
     "tuple": "",
     "print": "",
     "printf": "",
-    "new": "",
-    "set": "",
-    "get": "",
-    "len": "",
+    "new": parseNew,
+    "set": parseSet,
+    "get": parseGet,
+    "len": parseLen,
 }
 
-ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}
+binary_ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}
 
 def parseNode(genCode, reader):
     reader.emitDELIMS()
@@ -84,8 +180,11 @@ def parseNode(genCode, reader):
     # call respective parsers for keywords
     keyword = reader.getNextWord() 
 
-    if(keyword not in parsers):
-        raise Exception("Parser not implemented for `{}`\n".format(keyword))   
-    parsers[keyword](genCode, reader)
+    if keyword in binary_ops :
+        parseBinaryOp(genCode, reader, keyword)
+    elif keyword in parsers:   
+        parsers[keyword](genCode, reader)
+    else:
+        raise Exception("Parser not implemented for `{}`\n".format(keyword))
 
     reader.acceptChar(CLOSE_NODE);
