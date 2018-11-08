@@ -1,10 +1,10 @@
 from constants import *
 
-def parseFunction(genCode, reader):
-    fun = ["def"]
+def parseFunction(reader):
+    fun_expr = ["def"]
 
     #read function name
-    fun.append(reader.getNextWord())
+    fun_expr.append(reader.getNextWord())
 
     # read arguments
     args = []
@@ -13,219 +13,227 @@ def parseFunction(genCode, reader):
     while(reader.peekChar() != CLOSE_NODE):
           args.append(reader.getNextWord())
     reader.acceptChar(CLOSE_NODE)
-    fun.append(args)
+    fun_expr.append(args)
 
     # read body
-    fun.append(parseNode(genCode, reader))
+    fun_expr.append(parseNode(reader))
 
-    return fun
+    return fun_expr
 
-def parseBegin(genCode, reader):
+def parseBegin(reader):
     # read body
-    parseNode(genCode, reader)
+    return parseNode(reader)
 
-def parseLet(genCode, reader):
+def parseLet(reader):
+    let_expr = ["let"]
+
     # get var name
-    varName = reader.getNextWord()
-    genCode.append("{} = ".format(varName))
+    let_expr.append(reader.getNextWord())
 
     # parse rhs
-    parseNode(genCode, reader)
-    genCode.newLine()
+    rhs = parseNode(reader)
 
     # parse body
-    parseNode(genCode, reader)
+    body = parseNode(reader)
 
-def parseLiteral(genCode, reader):
+    let_expr.extend((rhs, body))
+
+    return let_expr
+
+def parseLiteral(reader):
     return reader.getNextWord()
 
-def parseWhile(genCode, reader):
-    genCode.append("while ")
+def parseWhile(reader):
+    while_expr = ["while"]
     
     #parse condition
-    parseNode(genCode, reader)
-
-    genCode.startNewScope()
+    while_expr.append(parseNode(reader))
 
     #parse body
-    parseNode(genCode, reader)
+    while_expr.append(parseNode(reader))
 
-    genCode.endScope()
+    return while_expr
 
-def parseArrayGet(genCode, reader):
+
+def parseArrayGet(reader):
+    arget_expr = ["array-get"]
+
     #parse array var
-    parseNode(genCode, reader)
-
-    genCode.append("[")
+    arget_expr.append(parseNode(reader))
 
     #parse index
-    parseNode(genCode, reader)
+    arget_expr.append(parseNode(reader))
 
-    genCode.append("]")
+    return arget_expr
 
-def parseArraySet(genCode, reader):
+def parseArraySet(reader):
+    arset_expr = ["array-set"]
+
     #parse array var
-    parseNode(genCode, reader)
-
-    genCode.append("[")
+    arset_expr.append(parseNode(reader))
 
     #parse index
-    parseNode(genCode, reader)
-
-    genCode.append("] = ")    
+    arset_expr.append(parseNode(reader))
 
     #parse rhs
-    parseNode(genCode, reader)
+    arset_expr.append(parseNode(reader))
 
-def parseDot(genCode, reader):
+    return arset_expr
+
+def parseDot(reader):
+    dot_expr = ["dot"]
+
     #parse var
-    parseNode(genCode, reader)
-
-    genCode.append(".")
+    dot_expr.append(parseNode(reader))
 
     #parse attribute
-    parseNode(genCode, reader)
+    dot_expr.append(parseNode(reader))
 
-def parseSet(genCode, reader):
+    return dot_expr
+
+def parseSet(reader):
+    set_expr = ["set"]
+
     #parse name
-    parseNode(genCode, reader)
-
-    genCode.append(" = ")
+    set_expr.append(parseNode(reader))
 
     #parse rhs
-    parseNode(genCode, reader)
+    set_expr.append(parseNode(reader))
 
-def parseGet(genCode, reader):
-    #parse name
-    parseNode(genCode, reader)
+    return set_expr
 
-def parseLen(genCode, reader):
-    genCode.append("len(")
+def parseGet(reader):
+    get_expr = ["get"]
     
     #parse name
-    parseNode(genCode, reader)
+    get_expr.append(parseNode(reader))
 
-    genCode.append(")")
+    return get_expr
 
-def parseIf(genCode, reader):
-    genCode.append("if ")
+def parseLen(reader):
+    len_expr = ["len"]
+    
+    #parse name
+    len_expr.append(parseNode(reader))
+
+    return len_expr
+
+def parseIf(reader):
+    if_expr = ["if"]
     
     #parse condition
-    parseNode(genCode, reader)
-
-    genCode.startNewScope()
+    if_expr.append(parseNode(reader))
 
     #parse then
-    parseNode(genCode, reader)
-
-    genCode.endScope()
-    genCode.append("else")
-    genCode.startNewScope()
+    if_expr.append(parseNode(reader))
 
     #parse else
-    parseNode(genCode, reader)
+    if_expr.append(parseNode(reader))
 
-    genCode.endScope()
+    return if_expr
 
-def parseTensor(genCode, reader):
-    #call torch.tensor
-    genCode.append("torch.tensor(")
+def parseTensor(reader):
+    tensor_expr = ["tensor"]
 
     #parse dims
+    dims = []
     while(reader.peekChar() != CLOSE_NODE):
-        parseNode(genCode, reader)
-        genCode.append(",")
+        dims.append(parseNode(reader))
+    tensor_expr.append(dims)
 
-    genCode.append(")")
+    return tensor_expr
 
-def parseTuple(genCode, reader):
-    genCode.append("(")
+def parseTuple(reader):
+    tuple_expr = ["tuple"]
 
     #parse tuple elements
+    elems = []
     while(reader.peekChar() != CLOSE_NODE):
-        parseNode(genCode, reader)
-        genCode.append(", ")
+        elems.append(parseNode(reader))
+    tuple_expr.append(elems)
 
-    genCode.append(")")
+    return tuple_expr
 
-def parseCall(genCode, reader):
+
+def parseCall(reader):
+    call_expr = ["call"]
+
     #get function name
-    fname = parseNode(genCode, reader)
-    
-    genCode.append("(")
+    call_expr.append(parseNode(reader))
 
     #parse args
+    args = []
     while(reader.peekChar() != CLOSE_NODE):
-        parseNode(genCode, reader)
-        genCode.append(",")
+        args.append(parseNode(reader))
+    call_expr.append(args)
 
-    genCode.append(")")
+    return call_expr
 
-def parsePrint(genCode, reader):
-    genCode.append("print(")
+def parsePrint(reader):
+    print_expr = ["print"]
 
     #parse print string
-    parseNode(genCode, reader)
+    print_expr.append(parseNode(reader))
 
-    genCode.append(")")
+    return print_expr
 
-def parsePrintf(genCode, reader):
-    genCode.append("print(\"")
+def parsePrintf(reader):
+    printf_expr = ["printf"]
 
     reader.acceptChar(OPEN_NODE)
 
     #parse print string
-    parseNode(genCode, reader)
-
-    genCode.append("\").format(")
+    printf_expr.append(parseNode(reader))
 
     #parse args
+    args = []
     while(reader.peekChar() != CLOSE_NODE):
-        parseNode(genCode, reader)
-        genCode.append(",")
-    
+        args.append(parseNode(reader))
     reader.acceptChar(CLOSE_NODE)
+    printf_expr.append(args)
 
-    genCode.append(")")
+    return printf_expr
 
-def parseFor(genCode, reader):
-    genCode.append("for ")
+def parseFor(reader):
+    for_expr = ["for"]
 
-    parseNode(genCode, reader)
+    for_expr.append(parseNode(reader))
 
     #read "in"
     reader.getNextWord()
 
-    genCode.append(" in ")
+    #parse it
+    for_expr.append(parseNode(reader))
 
-    parseNode(genCode, reader)
+    #parse body
+    for_expr.append(parseNode(reader))
 
-    genCode.startNewScope()
-
-    parseNode(genCode, reader)
-
-    genCode.endScope()
+    return for_expr
 
 
-def parseNew(genCode, reader):
-    genCode.append("None")
+def parseNew(reader):
+    return ["new"]
 
-def parseRet(genCode, reader):
-    genCode.append("return ")
+def parseRet(reader):
+    ret_expr = ["ret"]
 
     # parse return expression
-    parseNode(genCode, reader)
+    ret_expr.append(parseNode(reader))
 
-def parseBinaryOp(genCode, reader, op):
+    return ret_expr
+
+def parseBinaryOp(reader, op):
+    bop_expr = ["bop", op]
+
     # eval lhs
-    parseNode(genCode, reader)
-
-    genCode.append(" {} ".format(op))
+    bop_expr.append(parseNode(reader))
 
     #eval rhs
-    parseNode(genCode, reader)
+    bop_expr.append(parseNode(reader))
 
-def parserNotImpl(genCode, reader):
+    return bop_expr
+
+def parserNotImpl(reader):
     raise Exception("Parser not Implemented yet")
 
 
@@ -256,11 +264,11 @@ parsers = {
 
 binary_ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}
 
-def parseNode(genCode, reader):
+def parseNode(reader):
     reader.emitDELIMS()
 
     if(reader.peekChar() != OPEN_NODE):
-        return parseLiteral(genCode, reader)
+        return parseLiteral(reader)
 
     reader.acceptChar(OPEN_NODE)
 
@@ -268,12 +276,13 @@ def parseNode(genCode, reader):
     keyword = reader.getNextWord() 
 
     if keyword in binary_ops :
-        gen = parseBinaryOp(genCode, reader, keyword)
+        gen = parseBinaryOp(reader, keyword)
     elif keyword in parsers:   
-        gen = parsers[keyword](genCode, reader)
+        gen = parsers[keyword](reader)
     else:
         raise Exception("Parser not implemented for `{}`\n".format(keyword))
 
     reader.acceptChar(CLOSE_NODE);
 
-    print(gen)
+    # print(gen)
+    return gen

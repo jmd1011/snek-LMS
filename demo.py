@@ -5,10 +5,9 @@ from pylms.nn_staging import *
 @lms
 def lifting_param(x):
   if x > 0:
-    x = x + 1
+    return x + 1
   else:
-    x = x - 1
-  return x
+    return x - 1
 
 print("======= Original code =======")
 print(lifting_param.original_src)
