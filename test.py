@@ -14,3 +14,4 @@ print(scripted_fn.graph)
 
 for input_tuple in [inputs] + check_inputs:
     torch.testing.assert_allclose(fn(*input_tuple), scripted_fn(*input_tuple))
+

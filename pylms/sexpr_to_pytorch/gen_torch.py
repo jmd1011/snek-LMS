@@ -12,13 +12,11 @@ def parseFunction(genCode, reader):
         fargs.append(reader.getNextWord())
     reader.acceptChar(CLOSE_NODE)
 
-    #TODO: Fix append to genCode
     genCode.append("function {} ({}) (\n".format(fname, fargs))
 
     # read body
     parseNode(genCode, reader)
 
-    #TODO: Fix append to genCode
     genCode.append("\n)\n")
 
 def parseBegin(genCode, reader):
@@ -129,9 +127,57 @@ def parseIf(genCode, reader):
 
     genCode.append("\n)\n")
 
+
+def parseTensor(genCode, reader):
+    #call torch.tensor
+    genCode.append("torch.tensor(")
+
+    #parse dims
+    while(reader.peekChar() != CLOSE_NODE):
+        parseNode(genCode, reader)
+        genCode.append(", ")
+
+    genCode.append(")")
+
+def parseTuple(genCode, reader):
+    genCode.append("(")
+
+    #parse tuple elements
+    while(reader.peekChar() != CLOSE_NODE):
+        parseNode(genCode, reader)
+        genCode.append(", ")
+
+    genCode.append(")")
+
+def parseCall(genCode, reader):
+    #get function name
+    fname = parseNode(genCode, reader)
+    
+    genCode.append("(")
+
+    #parse args
+    while(reader.peekChar() != CLOSE_NODE):
+        parseNode(genCode, reader)
+        genCode.append(", ")
+
+    genCode.append(")")
+
+def parsePrint(genCode, reader):
+    genCode.append("print(")
+
+    #parse print string
+    parseNode(genCode, reader)
+
+    genCode.append(")")
+
 def parseNew(genCode, reader):
-    # TODO: Check with James
     genCode.append("None")
+
+def parseRet(gencCode, reader):
+    genCode.append("return ")
+
+    # parse return expression
+    parseNode(gencCode, reader)
 
 def parseBinaryOp(genCode, reader, op):
     # eval lhs
@@ -142,29 +188,33 @@ def parseBinaryOp(genCode, reader, op):
     #eval rhs
     parseNode(genCode, reader)
 
+def parserNotImpl(genCode, reader):
+    raise Exception("Parser not Implemented yet")
+
 
 parsers = {
     "def": parseFunction,
     "begin": parseBegin,
     "let": parseLet,
-    "call": "",
+    "call": parseCall,
     "while": parseWhile,
     "for": "",
     "for_dataloader": "",
     "if": parseIf,
     "array-get": parseArrayGet,
     "array-set": parseArraySet,
-    "getattr": "",
-    "setattr": "",
+    "getattr": parserNotImpl,
+    "setattr": parserNotImpl,
     "dot": parseDot,
-    "tensor": "",
-    "tuple": "",
-    "print": "",
+    "tensor": parseTensor,
+    "tuple": parseTuple,
+    "print": parsePrint,
     "printf": "",
     "new": parseNew,
     "set": parseSet,
     "get": parseGet,
     "len": parseLen,
+    "ret": parseRet,
 }
 
 binary_ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}

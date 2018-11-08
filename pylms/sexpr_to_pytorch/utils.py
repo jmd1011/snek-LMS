@@ -28,6 +28,9 @@ class Reader:
 
         def getNextWord(self):
             self.emitDELIMS()
+            
+            if(self.peekChar() == "\""):
+                return self.readQuotedWord()
 
             # find next space or CLOSE_NODE after index i and return word
             idx_space = self.str.find(DELIM, self.i)
@@ -61,6 +64,22 @@ class Reader:
             
             return word
         
+        def readQuotedWord(self):
+            self.emitDELIMS()
+
+            if(self.peekChar() != "\""):
+                raise Exception("Not a quoted word from index {}".format(self.i))
+            
+            idx_end = self.str.find("\"", self.i + 1)
+            
+            if(idx_end == -1):
+                raise Exception("no ending quote found for starting index {}".format(self.i))
+
+            word = self.str[self.i + 1: idx_end]
+            self.i = idx_end + 1
+
+            return word
+
         def emitDELIMS(self):
             while(self.str[self.i] == DELIM):
                 self.i += 1
