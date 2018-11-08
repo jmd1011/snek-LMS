@@ -1,29 +1,29 @@
 from constants import *
 
 def parseFunction(genCode, reader):
+    genCode.append("def ")
+
     # read function name
-    fname = reader.getNextWord()
+    parseNode(genCode, reader)
 
     # read arguments
+    genCode.append("(")
     reader.emitDELIMS()
     reader.acceptChar(OPEN_NODE)
-    fargs = []
     while(reader.peekChar() != CLOSE_NODE):
-        fargs.append(reader.getNextWord())
+          parseNode(genCode, reader)
     reader.acceptChar(CLOSE_NODE)
-
-    genCode.append("function {} ({}) (\n".format(fname, fargs))
+    genCode.append(")")
+    genCode.startNewScope()
 
     # read body
     parseNode(genCode, reader)
 
-    genCode.append("\n)\n")
+    genCode.endScope()
 
 def parseBegin(genCode, reader):
     # read body
-    body = parseNode(genCode, reader)
-    if(body != None): 
-        genCode.append("{}".format(body))
+    parseNode(genCode, reader)
 
 def parseLet(genCode, reader):
     # get var name
@@ -32,7 +32,7 @@ def parseLet(genCode, reader):
 
     # parse rhs
     parseNode(genCode, reader)
-    genCode.append("\n")
+    genCode.newLine()
 
     # parse body
     parseNode(genCode, reader)
@@ -42,17 +42,17 @@ def parseLiteral(genCode, reader):
     genCode.append(lit)
 
 def parseWhile(genCode, reader):
-    genCode.append("while (")
+    genCode.append("while ")
     
     #parse condition
     parseNode(genCode, reader)
 
-    genCode.append(") (\n")
+    genCode.startNewScope()
 
     #parse body
     parseNode(genCode, reader)
 
-    genCode.append("\n)\n")
+    genCode.endScope()
 
 def parseArrayGet(genCode, reader):
     #parse array var
@@ -110,23 +110,24 @@ def parseLen(genCode, reader):
     genCode.append(")")
 
 def parseIf(genCode, reader):
-    genCode.append("if (")
+    genCode.append("if ")
     
     #parse condition
     parseNode(genCode, reader)
 
-    genCode.append(") (\n")
+    genCode.startNewScope()
 
     #parse then
     parseNode(genCode, reader)
 
-    genCode.append("else (\n")
+    genCode.endScope()
+    genCode.append("else")
+    genCode.startNewScope()
 
     #parse else
     parseNode(genCode, reader)
 
-    genCode.append("\n)\n")
-
+    genCode.endScope()
 
 def parseTensor(genCode, reader):
     #call torch.tensor
@@ -135,7 +136,7 @@ def parseTensor(genCode, reader):
     #parse dims
     while(reader.peekChar() != CLOSE_NODE):
         parseNode(genCode, reader)
-        genCode.append(", ")
+        genCode.append(",")
 
     genCode.append(")")
 
@@ -158,7 +159,7 @@ def parseCall(genCode, reader):
     #parse args
     while(reader.peekChar() != CLOSE_NODE):
         parseNode(genCode, reader)
-        genCode.append(", ")
+        genCode.append(",")
 
     genCode.append(")")
 
@@ -170,14 +171,52 @@ def parsePrint(genCode, reader):
 
     genCode.append(")")
 
+def parsePrintf(genCode, reader):
+    genCode.append("print(\"")
+
+    reader.acceptChar(OPEN_NODE)
+
+    #parse print string
+    parseNode(genCode, reader)
+
+    genCode.append("\").format(")
+
+    #parse args
+    while(reader.peekChar() != CLOSE_NODE):
+        parseNode(genCode, reader)
+        genCode.append(",")
+    
+    reader.acceptChar(CLOSE_NODE)
+
+    genCode.append(")")
+
+def parseFor(genCode, reader):
+    genCode.append("for ")
+
+    parseNode(genCode, reader)
+
+    #read "in"
+    reader.getNextWord()
+
+    genCode.append(" in ")
+
+    parseNode(genCode, reader)
+
+    genCode.startNewScope()
+
+    parseNode(genCode, reader)
+
+    genCode.endScope()
+
+
 def parseNew(genCode, reader):
     genCode.append("None")
 
-def parseRet(gencCode, reader):
+def parseRet(genCode, reader):
     genCode.append("return ")
 
     # parse return expression
-    parseNode(gencCode, reader)
+    parseNode(genCode, reader)
 
 def parseBinaryOp(genCode, reader, op):
     # eval lhs
@@ -198,7 +237,7 @@ parsers = {
     "let": parseLet,
     "call": parseCall,
     "while": parseWhile,
-    "for": "",
+    "for": parseFor,
     "for_dataloader": "",
     "if": parseIf,
     "array-get": parseArrayGet,
@@ -209,7 +248,7 @@ parsers = {
     "tensor": parseTensor,
     "tuple": parseTuple,
     "print": parsePrint,
-    "printf": "",
+    "printf": parsePrintf,
     "new": parseNew,
     "set": parseSet,
     "get": parseGet,

@@ -2,9 +2,23 @@ from constants import *
 
 class GenCode:
     s = ""
+    indent = ""
+
     def append(self, code):
         self.s += code
     
+    def newLine(self):
+        self.s += "\n" + self.indent
+
+    def startNewScope(self):
+        self.s += ":"
+        self.indent += "  "
+        self.newLine()
+
+    def endScope(self):
+        self.s += "\n"
+        self.indent = self.indent[0: len(self.indent) - 2]
+
     def display(self):
         print(self.s)
 
