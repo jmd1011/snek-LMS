@@ -2,20 +2,12 @@ from pylms import *
 from pylms.rep import *
 from pylms.nn_staging import *
 
-# @lms
-# def lifting_param(x):
-#   if x > 0:
-#     x = x + 1
-#   else:
-#     x = x - 1
-#   return x
-
 @lms
 def lifting_param(x):
-
-  for i in x:
+  if x > 0:
     x = x + 1
-    print("{}".format(i))
+  else:
+    x = x - 1
   return x
 
 print("======= Original code =======")

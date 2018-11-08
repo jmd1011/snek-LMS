@@ -137,7 +137,7 @@ class NonLocalReturnValue(Exception):
         self.value = value
 
 def __return(value):
-    reflect(["ret"])
+    # reflect(["ret"])
     raise NonLocalReturnValue(value)
 
 class NonLocalBreak(Exception): pass
