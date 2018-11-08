@@ -219,8 +219,10 @@ def __while(test, body):
 
     ttest = test()
     if not isinstance(ttest, Rep):
-        while test():
-            try: body()
+        while ttest or test(): # protects against side-effects
+            try:
+                ttest = False
+                body()
             except NonLocalBreak as e:
                 return None
             except NonLocalReturnValue as e:
@@ -229,6 +231,8 @@ def __while(test, body):
                 pass
         return
 
+    # no way to protect against side-effect in gen code other than removing
+    # ttest's generated code in post-processing
     testret, testp = capture(test)
     bodyret, bodyp = capture(body)
     rval = reflect(["while", testp, bodyp])

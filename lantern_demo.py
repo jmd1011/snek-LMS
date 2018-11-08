@@ -12,16 +12,16 @@ def run(dummy):
     from torch.autograd import Variable
     import time
 
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                        help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
-                        help='learning rate (default: 0.0005)')
-    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
-                        help='SGD momentum (default: 0.0)')
-    parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
-                        help='how many batches to wait before logging training status')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    # parser.add_argument('--epochs', type=int, default=10, metavar='N',
+    #                     help='number of epochs to train (default: 10)')
+    # parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
+    #                     help='learning rate (default: 0.0005)')
+    # parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+    #                     help='SGD momentum (default: 0.0)')
+    # parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
+    #                     help='how many batches to wait before logging training status')
+    # args = parser.parse_args()
 
     kwargs = {}
     train_loader = torch.utils.data.DataLoader(
@@ -34,7 +34,7 @@ def run(dummy):
 
     fc1 = nn.Linear(784, 50)
     fc2 = nn.Linear(50, 10)
-    optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
+    optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=0.0005, momentum=0.0)
 
     def forward(x):
         x1 = x.view(-1, 784)
@@ -54,7 +54,7 @@ def run(dummy):
             tloss = tloss + loss.data[0]
             optimizer.step()
             tmp = tloss
-            if (batch_idx + 1) % args.log_interval == 0:
+            if (batch_idx + 1) % 6000 == 0:
                 print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx + 1, len(train_loader),
                     100. * batch_idx / len(train_loader), tmp / batch_idx))
@@ -62,7 +62,7 @@ def run(dummy):
 
     idx = 0
     print("Start Training")
-    while idx < args.epochs:
+    while idx < 10:
         idx = idx + 1
         print('Epoch {:.0f}'.format(idx))
         train(idx)
