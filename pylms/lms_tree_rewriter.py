@@ -34,8 +34,13 @@ class ScopeAnalysis(ast.NodeVisitor):
         locals = self.fundef.locals
 
         for id in ids:
-            if not locals.get(id): locals[id] = 0
-            locals[id] += 1
+            try:
+                locals[id] += 1
+            except:
+                locals[id] = 1
+            # if not locals.get(id): locals[id] = 0
+            # locals[id] += 1
+            # print('V: {} = {}'.format(id, locals[id]))
 
         self.generic_visit(node)
 
@@ -43,6 +48,8 @@ class ScopeAnalysis(ast.NodeVisitor):
         node.parent = self.fundef
         self.fundef = node
         node.locals = {}
+        for a in node.args.args:
+            node.locals[a.arg] = 1
         self.generic_visit(node)
         self.fundef = node.parent
 
@@ -52,10 +59,10 @@ class StagingRewriter(ast.NodeTransformer):
     1) virtualize primitives such as `if`, `while`, `for` and etc
     2) virtualize var accesses for non-single-assignment vars
     """
-    def __init__(self, scope):
+    def __init__(self):
         self.fundef = None # keep track of the current function we're in
         self.var_names = {}
-        self.scope = scope
+        # self.scope = scope
         self.recs = []
         super()
 
@@ -69,11 +76,13 @@ class StagingRewriter(ast.NodeTransformer):
         # lift a var if it's assigned more than once
         # TODO: need to check super scopes?
         try:
-            return ((self.fundef.locals.get(id)) and
-                    (self.fundef.locals[id] > 1))
+            # print('R:{} = {}'.format(id, self.fundef.locals[id]))
+            return self.fundef.locals[id] > 1
         except AttributeError:
             self.fundef.locals = {}
             self.fundef.locals[id] = 1
+            return False
+        except KeyError:
             return False
 
     def visit_FunctionDef(self, node):
@@ -90,9 +99,9 @@ class StagingRewriter(ast.NodeTransformer):
         for arg in node.args.args:
             arg_name = arg.arg
             try:
-                if self.fundef.locals[arg_name] > 0:
+                if self.fundef.locals[arg_name] > 1:
                     r_args[arg_name] = self.freshName('x')
-                self.fundef.locals[arg_name] += 1
+                # self.fundef.locals[arg_name] += 1
             except KeyError as e:
                 pass
 
@@ -165,8 +174,8 @@ class StagingRewriter(ast.NodeTransformer):
         #     except:
         #         pass
 
-        try: self.fundef.locals[id] += 1
-        except: pass
+        # try: self.fundef.locals[id] += 1
+        # except: pass
 
         # NOTE: grab id before -- recursive call will replace lhs with __read!!
         self.generic_visit(node)
