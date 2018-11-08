@@ -2,5 +2,3 @@ astunparse
 pytest
 py4j
 psutil
-torch
-numpy
