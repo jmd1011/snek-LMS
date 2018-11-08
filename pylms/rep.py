@@ -94,7 +94,7 @@ class Rep(object):
     def __getitem__(self, i):
         return reflect(["array-get",self,i])
     def __setitem__(self,i,v):
-        return reflect(["array-get",self,i,v])
+        return reflect(["array-set",self,i,v])
     @property
     def data(self):
         return reflect(["getattr",self,"data"])
