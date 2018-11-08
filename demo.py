@@ -95,8 +95,8 @@ def testFor(x):
 
 print(testFor.src)
 
-@stage
-def runFor(x):
-  return testFor(x)
+# @stage
+# def runFor(x):
+#   return testFor(x)
 
-print(runFor.code)
+# print(runFor.code)
