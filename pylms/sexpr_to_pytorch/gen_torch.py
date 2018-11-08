@@ -1,25 +1,24 @@
 from constants import *
 
 def parseFunction(genCode, reader):
-    genCode.append("def ")
+    fun = ["def"]
 
-    # read function name
-    parseNode(genCode, reader)
+    #read function name
+    fun.append(reader.getNextWord())
 
     # read arguments
-    genCode.append("(")
+    args = []
     reader.emitDELIMS()
     reader.acceptChar(OPEN_NODE)
     while(reader.peekChar() != CLOSE_NODE):
-          parseNode(genCode, reader)
+          args.append(reader.getNextWord())
     reader.acceptChar(CLOSE_NODE)
-    genCode.append(")")
-    genCode.startNewScope()
+    fun.append(args)
 
     # read body
-    parseNode(genCode, reader)
+    fun.append(parseNode(genCode, reader))
 
-    genCode.endScope()
+    return fun
 
 def parseBegin(genCode, reader):
     # read body
@@ -38,8 +37,7 @@ def parseLet(genCode, reader):
     parseNode(genCode, reader)
 
 def parseLiteral(genCode, reader):
-    lit = reader.getNextWord()
-    genCode.append(lit)
+    return reader.getNextWord()
 
 def parseWhile(genCode, reader):
     genCode.append("while ")
@@ -270,10 +268,12 @@ def parseNode(genCode, reader):
     keyword = reader.getNextWord() 
 
     if keyword in binary_ops :
-        parseBinaryOp(genCode, reader, keyword)
+        gen = parseBinaryOp(genCode, reader, keyword)
     elif keyword in parsers:   
-        parsers[keyword](genCode, reader)
+        gen = parsers[keyword](genCode, reader)
     else:
         raise Exception("Parser not implemented for `{}`\n".format(keyword))
 
     reader.acceptChar(CLOSE_NODE);
+
+    print(gen)

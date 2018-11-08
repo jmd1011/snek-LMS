@@ -12,6 +12,7 @@ def torchTheSnake(sexpr):
     parseNode(genCode, reader)
     genCode.display()
 
+torchTheSnake("(def fname (in1) a)")
 # torchTheSnake("(def fname (in1) (begin (ret 1)))")
 # torchTheSnake("(let a b c)")
 # torchTheSnake("(def f () (begin a))")
@@ -24,4 +25,4 @@ def torchTheSnake(sexpr):
 # torchTheSnake("(printf (\"{}\" i))")
 # torchTheSnake("(for x9 in x7 (begin (let x10 (get x7) (let x11 (+ x10 1) (let x12 (set x7 x11) (let x13 (printf (\"{}\" x9)) None))))))")
 
-torchTheSnake("(def runLift (in1) (begin (begin (let x7 new (let x8 (set x7 in1) (let x9 (get x7) (let x10 (> x9 0) (let x11 (if x10 (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None)))) (begin (let x11 (get x7) (let x12 (- x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")
+# torchTheSnake("(def runLift (in1) (begin (begin (let x7 new (let x8 (set x7 in1) (let x9 (get x7) (let x10 (> x9 0) (let x11 (if x10 (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None)))) (begin (let x11 (get x7) (let x12 (- x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")
