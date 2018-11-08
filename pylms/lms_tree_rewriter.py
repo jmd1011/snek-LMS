@@ -170,6 +170,9 @@ class StagingRewriter(ast.NodeTransformer):
         #     except:
         #         pass
 
+        try: self.fundef.locals[id] += 1
+        except: pass
+
         # NOTE: grab id before -- recursive call will replace lhs with __read!!
         self.generic_visit(node)
 
@@ -546,8 +549,8 @@ class StagingRewriter(ast.NodeTransformer):
                                         decorator_list=[])
             ast.fix_missing_locations(outer_fun)
 
-            self.scope.visit(outer_fun)
-            self.visit(outer_fun)
+            # self.scope.visit(outer_fun)
+            # self.visit(outer_fun)
 
             new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
                                          args=[node.iter.args[0],
@@ -567,8 +570,8 @@ class StagingRewriter(ast.NodeTransformer):
                                   returns=None)
             ast.fix_missing_locations(bFun)
 
-            self.scope.visit(bFun)
-            self.visit(bFun)
+            # self.scope.visit(bFun)
+            # self.visit(bFun)
 
             new_node = ast.Expr(ast.Call(
                 func=ast.Name(id='__for', ctx=ast.Load()),
