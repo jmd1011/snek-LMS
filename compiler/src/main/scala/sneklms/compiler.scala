@@ -62,6 +62,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   case class ArrayV[T](v: ArrayBuffer[T]) extends Value
   case class ModelV(f: Model) extends Value
   case object VError extends Value
+  import Dataset.DataLoader
+  case class Dataset1(v: DataLoader) extends Value
 
   type Env = Map[String,Value]
 
@@ -181,6 +183,27 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       val arg = compile(x) match { case Literal(x: Rep[String]) => x }
       printf("%s\\n", arg)
       unit(1)
+    case "transform"::t => t match {
+      case "toTensor"::Nil => Literal(())
+      case "normalize"::t => Literal(()) // FIXME
+      case "compose"::t => Literal(()) // FIXME
+    }
+    case "loader"::t::Nil => t match {
+      case (dataset: String)::(train: String)::download::transformations =>
+        // From the MNIST pytorch example
+        val mean = 0.1307f
+        val std = 0.3081f
+        Dataset1(new DataLoader(dataset, train == "True", mean, std, Seq(1, 28, 28)))
+    }
+    case "for_dataloader"::(loader: String)::List(x11: String, t0: String, x12: String)::body::Nil =>
+      val Dataset1(dataloader) = env(loader)
+      val mem = getMallocAddr()
+      dataloader.foreach { (idx: Rep[Int], data: Tensor, target: Rep[Int]) =>
+        compile(body)(env + (x11 -> Literal(idx)) + (t0 -> Tens(TensorR(data))) + (x12 -> Literal(target)))
+        resetMallocAddr(mem)
+        ()
+      }
+      Literal(())
     case "call"::t =>
       t match {
         case "numpy"::"zeros"::x::Nil =>
@@ -198,8 +221,13 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
             ArrayV(ArrayBuffer(xx, yy, zz))
           case _ => ???
         }
+        // case "tensor"::(list: List[Int])::Nil => Tens(TensorR(Tensor.rand(list:_*)))
         case "tensor"::(args: List[Any])::Nil => args match {
           // case Nil => Tens(TensorR(Tensor()))
+          case (y: Int)::Nil =>
+            Tens(TensorR(Tensor.zeros(y)))
+          case (x: Int)::(y: Int)::Nil =>
+            Tens(TensorR(Tensor.zeros(x, y)))
           case (x: String)::(y: Int)::Nil =>
             val (Literal(array:Rep[Array[Float]])) = compile(x)
             Tens(TensorR(Tensor(array, y)))
@@ -427,6 +455,12 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       case "let"::(x: String)::a::b =>
         com(b)(envR + (x -> com(a)))
 
+      case "transform"::t => t match {
+        case "toTensor"::Nil => LitR(())
+        case "normalize"::t => LitR(()) // FIXME
+        case "compose"::t => LitR(()) // FIXME
+      }
+
       case "call"::t =>
         t match {
           case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::Nil =>
@@ -627,202 +661,202 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     s.replace("{}", "%d").replace("{:.0f}", "%.0f").replace("{:.6f}", "%.6f").replace("%)", "%%)") + "\\n" // TODO escape % better
   }
 
-  @virtualize
-  def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
-    case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
-      val func = args match {
-        case x1::Nil =>
-          lazy val fptr: Rep[Int => Unit] = uninlinedFunc1 { (x1v: Rep[Int]) =>
-            compileT(body)(env + (x1 -> LiteralT(x1v)) + (f -> LiteralT(fptr))) match {
-              // case DiffV(a: Function0[Unit @diff]) => val r = reset { a() }; unit(r)
-              case LiteralT(_: Rep[Unit]) => unit(())
-              case a => System.out.println(s"$a"); ???
-            }
-          }
-          LiteralT(fptr)
-      }
-      compileT(r)(env + (f -> func))
-    case "begin"::seq =>
-      val res = ((None: Option[ValueT]) /: seq) {
-        case (agg, exp) => Some(compileT(exp))
-      }
-      res.get
-    case "call"::(fun: String)::(args: List[Any])::Nil => fun match {
-      case "nll_loss" => (compileT(args(0)), compileT(args(1))) match {
-        case (DiffV(a: Result[TensorR]), LiteralT(target: Rep[Int])) => DiffV[TensorR](new Result(() => a().nllLoss(target)))
-      }
-      case "relu" => (compileT(args(0))) match {
-        case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().relu()))
-      }
-      case "log_softmax" => compileT(args(0)) match {
-        case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().logSoftmax()))
-      }
+  // @virtualize
+  // def compileT(exp: Any)(implicit env: EnvT = Map.empty): ValueT = { printDebug(s"exp >> $exp"); exp } match {
+  //   case "def"::(f: String)::(args: List[String])::(body: List[List[Any]])::r =>
+  //     val func = args match {
+  //       case x1::Nil =>
+  //         lazy val fptr: Rep[Int => Unit] = uninlinedFunc1 { (x1v: Rep[Int]) =>
+  //           compileT(body)(env + (x1 -> LiteralT(x1v)) + (f -> LiteralT(fptr))) match {
+  //             // case DiffV(a: Function0[Unit @diff]) => val r = reset { a() }; unit(r)
+  //             case LiteralT(_: Rep[Unit]) => unit(())
+  //             case a => System.out.println(s"$a"); ???
+  //           }
+  //         }
+  //         LiteralT(fptr)
+  //     }
+  //     compileT(r)(env + (f -> func))
+  //   case "begin"::seq =>
+  //     val res = ((None: Option[ValueT]) /: seq) {
+  //       case (agg, exp) => Some(compileT(exp))
+  //     }
+  //     res.get
+  //   case "call"::(fun: String)::(args: List[Any])::Nil => fun match {
+  //     case "nll_loss" => (compileT(args(0)), compileT(args(1))) match {
+  //       case (DiffV(a: Result[TensorR]), LiteralT(target: Rep[Int])) => DiffV[TensorR](new Result(() => a().nllLoss(target)))
+  //     }
+  //     case "relu" => (compileT(args(0))) match {
+  //       case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().relu()))
+  //     }
+  //     case "log_softmax" => compileT(args(0)) match {
+  //       case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().logSoftmax()))
+  //     }
 
-    }
-    case "call"::(x: Any)::(member: String)::t => member match {
-      case "backward" => compileT(x) match {
-        case DiffV(a: Result[TensorR]) => TensorV(gradR_loss(dummy => a())(Tensor.scalar(0.0f)))
-        case x => System.out.println(s">> $x"); ???
-      }
-      case "print" => compileT(x) match {
-        case TensorV(a) => a.print(); LiteralT(())
-        case DiffV(a: Result[TensorR]) =>
-          // LiteralT(reset { val r = a(); r.print(derivative=true) })
-          DiffV[Unit](new Result(() => { val r = a(); r.print(derivative=true) }))
-        case LiteralT(x: Rep[Float]) => LiteralT(printf("%.4f\\n", x))
-      }
-      case "zero_grad" =>
-        // for (pars <- variables) {
-        //   pars.clear_grad()
-        // }
-        LiteralT(())
-      case "view"  => t match { case (args: List[Int])::Nil =>
-        compileT(x) match {
-          case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().resize(args.last))) // TODO handle general case
-        }
-      }
-      case "step" =>
-        for ((weight, idx) <- variables.zipWithIndex) {
-          weight.x.addMul(-lr, weight.d)
-          // weight.clear_grad()
-        }
-        LiteralT(())
-    }
-    case "array-get"::x::"data"::idx::Nil => (compileT(x), compileT(idx)) match {
-      case (DiffV(a: Result[TensorR]), LiteralT(idx: Rep[Int])) =>
-        var r: Tensor = null
-        reset { val tensor = a(); r = tensor.x }
-        LiteralT(r.data(idx))
-      case (TensorV(a), LiteralT(idx: Rep[Int])) =>
-        LiteralT(a.data(idx))
-    }
-    case "tensor"::(list: List[Int])::Nil => TensorV(Tensor.rand(list:_*))
-    case "+"::n::m::Nil =>
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a + b)
-        case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Float])) => LiteralT(a + b)
-        case (TensorV(a), TensorV(b)) => TensorV(a + b)
-        case (DiffV(a: Result[TensorR]), DiffV(b: Result[TensorR])) => DiffV[TensorR](new Result(() => a() + b()))
-      }
-    case "/"::n::m::Nil =>
-      System.out.println(s"/ $n $m")
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Int])) => LiteralT(a / b)
-      }
-    case "*"::n::m::t =>
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT[Int](a * b)
-        case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Int])) => LiteralT(a * b)
-      }
-    case "%"::n::m::Nil =>
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a % b)
-      }
-    case "=="::n::m::Nil =>
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a == b)
-      }
-    case "<"::n::m::Nil =>
-      (compileT(n), compileT(m)) match {
-        case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a < b)
-      }
-    case "dot"::n::m::Nil =>
-      (compileT(n), compileT(m)) match {
-        case (TensorV(a), TensorV(b)) => TensorV(a dot b)
-        case (DiffV(a: Result[TensorR]), DiffV(b: Result[TensorR])) => DiffV[TensorR](new Result(() => a() dot b()))
-      }
-    case "if"::c::t::e::Nil =>
-      val LiteralT(rc: Rep[Boolean]) = compileT(c)
-      LiteralT(if (rc) compileT(t) match { case LiteralT(t: Rep[Unit]) => t } else compile(e) match { case Literal(e: Rep[Unit]) => e })
-    case "let"::(x: String)::a::b::Nil =>
-      compileT(b)(env + (x -> compileT(a)))
-    case "None" | Nil => LiteralT(())
-    case "variable"::tn::(vol: String)::Nil =>
-      compileT(tn) match {
-        case TensorV(t) => DiffV[TensorR](new Result(() => {
-          val res = TensorR(t)
-          if (vol != "True") {
-            variables += res
-          }
-          res
-        }))
-        case LiteralT(x) => LiteralT(x) // FIXME
-      }
-    case "transform"::t => t match {
-      case "toTensor"::Nil => LiteralT(())
-      case "normalize"::t => LiteralT(()) // FIXME
-      case "compose"::t => LiteralT(()) // FIXME
-    }
-    case "loader"::t::Nil => t match {
-      case (dataset: String)::(train: String)::download::transformations =>
-        // From the MNIST pytorch example
-        val mean = 0.1307f
-        val std = 0.3081f
-        DatasetV(new DataLoader(dataset, train == "True", mean, std, Seq(1, 28, 28)))
-    }
-    case "SGD"::(_::(l: Float)::_::(m: Float)::Nil)::Nil =>
-      lr = l
-      momentum = m
-      LiteralT(()) // FIXME
-    case "new" => MutT(var_new(0.0f))
-    case "set"::(x: String)::t => t match { // FIXME HACK!!!!!
-      case _::a::Nil =>
-        val MutT(vx: Var[Float]) = env(x)
-        var_assign(vx, compileT(a) match { case LiteralT(a: Rep[Float]) => a })
-        LiteralT(unit(()))
-      case a::Nil =>
-        val MutT(vx: Var[Int]) = env(x)
-        var_assign(vx, compileT(a) match { case LiteralT(a: Rep[Int]) => a })
-        LiteralT(unit(()))
-    }
-    case "get"::(x: String)::Nil =>
-      val MutT(vx: Var[Float]) = env(x)
-      LiteralT(readVar(vx))
-    case "while"::t::body::Nil =>
-      while (compileT(t) match { case LiteralT(t: Rep[Boolean]) => t })
-        compileT(body) match { case LiteralT(b: Rep[Unit]) => b }
-      LiteralT(unit(()))
-    case "for_dataloader"::(loader: String)::List(x11: String, t0: String, x12: String)::body::Nil =>
-      val DatasetV(dataloader) = env(loader)
-      val mem = getMallocAddr()
-      dataloader.foreach { (idx: Rep[Int], data: Tensor, target: Rep[Int]) =>
-        compileT(body)(env + (x11 -> LiteralT(idx)) + (t0 -> TensorV(data)) + (x12 -> LiteralT(target)))
-        resetMallocAddr(mem)
-        ()
-      }
-      LiteralT(())
-    case "getattr"::(x: String)::(member: String)::Nil =>
-      (compileT(x), member) match {
-        case (DatasetV(loader), "dataset") => TensorV(loader.dataset)
-      }
+  //   }
+  //   case "call"::(x: Any)::(member: String)::t => member match {
+  //     case "backward" => compileT(x) match {
+  //       case DiffV(a: Result[TensorR]) => TensorV(gradR_loss(dummy => a())(Tensor.scalar(0.0f)))
+  //       case x => System.out.println(s">> $x"); ???
+  //     }
+  //     case "print" => compileT(x) match {
+  //       case TensorV(a) => a.print(); LiteralT(())
+  //       case DiffV(a: Result[TensorR]) =>
+  //         // LiteralT(reset { val r = a(); r.print(derivative=true) })
+  //         DiffV[Unit](new Result(() => { val r = a(); r.print(derivative=true) }))
+  //       case LiteralT(x: Rep[Float]) => LiteralT(printf("%.4f\\n", x))
+  //     }
+  //     case "zero_grad" =>
+  //       // for (pars <- variables) {
+  //       //   pars.clear_grad()
+  //       // }
+  //       LiteralT(())
+  //     case "view"  => t match { case (args: List[Int])::Nil =>
+  //       compileT(x) match {
+  //         case DiffV(a: Result[TensorR]) => DiffV[TensorR](new Result(() => a().resize(args.last))) // TODO handle general case
+  //       }
+  //     }
+  //     case "step" =>
+  //       for ((weight, idx) <- variables.zipWithIndex) {
+  //         weight.x.addMul(-lr, weight.d)
+  //         // weight.clear_grad()
+  //       }
+  //       LiteralT(())
+  //   }
+  //   case "array-get"::x::"data"::idx::Nil => (compileT(x), compileT(idx)) match {
+  //     case (DiffV(a: Result[TensorR]), LiteralT(idx: Rep[Int])) =>
+  //       var r: Tensor = null
+  //       reset { val tensor = a(); r = tensor.x }
+  //       LiteralT(r.data(idx))
+  //     case (TensorV(a), LiteralT(idx: Rep[Int])) =>
+  //       LiteralT(a.data(idx))
+  //   }
+  //   case "tensor"::(list: List[Int])::Nil => TensorV(Tensor.rand(list:_*))
+  //   case "+"::n::m::Nil =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a + b)
+  //       case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Float])) => LiteralT(a + b)
+  //       case (TensorV(a), TensorV(b)) => TensorV(a + b)
+  //       case (DiffV(a: Result[TensorR]), DiffV(b: Result[TensorR])) => DiffV[TensorR](new Result(() => a() + b()))
+  //     }
+  //   case "/"::n::m::Nil =>
+  //     System.out.println(s"/ $n $m")
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Int])) => LiteralT(a / b)
+  //     }
+  //   case "*"::n::m::t =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT[Int](a * b)
+  //       case (LiteralT(a: Rep[Float]), LiteralT(b: Rep[Int])) => LiteralT(a * b)
+  //     }
+  //   case "%"::n::m::Nil =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a % b)
+  //     }
+  //   case "=="::n::m::Nil =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a == b)
+  //     }
+  //   case "<"::n::m::Nil =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (LiteralT(a: Rep[Int]), LiteralT(b: Rep[Int])) => LiteralT(a < b)
+  //     }
+  //   case "dot"::n::m::Nil =>
+  //     (compileT(n), compileT(m)) match {
+  //       case (TensorV(a), TensorV(b)) => TensorV(a dot b)
+  //       case (DiffV(a: Result[TensorR]), DiffV(b: Result[TensorR])) => DiffV[TensorR](new Result(() => a() dot b()))
+  //     }
+  //   case "if"::c::t::e::Nil =>
+  //     val LiteralT(rc: Rep[Boolean]) = compileT(c)
+  //     LiteralT(if (rc) compileT(t) match { case LiteralT(t: Rep[Unit]) => t } else compile(e) match { case Literal(e: Rep[Unit]) => e })
+  //   case "let"::(x: String)::a::b::Nil =>
+  //     compileT(b)(env + (x -> compileT(a)))
+  //   case "None" | Nil => LiteralT(())
+  //   case "variable"::tn::(vol: String)::Nil =>
+  //     compileT(tn) match {
+  //       case TensorV(t) => DiffV[TensorR](new Result(() => {
+  //         val res = TensorR(t)
+  //         if (vol != "True") {
+  //           variables += res
+  //         }
+  //         res
+  //       }))
+  //       case LiteralT(x) => LiteralT(x) // FIXME
+  //     }
+  //   case "transform"::t => t match {
+  //     case "toTensor"::Nil => LiteralT(())
+  //     case "normalize"::t => LiteralT(()) // FIXME
+  //     case "compose"::t => LiteralT(()) // FIXME
+  //   }
+  //   case "loader"::t::Nil => t match {
+  //     case (dataset: String)::(train: String)::download::transformations =>
+  //       // From the MNIST pytorch example
+  //       val mean = 0.1307f
+  //       val std = 0.3081f
+  //       DatasetV(new DataLoader(dataset, train == "True", mean, std, Seq(1, 28, 28)))
+  //   }
+  //   case "SGD"::(_::(l: Float)::_::(m: Float)::Nil)::Nil =>
+  //     lr = l
+  //     momentum = m
+  //     LiteralT(()) // FIXME
+  //   case "new" => MutT(var_new(0.0f))
+  //   case "set"::(x: String)::t => t match { // FIXME HACK!!!!!
+  //     case _::a::Nil =>
+  //       val MutT(vx: Var[Float]) = env(x)
+  //       var_assign(vx, compileT(a) match { case LiteralT(a: Rep[Float]) => a })
+  //       LiteralT(unit(()))
+  //     case a::Nil =>
+  //       val MutT(vx: Var[Int]) = env(x)
+  //       var_assign(vx, compileT(a) match { case LiteralT(a: Rep[Int]) => a })
+  //       LiteralT(unit(()))
+  //   }
+  //   case "get"::(x: String)::Nil =>
+  //     val MutT(vx: Var[Float]) = env(x)
+  //     LiteralT(readVar(vx))
+  //   case "while"::t::body::Nil =>
+  //     while (compileT(t) match { case LiteralT(t: Rep[Boolean]) => t })
+  //       compileT(body) match { case LiteralT(b: Rep[Unit]) => b }
+  //     LiteralT(unit(()))
+  //   case "for_dataloader"::(loader: String)::List(x11: String, t0: String, x12: String)::body::Nil =>
+  //     val DatasetV(dataloader) = env(loader)
+  //     val mem = getMallocAddr()
+  //     dataloader.foreach { (idx: Rep[Int], data: Tensor, target: Rep[Int]) =>
+  //       compileT(body)(env + (x11 -> LiteralT(idx)) + (t0 -> TensorV(data)) + (x12 -> LiteralT(target)))
+  //       resetMallocAddr(mem)
+  //       ()
+  //     }
+  //     LiteralT(())
+  //   case "getattr"::(x: String)::(member: String)::Nil =>
+  //     (compileT(x), member) match {
+  //       case (DatasetV(loader), "dataset") => TensorV(loader.dataset)
+  //     }
 
-    case "len"::x::Nil => compileT(x) match {
-      case DatasetV(loader) => LiteralT(loader.length)
-      case TensorV(tensor) => LiteralT(tensor.shape(0))
-    }
-    case "printf"::(Str(format)::args)::Nil =>
-      LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
-    case "print"::Str(s)::Nil =>
-      LiteralT(printf(s + "\\n"))
-    case "onnx_load"::(filename: String)::Nil => {
-      val model = readONNX(filename)
-      val rfunc = FuncWithDimsT[Tensor, Tensor](model.inference_func, model.x_dims)
-      rfunc
-    }
-    case "lantern_train"::((model: String)::(filename:String)::Nil)::Nil => {
-      ???
-    }
-    case "lantern_run"::((model: String)::(filename: String)::Nil)::Nil => {
-      // TODO: (Fei Wang) not yet using file name as data
-      val FuncWithDimsT(func: (Tensor => Tensor), dims: Seq[Int]) = env(model)
-      val inp = Tensor(readOnnxData(filename), dims: _*) // Tensor.zeros(dims: _*)
-      // val inp2 = Tensor.zeros(dims: _*)
-      TensorV(func(inp))
-    }
-    case x: String => env(x)
-    case x: Int => LiteralT(unit(x))
-    case x: Float => LiteralT(unit[Float](x))
-  }
+  //   case "len"::x::Nil => compileT(x) match {
+  //     case DatasetV(loader) => LiteralT(loader.length)
+  //     case TensorV(tensor) => LiteralT(tensor.shape(0))
+  //   }
+  //   case "printf"::(Str(format)::args)::Nil =>
+  //     LiteralT(printf(formatFromPython(format), args map (compileT(_) match { case LiteralT(x) => x }) : _*))
+  //   case "print"::Str(s)::Nil =>
+  //     LiteralT(printf(s + "\\n"))
+  //   case "onnx_load"::(filename: String)::Nil => {
+  //     val model = readONNX(filename)
+  //     val rfunc = FuncWithDimsT[Tensor, Tensor](model.inference_func, model.x_dims)
+  //     rfunc
+  //   }
+  //   case "lantern_train"::((model: String)::(filename:String)::Nil)::Nil => {
+  //     ???
+  //   }
+  //   case "lantern_run"::((model: String)::(filename: String)::Nil)::Nil => {
+  //     // TODO: (Fei Wang) not yet using file name as data
+  //     val FuncWithDimsT(func: (Tensor => Tensor), dims: Seq[Int]) = env(model)
+  //     val inp = Tensor(readOnnxData(filename), dims: _*) // Tensor.zeros(dims: _*)
+  //     // val inp2 = Tensor.zeros(dims: _*)
+  //     TensorV(func(inp))
+  //   }
+  //   case x: String => env(x)
+  //   case x: Int => LiteralT(unit(x))
+  //   case x: Float => LiteralT(unit[Float](x))
+  // }
 }
 
 @virtualize

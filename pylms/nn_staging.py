@@ -63,11 +63,17 @@ def torch_sum(t1, t2):
 ###################### torch.nn Methods #####################
 #############################################################
 
+def newTensor(*dims):
+    return reflect(['call','tensor',['{}'.format(', '.join(list(map(str, dims))))]])
+
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
-            self.weight = rep_variable(Rep(fresh(), outsize, hlsize)) # rep_variable(newTensor(outsize, hlsize))
-            self.bias   = rep_variable(Rep(fresh(), outsize)) # rep_variable(newTensor(outsize))
+            # self.hlsize = hlsize
+            # self.outsize = outsize
+            self.rep = reflect(["call","nn_linear",[outsize,hlsize]])
+            # self.weight = rep_variable(newTensor(outsize, hlsize)) # rep_variable(newTensor(outsize, hlsize))
+            # self.bias   = rep_variable(newTensor(outsize)) # rep_variable(newTensor(outsize))
             self.linear = None
 
         def __call__(self, tensor):
@@ -77,9 +83,13 @@ def nn_linear(hlsize, outsize):
 
                 return self.linear(tensor)
             else: #staged
-                return self.weight * tensor + self.bias
+                return self.rep(tensor)
+                # return reflect([self.rep,tensor])
+                # return reflect(["call","nn_linear",[hlsize,outsize,tensor]])
+                # return self.weight * tensor + self.bias
         def __repr__(self):
-            return 'linear ({} {})'.format(self.weight,self.bias)
+            return str(self.rep)
+            # return 'linear ({} {})'.format(self.weight,self.bias)
     return Linear()
 
 def nn_conv2d(outSize, inSize, kernel_size, bias):
@@ -180,7 +190,7 @@ def optim_SGD(params, lr, momentum):
         if isinstance(params[0], torch.Tensor):
             return optim.SGD(params, lr, momentum)
 
-    tmp = reflect(["SGD",[lr,momentum]])
+    tmp = reflect(["SGD",[params, lr,momentum]])
     return RepSGD(tmp.n)
 
 def rep_variable(tensor, volatile=False):
