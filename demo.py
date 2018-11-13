@@ -1,26 +1,26 @@
-from pylms import *
-from pylms.rep import *
-from pylms.nn_staging import *
+from pylms.decorators import *
 
-# @lms
-# def lifting_param(x):
-#   if x > 0:
-#     x = x + 1
-#   else:
-#     x = x - 1
-#   return x
+@lms
+def r(x):
+  def lifting_param(x):
+    if x > 0:
+      x = x + 1
+    else:
+      x = x - 1
+    return x
+  return lifting_param(x)
 
-# print("======= Original code =======")
-# print(lifting_param.original_src)
-# print("======= Converted code ========")
-# print(lifting_param.src)
-# val = lifting_param(2)
-# assert(val == 3)
-# print("\n")
+print("======= Original code =======")
+print(r.original_src)
+print("======= Converted code ========")
+print(r.src)
+val = r(2)
+assert(val == 3)
+print("\n")
 
-# @stage
-# def runLift(x):
-#   return lifting_param(x)
+@stage
+def runLift(x):
+  return r(x)
 
 # print("======= SExpr ========")
 # print(runLift.code)
@@ -30,12 +30,12 @@ from pylms.nn_staging import *
 # val = runLift(2)
 # assert(val == 3)
 
-# @lms
-# def testWhile(x):
-#   z = 3
-#   for i in x:
-#     z = i + 1
-#   return z
+@lms
+def testWhile(x):
+  z = 0
+  while z < x:
+    z = z + 1
+  return z
 
 # print("======= Original code =======")
 # print(testWhile.original_src)
@@ -85,3 +85,18 @@ print("======= C/C++ code ========")
 print(runX.Ccode)
 val = runX(5)
 assert(val == 125)
+
+@lms
+def testFor(x):
+  s = 0
+  for i in x:
+    s = s + i
+  return s
+
+print(testFor.src)
+
+# @stage
+# def runFor(x):
+#   return testFor(x)
+
+# print(runFor.code)

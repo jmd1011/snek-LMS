@@ -12,16 +12,16 @@ def run(dummy):
     from torch.autograd import Variable
     import time
 
-    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                        help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
-                        help='learning rate (default: 0.0005)')
-    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
-                        help='SGD momentum (default: 0.0)')
-    parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
-                        help='how many batches to wait before logging training status')
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    # parser.add_argument('--epochs', type=int, default=10, metavar='N',
+    #                     help='number of epochs to train (default: 10)')
+    # parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
+    #                     help='learning rate (default: 0.0005)')
+    # parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+    #                     help='SGD momentum (default: 0.0)')
+    # parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
+    #                     help='how many batches to wait before logging training status')
+    # args = parser.parse_args()
 
     kwargs = {}
     train_loader = torch.utils.data.DataLoader(
@@ -33,14 +33,17 @@ def run(dummy):
         batch_size=1, shuffle=False, **kwargs)
 
     fc1 = nn.Linear(784, 50)
-    fc2 = nn.Linear(50, 10)
-    optimizer = optim.SGD([fc1.weight, fc1.bias, fc2.weight, fc2.bias], lr=args.lr, momentum=args.momentum)
+    fc2 = nn.Linear(50, 10) # let x2 (call nn_linear (10, 50))
+    optimizer = optim.SGD([fc1, fc2], lr=0.0005, momentum=0.0)
 
-    def forward(x):
+    @staged
+    def lossFun(x, target):
         x1 = x.view(-1, 784)
         x2 = F.relu(fc1(x1))
         x3 = fc2(x2)
-        return F.log_softmax(x3, dim=1)
+        x4 = F.log_softmax(x3, dim=1)
+        x5 = F.nll_loss(x4, target)
+        return x5
 
     def train(epoch):
         tloss = 0.0
@@ -48,13 +51,14 @@ def run(dummy):
             data1 = Variable(data, volatile=True)
             target1 = Variable(target)
             optimizer.zero_grad()
-            output = forward(data1)
-            res = F.nll_loss(output, target1)
+            # output = forward(data1)
+            # res = F.nll_loss(output, target1)
+            res = lossFun(data1, target1)
             loss = res.backward()
             tloss = tloss + loss.data[0]
             optimizer.step()
             tmp = tloss
-            if (batch_idx + 1) % args.log_interval == 0:
+            if (batch_idx + 1) % 6000 == 0:
                 print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx + 1, len(train_loader),
                     100. * batch_idx / len(train_loader), tmp / batch_idx))
@@ -62,7 +66,7 @@ def run(dummy):
 
     idx = 0
     print("Start Training")
-    while idx < args.epochs:
+    while idx < 10:
         idx = idx + 1
         print('Epoch {:.0f}'.format(idx))
         train(idx)

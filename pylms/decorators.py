@@ -56,7 +56,7 @@ def lms(func):
             self.original_ast = py_ast.parse(self.original_src)
             scope = ScopeAnalysis()
             scope.visit(self.original_ast)
-            visitor = StagingRewriter(scope)
+            visitor = StagingRewriter()
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
             self.src = astunparse.unparse(self.ast)
