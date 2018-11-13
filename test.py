@@ -1,17 +1,54 @@
-import torch
-print(torch.__version__)
-def fn(x):
-    result = x[0]
-    for i in range(x.size(0)):
-        result = result * x[i]
-    return result
+def runWhile (in1):
+  x7 = None
+  x8 = x7 = 3
+  x9 = x7
+  x10 = x9 < in1
+  def genf0 ():
+    x11 = x7
+    x12 = x11 < in1
+    return x12
+  def genf1 ():
+    x11 = x7
+    x12 = x11 + 1
+    x13 = x7 = x12
+    None
+  while genf0():
+    genf1()
 
-inputs = (torch.rand(3, 4, 5),)
-check_inputs = [(torch.rand(4, 5, 6),), (torch.rand(2, 3, 4),)]
+  x12 = x7
+  return x12
 
-scripted_fn = torch.jit.script(fn)
-print(scripted_fn.graph)
+print(runWhile(2))
 
-for input_tuple in [inputs] + check_inputs:
-    torch.testing.assert_allclose(fn(*input_tuple), scripted_fn(*input_tuple))
+def runLift (in1):
+  x7 = None
+  x8 = x7 = in1
+  x9 = x7
+  x10 = x9 > 0
+  if x10:
+    x11 = x7
+    x12 = x11 + 1
+    x13 = x7 = x12
+    None
+  else:
+    x11 = x7
+    x12 = x11 - 1
+    x13 = x7 = x12
+    None
 
+  x12 = x7
+  return x12
+
+print(runLift(2))
+
+
+def runX (in1):
+  x0 = None
+  x1 = in1 * 1
+  x2 = in1 * x1
+  x3 = in1 * x2
+  x4 = x0 = x3
+  x5 = x0
+  return x5
+
+print(runX(5))

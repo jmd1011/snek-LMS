@@ -16,11 +16,11 @@ class GenCode:
         self.newLine()
 
     def endScope(self):
-        self.s += "\n"
-        self.indent = self.indent[0: len(self.indent) - 2]
+        self.indent = self.indent[: (len(self.indent) -2 )]
+        self.newLine()
 
-    def display(self):
-        print(self.s)
+    def getCode(self):
+        return self.s
 
 
 class Reader:
@@ -100,3 +100,21 @@ class Reader:
 
         def getIndex(self):
             return self.i
+
+class Literal:
+	def __init__(self, s):
+		self.s = s
+
+	def getValue(self):
+		return self.s
+
+class Node:
+	def __init__(self, s, l):
+		self.s = s
+		self.l = l
+
+	def getNodeType(self):
+		return self.s
+
+	def getListArgs(self):
+		return self.l

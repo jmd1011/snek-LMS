@@ -2,59 +2,60 @@ from pylms import *
 from pylms.rep import *
 from pylms.nn_staging import *
 
-@lms
-def lifting_param(x):
-  if x > 0:
-    return x + 1
-  else:
-    return x - 1
+# @lms
+# def lifting_param(x):
+#   if x > 0:
+#     x = x + 1
+#   else:
+#     x = x - 1
+#   return x
 
-print("======= Original code =======")
-print(lifting_param.original_src)
-print("======= Converted code ========")
-print(lifting_param.src)
-val = lifting_param(2)
-assert(val == 3)
-print("\n")
+# print("======= Original code =======")
+# print(lifting_param.original_src)
+# print("======= Converted code ========")
+# print(lifting_param.src)
+# val = lifting_param(2)
+# assert(val == 3)
+# print("\n")
 
-@stage
-def runLift(x):
-  return lifting_param(x)
+# @stage
+# def runLift(x):
+#   return lifting_param(x)
 
-print("======= SExpr ========")
-print(runLift.code)
-print("\n")
-print("======= C/C++ code ========")
-print(runLift.Ccode)
-val = runLift(2)
-assert(val == 3)
+# print("======= SExpr ========")
+# print(runLift.code)
+# print("\n")
+# print("======= C/C++ code ========")
+# print(runLift.Ccode)
+# val = runLift(2)
+# assert(val == 3)
 
-@lms
-def testWhile(x):
-  z = 3
-  while z < x:
-    z = z + 1
-  return z
+# @lms
+# def testWhile(x):
+#   z = 3
+#   for i in x:
+#     z = i + 1
+#   return z
 
-print("======= Original code =======")
-print(testWhile.original_src)
-print("======= Converted code ========")
-print(testWhile.src)
-val = testWhile(2)
-assert(val == 3)
-print("\n")
+# print("======= Original code =======")
+# print(testWhile.original_src)
+# print("======= Converted code ========")
+# print(testWhile.src)
+# val = testWhile([1,2,3])
+# assert(val == 3)
+# print("\n")
 
-@stage
-def runWhile(x):
-  return testWhile(x)
+# @stage
+# def runWhile(x):
+#   return testWhile(x)
 
-print("======= SExpr ========")
-print(runWhile.code)
-print("\n")
-print("======= C/C++ code ========")
-print(runWhile.Ccode)
-val = runWhile(10)
-assert(val == 10)
+# print("======= SExpr ========")
+# print(runWhile.code)
+# print("\n")
+# print("======= C/C++ code ========")
+# print(runWhile.Ccode)
+# val = runWhile(10)
+# assert(val == 10)
 
 @lms
 def run(x):

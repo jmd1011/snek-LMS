@@ -1,239 +1,133 @@
 from constants import *
+from utils import *
 
-def parseFunction(reader):
-    fun_expr = ["def"]
+var_counter = 0
 
-    #read function name
-    fun_expr.append(reader.getNextWord())
+def freshName(): # for generating functions
+    global var_counter
+    n_var = var_counter
+    var_counter += 1
+    return "genf" + str(n_var)
 
-    # read arguments
-    args = []
-    reader.emitDELIMS()
-    reader.acceptChar(OPEN_NODE)
-    while(reader.peekChar() != CLOSE_NODE):
-          args.append(reader.getNextWord())
-    reader.acceptChar(CLOSE_NODE)
-    fun_expr.append(args)
+def getBeginBody(n):
+    if isinstance(n, Node) and n.getNodeType() == "begin":
+        return getBeginBody(n.getListArgs()[0])
+    return n
 
-    # read body
-    fun_expr.append(parseNode(reader))
+def parseFunction(n):
+    l = n.getListArgs()
+    #currently args parsed as a node. resolve to a list of literals
+    fargs = l[1].getListArgs()
+    fargs.insert(0, Literal(l[1].getNodeType()))
 
-    return fun_expr
+    l_args = [l[0], fargs] #fname
+    l_args.append(parseAST(getBeginBody(l[2]))) #skip begin in body
 
-def parseBegin(reader):
-    # read body
-    return parseNode(reader)
+    if len(l) > 2:
+        for i in range(3, len(l)):
+            l_args.append(parseAST(l[i]))
 
-def parseLet(reader):
-    let_expr = ["let"]
+    return Node("def", l_args)
 
-    # get var name
-    let_expr.append(reader.getNextWord())
+def parseBegin(n):
+    l = n.getListArgs()
+    fname = freshName()
+    body = parseAST(l[0])
+    return Node("def", [Literal(fname), [], body])
 
-    # parse rhs
-    rhs = parseNode(reader)
+def parseLet(n):
+    l = n.getListArgs()
+    # return body in let if a literal, and not NONE
 
-    # parse body
-    body = parseNode(reader)
+    rhs = parseAST(l[1])
+    body = parseAST(l[2])
 
-    let_expr.extend((rhs, body))
+    if isinstance(body, Literal):
+        if body.getValue() != "None":
+            body = Node("ret", [body])
 
-    return let_expr
+    return Node("let", [l[0], rhs, body])
 
-def parseLiteral(reader):
-    return reader.getNextWord()
+def parseWhile(n):
+    l = n.getListArgs()
 
-def parseWhile(reader):
-    while_expr = ["while"]
-    
-    #parse condition
-    while_expr.append(parseNode(reader))
+    # change condition to a function call
+    cond_exp = parseAST(l[0]) # is a fundef
+    cond_l = cond_exp.getListArgs()
 
-    #parse body
-    while_expr.append(parseNode(reader))
+    # body
+    body_exp = parseAST(l[1]) # is a fundef
+    body_l = body_exp.getListArgs()
 
-    return while_expr
+    call_cond = Node("call", [cond_l[0], []])
+    call_body = Node("call", [body_l[0], []])
 
+    while_exp = Node("while", [call_cond, call_body])
 
-def parseArrayGet(reader):
-    arget_expr = ["array-get"]
+    body_fun = Node("def", [body_l[0], body_l[1], body_l[2], while_exp])
+    cond_fun = Node("def", [cond_l[0], cond_l[1], cond_l[2], body_fun])
 
-    #parse array var
-    arget_expr.append(parseNode(reader))
+    return cond_fun
 
-    #parse index
-    arget_expr.append(parseNode(reader))
+def parseIf(n): 
+    l = n.getListArgs()
+    cond = parseAST(l[0])
+    then_expr = parseAST(getBeginBody(l[1]))
+    else_expr = parseAST(getBeginBody(l[2]))
 
-    return arget_expr
+    return Node(n.getNodeType(), [cond, then_expr, else_expr])
 
-def parseArraySet(reader):
-    arset_expr = ["array-set"]
+def parseFor(n):
+    l = n.getListArgs()
 
-    #parse array var
-    arset_expr.append(parseNode(reader))
+    i = parseAST(l[0])
+    # l[1] = "in"
+    it = parseAST(l[2])
+    body = parseAST(getBeginBody(l[3]))
+    return Node(n.getNodeType(), [i, it, body])
 
-    #parse index
-    arset_expr.append(parseNode(reader))
+def parseArrayGet(n):
+    return n
 
-    #parse rhs
-    arset_expr.append(parseNode(reader))
+def parseArraySet(n):
+    l = n.getListArgs()
+    return Node(n.getNodeType(), [l[0], parseAST(l[1])])
 
-    return arset_expr
+def parseDot(n):
+    return n
 
-def parseDot(reader):
-    dot_expr = ["dot"]
+def parseSet(n):
+    l = n.getListArgs()
+    return Node(n.getNodeType(), [l[0], parseAST(l[1])])
 
-    #parse var
-    dot_expr.append(parseNode(reader))
+def parseGet(n):
+    return n.getListArgs()[0] #return as literal
 
-    #parse attribute
-    dot_expr.append(parseNode(reader))
+def parseLen(n):
+    return n
 
-    return dot_expr
+def parseTensor(n):
+    return n
 
-def parseSet(reader):
-    set_expr = ["set"]
+def parseTuple(n):
+    return n
 
-    #parse name
-    set_expr.append(parseNode(reader))
+def parseCall(n):
+    return n
 
-    #parse rhs
-    set_expr.append(parseNode(reader))
+def parsePrint(n):
+    return n
 
-    return set_expr
+def parsePrintf(n):
+    return n
 
-def parseGet(reader):
-    get_expr = ["get"]
-    
-    #parse name
-    get_expr.append(parseNode(reader))
+def parseBinaryOp(n):
+    l = n.getListArgs()
+    op = n.getNodeType()
+    l.insert(0, Literal(op))
+    return Node("bop", l)
 
-    return get_expr
-
-def parseLen(reader):
-    len_expr = ["len"]
-    
-    #parse name
-    len_expr.append(parseNode(reader))
-
-    return len_expr
-
-def parseIf(reader):
-    if_expr = ["if"]
-    
-    #parse condition
-    if_expr.append(parseNode(reader))
-
-    #parse then
-    if_expr.append(parseNode(reader))
-
-    #parse else
-    if_expr.append(parseNode(reader))
-
-    return if_expr
-
-def parseTensor(reader):
-    tensor_expr = ["tensor"]
-
-    #parse dims
-    dims = []
-    while(reader.peekChar() != CLOSE_NODE):
-        dims.append(parseNode(reader))
-    tensor_expr.append(dims)
-
-    return tensor_expr
-
-def parseTuple(reader):
-    tuple_expr = ["tuple"]
-
-    #parse tuple elements
-    elems = []
-    while(reader.peekChar() != CLOSE_NODE):
-        elems.append(parseNode(reader))
-    tuple_expr.append(elems)
-
-    return tuple_expr
-
-
-def parseCall(reader):
-    call_expr = ["call"]
-
-    #get function name
-    call_expr.append(parseNode(reader))
-
-    #parse args
-    args = []
-    while(reader.peekChar() != CLOSE_NODE):
-        args.append(parseNode(reader))
-    call_expr.append(args)
-
-    return call_expr
-
-def parsePrint(reader):
-    print_expr = ["print"]
-
-    #parse print string
-    print_expr.append(parseNode(reader))
-
-    return print_expr
-
-def parsePrintf(reader):
-    printf_expr = ["printf"]
-
-    reader.acceptChar(OPEN_NODE)
-
-    #parse print string
-    printf_expr.append(parseNode(reader))
-
-    #parse args
-    args = []
-    while(reader.peekChar() != CLOSE_NODE):
-        args.append(parseNode(reader))
-    reader.acceptChar(CLOSE_NODE)
-    printf_expr.append(args)
-
-    return printf_expr
-
-def parseFor(reader):
-    for_expr = ["for"]
-
-    for_expr.append(parseNode(reader))
-
-    #read "in"
-    reader.getNextWord()
-
-    #parse it
-    for_expr.append(parseNode(reader))
-
-    #parse body
-    for_expr.append(parseNode(reader))
-
-    return for_expr
-
-
-def parseNew(reader):
-    return ["new"]
-
-def parseRet(reader):
-    ret_expr = ["ret"]
-
-    # parse return expression
-    ret_expr.append(parseNode(reader))
-
-    return ret_expr
-
-def parseBinaryOp(reader, op):
-    bop_expr = ["bop", op]
-
-    # eval lhs
-    bop_expr.append(parseNode(reader))
-
-    #eval rhs
-    bop_expr.append(parseNode(reader))
-
-    return bop_expr
-
-def parserNotImpl(reader):
+def parserNotImpl(n):
     raise Exception("Parser not Implemented yet")
 
 
@@ -244,7 +138,7 @@ parsers = {
     "call": parseCall,
     "while": parseWhile,
     "for": parseFor,
-    "for_dataloader": "",
+    "for_dataloader": parserNotImpl,
     "if": parseIf,
     "array-get": parseArrayGet,
     "array-set": parseArraySet,
@@ -255,34 +149,26 @@ parsers = {
     "tuple": parseTuple,
     "print": parsePrint,
     "printf": parsePrintf,
-    "new": parseNew,
     "set": parseSet,
     "get": parseGet,
     "len": parseLen,
-    "ret": parseRet,
 }
 
 binary_ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}
 
-def parseNode(reader):
-    reader.emitDELIMS()
-
-    if(reader.peekChar() != OPEN_NODE):
-        return parseLiteral(reader)
-
-    reader.acceptChar(OPEN_NODE)
-
-    # call respective parsers for keywords
-    keyword = reader.getNextWord() 
-
-    if keyword in binary_ops :
-        gen = parseBinaryOp(reader, keyword)
-    elif keyword in parsers:   
-        gen = parsers[keyword](reader)
+def parseAST(n):
+    if isinstance(n, Literal):
+        gen = n
+    elif isinstance(n, Node):
+        keyword = n.getNodeType()
+        # eval 
+        if keyword in binary_ops :
+            gen = parseBinaryOp(n)
+        elif keyword in parsers:   
+            gen = parsers[keyword](n)
+        else:
+            raise Exception("Parser not implemented for `{}`\n".format(keyword))
     else:
-        raise Exception("Parser not implemented for `{}`\n".format(keyword))
+        raise Exception("malformed expression, Expr not type Node or Literal")
 
-    reader.acceptChar(CLOSE_NODE);
-
-    # print(gen)
     return gen
