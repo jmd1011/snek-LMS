@@ -1,4 +1,4 @@
-from .decorators import lms, ast, stage, staged, lmscompile
+from .decorators import lms, ast, stage, rep_fun, lmscompile
 from subprocess import Popen
 import os
 import psutil

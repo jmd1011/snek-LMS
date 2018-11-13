@@ -69,11 +69,7 @@ def newTensor(*dims):
 def nn_linear(hlsize, outsize):
     class Linear(object):
         def __init__(self):
-            # self.hlsize = hlsize
-            # self.outsize = outsize
             self.rep = reflect(["call","nn_linear",[outsize,hlsize]])
-            # self.weight = rep_variable(newTensor(outsize, hlsize)) # rep_variable(newTensor(outsize, hlsize))
-            # self.bias   = rep_variable(newTensor(outsize)) # rep_variable(newTensor(outsize))
             self.linear = None
 
         def __call__(self, tensor):
@@ -84,12 +80,8 @@ def nn_linear(hlsize, outsize):
                 return self.linear(tensor)
             else: #staged
                 return self.rep(tensor)
-                # return reflect([self.rep,tensor])
-                # return reflect(["call","nn_linear",[hlsize,outsize,tensor]])
-                # return self.weight * tensor + self.bias
         def __repr__(self):
             return str(self.rep)
-            # return 'linear ({} {})'.format(self.weight,self.bias)
     return Linear()
 
 def nn_conv2d(outSize, inSize, kernel_size, bias):
@@ -131,43 +123,43 @@ def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.dropout(tensor)
     else:
-        return reflect(["call", "dropout", [tensor]])
+        return reflect(["call", "dropout", tensor])
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        return reflect(["call", "log_softmax", [tensor, dim]])
+        return reflect(["call", "log_softmax", tensor, dim])
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
         return F.max_pool2d(tensor, x)
     else:
-        return reflect(["call", "max_pool2d", [tensor]])
+        return reflect(["call", "max_pool2d", tensor])
 
 def F_nll_loss(output, target, size_average=True):
     if isinstance(output, Variable):
         return F.nll_loss(output, target, size_average)
     else:
-        return reflect(["call", "nll_loss", [output, target, size_average]])
+        return reflect(["call", "nll_loss", output, target, size_average])
 
 def F_relu(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.relu(tensor)
     else:
-        return reflect(["call", "relu", [tensor]])
+        return reflect(["call", "relu", tensor])
 
 def F_sigmoid(t1, t2):
     if isinstance(t1, torch.Tensor) and isinstance(t2, torch.Tensor):
         return F.sigmoid(t1, t2)
     else:
-        return reflect(["call", "sigmoid", [t1, t2]])
+        return reflect(["call", "sigmoid", t1, t2])
 
 def F_tanh(t):
     if isinstance(tensor, torch.Tensor):
         return F.tanh(tensor)
     else:
-        return reflect(["call", "tanh", [tensor]])
+        return reflect(["call", "tanh", tensor])
 
 ###################################################
 ################## Miscellaneous ##################

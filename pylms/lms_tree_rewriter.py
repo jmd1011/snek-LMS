@@ -89,7 +89,7 @@ class StagingRewriter(ast.NodeTransformer):
         node.parent = self.fundef
         self.fundef = node
 
-        if len(list(filter(lambda n: n.id is 'staged', node.decorator_list))) > 0:
+        if len(list(filter(lambda n: n.id is 'rep_fun', node.decorator_list))) > 0:
             self.recs.append(node.name)
 
         self.generic_visit(node)
@@ -132,7 +132,7 @@ class StagingRewriter(ast.NodeTransformer):
                             body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                         orelse=[],
                         finalbody=[])],
-            decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='staged', node.decorator_list))
+            decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='rep_fun', node.decorator_list))
         )
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
