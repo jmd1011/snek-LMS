@@ -121,15 +121,15 @@ class Rep(object):
 
     def __getattr__(self, name):
         def wrapper(*args, **kwargs):
-            return reflect(["call",self,name,' '.join([str(a) for a in args]),' '.join(['{}={}'.format(str(a),str(kwargs[a])) for a in kwargs])])
+            return reflect(["call",self,name,[' '.join([str(a) for a in args]),' '.join(['{}={}'.format(str(a),str(kwargs[a])) for a in kwargs])]])
         return wrapper
 
 def Tensor(*dims):
-    tmp = reflect(["call","tensor",*dims])
+    tmp = reflect(["call","tensor",[*dims]])
     return Rep(tmp.n, dims)
 
 def Tuple(*args):
-    tmp = reflect(["call","tuple",*args])
+    tmp = reflect(["call","tuple",[*args]])
     return Rep(tmp.n)
 
 class NonLocalReturnValue(Exception):
