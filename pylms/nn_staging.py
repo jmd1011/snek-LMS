@@ -123,43 +123,43 @@ def F_dropout(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.dropout(tensor)
     else:
-        return reflect(["call", "dropout", tensor])
+        return reflect(["call", "dropout", [tensor]])
 
 def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        return reflect(["call", "log_softmax", tensor, dim])
+        return reflect(["call", "log_softmax", [tensor, dim]])
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
         return F.max_pool2d(tensor, x)
     else:
-        return reflect(["call", "max_pool2d", tensor])
+        return reflect(["call", "max_pool2d", [tensor]])
 
 def F_nll_loss(output, target, size_average=True):
     if isinstance(output, Variable):
         return F.nll_loss(output, target, size_average)
     else:
-        return reflect(["call", "nll_loss", output, target, size_average])
+        return reflect(["call", "nll_loss", [output, target, size_average]])
 
 def F_relu(tensor):
     if isinstance(tensor, torch.Tensor):
         return F.relu(tensor)
     else:
-        return reflect(["call", "relu", tensor])
+        return reflect(["call", "relu", [tensor]])
 
 def F_sigmoid(t1, t2):
     if isinstance(t1, torch.Tensor) and isinstance(t2, torch.Tensor):
         return F.sigmoid(t1, t2)
     else:
-        return reflect(["call", "sigmoid", t1, t2])
+        return reflect(["call", "sigmoid", [t1, t2]])
 
 def F_tanh(t):
     if isinstance(tensor, torch.Tensor):
         return F.tanh(tensor)
     else:
-        return reflect(["call", "tanh", tensor])
+        return reflect(["call", "tanh", [tensor]])
 
 ###################################################
 ################## Miscellaneous ##################
@@ -182,7 +182,7 @@ def optim_SGD(params, lr, momentum):
         if isinstance(params[0], torch.Tensor):
             return optim.SGD(params, lr, momentum)
 
-    tmp = reflect(["SGD",[params, lr,momentum]])
+    tmp = reflect(['call',"SGD",[params, lr,momentum]])
     return RepSGD(tmp.n)
 
 def rep_variable(tensor, volatile=False):
@@ -198,7 +198,7 @@ def rep_variable(tensor, volatile=False):
         def grad(self, v):
             return reflect(["setattr",self,"grad",v])
 
-    tmp = reflect(["variable", tensor, volatile])
+    tmp = reflect(["call", "variable", [tensor, volatile]])
     return RepVariable(tmp.n)
 
 def __for_dataloader(src_file, bdfun):
