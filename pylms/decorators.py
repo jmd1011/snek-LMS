@@ -108,7 +108,7 @@ def toSexpr(l):
     else:
         return l
 
-def staged(func):
+def rep_fun(func):
     class Snippet(object):
         def __init__(self):
             self.original = func
