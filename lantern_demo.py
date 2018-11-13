@@ -36,7 +36,7 @@ def run(dummy):
     fc2 = nn.Linear(50, 10) # let x2 (call nn_linear (10, 50))
     optimizer = optim.SGD([fc1, fc2], lr=0.0005, momentum=0.0)
 
-    @staged
+    @rep_fun
     def lossFun(x, target):
         x1 = x.view(-1, 784)
         x2 = F.relu(fc1(x1))
