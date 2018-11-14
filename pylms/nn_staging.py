@@ -129,7 +129,7 @@ def F_log_softmax(tensor, dim):
     if isinstance(tensor, torch.Tensor):
         return F.log_softmax(tensor, dim)
     else:
-        return reflect(["call", "log_softmax", [tensor, dim]])
+        return reflect(["call", "log_softmax", [tensor, 'dim={}'.format(dim)]])
 
 def F_max_pool2d(tensor, x):
     if isinstance(tensor, torch.Tensor):
