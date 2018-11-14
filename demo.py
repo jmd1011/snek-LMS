@@ -22,9 +22,9 @@ print("\n")
 def runLift(x):
   return r(x)
 
-# print("======= SExpr ========")
-# print(runLift.code)
-# print("\n")
+print("======= SExpr ========")
+print(runLift.code)
+print("\n")
 # print("======= C/C++ code ========")
 # print(runLift.Ccode)
 # val = runLift(2)
@@ -45,13 +45,13 @@ def testWhile(x):
 # assert(val == 3)
 # print("\n")
 
-# @stage
-# def runWhile(x):
-#   return testWhile(x)
+@stage
+def runWhile(x):
+  return testWhile(x)
 
-# print("======= SExpr ========")
-# print(runWhile.code)
-# print("\n")
+print("======= SExpr ========")
+print(runWhile.code)
+print("\n")
 # print("======= C/C++ code ========")
 # print(runWhile.Ccode)
 # val = runWhile(10)

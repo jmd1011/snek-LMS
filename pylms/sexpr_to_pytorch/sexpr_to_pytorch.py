@@ -146,9 +146,17 @@ class GenCodeFromAST:
             if fname in torch_funs:
                 fname = torch_funs[fname]
 
-            self.genCode.append("{}(".format(fname))
-            self.genCode.append(",".join(getListLiterals(l[1])))
+            self.genCode.append("{}".format(fname))
+
+            # append dots
+            for i in range(1, len(l) - 1):
+                self.genCode.append(".{}".format(l[i].getValue()))
+            
+            # write params
+            self.genCode.append("(")
+            self.genCode.append(",".join(getListLiterals(l[-1])))
             self.genCode.append(")")
+
 
         elif ast.getNodeType() == 'print':
             self.genCode.append("print(")
@@ -198,4 +206,6 @@ class GenCodeFromAST:
 # torchTheSnake("(def runWhile (in1) (begin (begin (let x7 new (let x8 (set x7 3) (let x9 (get x7) (let x10 (< x9 in1) (let x11 (while (begin (let x11 (get x7) (let x12 (< x11 in1) x12))) (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")
 # torchTheSnake("(def runLift (in1) (begin (begin (let x7 new (let x8 (set x7 in1) (let x9 (get x7) (let x10 (> x9 0) (let x11 (if x10 (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None)))) (begin (let x11 (get x7) (let x12 (- x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")
 # torchTheSnake("(def runX (in1) (begin (begin (let x0 new (let x1 (* in1 1) (let x2 (* in1 x1) (let x3 (* in1 x2) (let x4 (set x0 x3) (let x5 (get x0) x5)))))))))")
-torchTheSnake("(def lossfun () (begin (call nn_loss )) ")
+# torchTheSnake("(def runX (in1) (begin (begin (let x7 (* in1 1) (let x8 (* in1 x7) (let x9 (* in1 x8) x9))))))")
+torchTheSnake("(def runLift (in1) (begin (begin (let x7 new (let x8 (set x7 in1) (let x9 (get x7) (let x10 (> x9 0) (let x11 (if x10 (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None)))) (begin (let x11 (get x7) (let x12 (- x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")
+torchTheSnake("(def runWhile (in1) (begin (begin (let x7 new (let x8 (set x7 0) (let x9 (get x7) (let x10 (< x9 in1) (let x11 (while (begin (let x11 (get x7) (let x12 (< x11 in1) x12))) (begin (let x11 (get x7) (let x12 (+ x11 1) (let x13 (set x7 x12) None))))) (let x12 (get x7) x12)))))))))")

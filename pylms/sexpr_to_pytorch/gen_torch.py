@@ -56,16 +56,13 @@ def parseWhile(n):
     cond_l = cond_exp.getListArgs()
 
     # body
-    body_exp = parseAST(l[1]) # is a fundef
-    body_l = body_exp.getListArgs()
+    body_exp = parseAST(getBeginBody(l[1])) # remove begin
 
     call_cond = Node("call", [cond_l[0], []])
-    call_body = Node("call", [body_l[0], []])
 
-    while_exp = Node("while", [call_cond, call_body])
+    while_exp = Node("while", [call_cond, body_exp])
 
-    body_fun = Node("def", [body_l[0], body_l[1], body_l[2], while_exp])
-    cond_fun = Node("def", [cond_l[0], cond_l[1], cond_l[2], body_fun])
+    cond_fun = Node("def", [cond_l[0], cond_l[1], cond_l[2], while_exp])
 
     return cond_fun
 
@@ -113,7 +110,16 @@ def parseTuple(n):
     return n
 
 def parseCall(n):
-    return n
+    # currently has args as a node, need to make it into a list of literals
+    l = n.getListArgs()
+    args_node = l[-1]
+    args_list = [Literal(args_node.getNodeType())]
+
+    for el in args_node.getListArgs():
+        args_list.append(el)
+    
+    l[-1] = args_list
+    return Node("call", l)
 
 def parsePrint(n):
     return n
