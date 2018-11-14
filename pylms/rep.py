@@ -163,7 +163,7 @@ def __def_staged(f, *args):
     return reflectDef(f.__name__, nargs, reify(f, *nargs))
 
 def __call_staged(f, *args):
-    return reflect([f.__name__, *args])
+    return reflect(['call', f.__name__, *args])
 
 def __printf(s, vs):
     nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]
