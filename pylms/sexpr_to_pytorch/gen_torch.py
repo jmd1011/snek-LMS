@@ -1,180 +1,182 @@
-from constants import *
 from utils import *
 
-var_counter = 0
+def getListLiterals(l):
+        s_l = []
+        for el in l:
+            s_l.append(el.getValue())
+        return s_l
 
-def freshName(): # for generating functions
-    global var_counter
-    n_var = var_counter
-    var_counter += 1
-    return "genf" + str(n_var)
+class GenCodeFromAST:
+    def __init__(self):
+        self.genCode = GenCode()
 
-def getBeginBody(n):
-    if isinstance(n, Node) and n.getNodeType() == "begin":
-        return getBeginBody(n.getListArgs()[0])
-    return n
+    def addImports(self, imports):
+        #imports must be a list
+        for el in imports:
+            self.genCode.append(el)
+            self.genCode.newLine()
+        self.genCode.newLine() #one more for good luck 
 
-def parseFunction(n):
-    l = n.getListArgs()
-    #currently args parsed as a node. resolve to a list of literals
-    fargs = l[1].getListArgs()
-    fargs.insert(0, Literal(l[1].getNodeType()))
+    def genCodeFromAst(self, ast):
+        if isinstance(ast, Literal): #assuming either list or string
+            self.genCode.append(ast.getValue())
+            return
+        
+        if not isinstance(ast, Node):
+            raise Exception("malformed ast: {}".format(ast))
+        
+        l = ast.getListArgs()
 
-    l_args = [l[0], fargs] #fname
-    l_args.append(parseAST(getBeginBody(l[2]))) #skip begin in body
+        if ast.getNodeType() == 'def':
+            fname = l[0].getValue()
 
-    if len(l) > 2:
-        for i in range(3, len(l)):
-            l_args.append(parseAST(l[i]))
+            # TODO don't hardcode it in
+            if(fname == "lossFun"):
+                self.genCode.append("@torch.jit.script")
+                self.genCode.newLine()
 
-    return Node("def", l_args)
+            #function definition
+            self.genCode.append("def {} ({})".format(fname, ",".join(getListLiterals(l[1]))))
+            self.genCode.startNewScope()
+            
+            # body  
+            self.genCodeFromAst(l[2])
+            self.genCode.endScope()
 
-def parseBegin(n):
-    l = n.getListArgs()
-    fname = freshName()
-    body = parseAST(l[0])
-    return Node("def", [Literal(fname), [], body])
-
-def parseLet(n):
-    l = n.getListArgs()
-    # return body in let if a literal, and not NONE
-
-    rhs = parseAST(l[1])
-    body = parseAST(l[2])
-
-    if isinstance(body, Literal):
-        if body.getValue() != "None":
-            body = Node("ret", [body])
-
-    return Node("let", [l[0], rhs, body])
-
-def parseWhile(n):
-    l = n.getListArgs()
-
-    # change condition to a function call
-    cond_exp = parseAST(l[0]) # is a fundef
-    cond_l = cond_exp.getListArgs()
-    call_cond = Node("call", [cond_l[0], []])
-
-    # body
-    # cannot be created into a function call as there is reassignment of a global variable
-    body_exp = parseAST(getBeginBody(l[1])) # remove begin
-
-    while_exp = Node("while", [call_cond, body_exp])
-
-    cond_fun = Node("def", [cond_l[0], cond_l[1], cond_l[2], while_exp])
-
-    return cond_fun
-
-def parseIf(n): 
-    l = n.getListArgs()
-    cond = parseAST(l[0])
-    then_expr = parseAST(getBeginBody(l[1]))
-    else_expr = parseAST(getBeginBody(l[2]))
-
-    return Node(n.getNodeType(), [cond, then_expr, else_expr])
-
-def parseFor(n):
-    l = n.getListArgs()
-
-    i = parseAST(l[0])
-    # l[1] = "in"
-    it = parseAST(l[2])
-    body = parseAST(getBeginBody(l[3]))
-    return Node(n.getNodeType(), [i, it, body])
-
-def parseArrayGet(n):
-    return n
-
-def parseArraySet(n):
-    l = n.getListArgs()
-    return Node(n.getNodeType(), [l[0], parseAST(l[1])])
-
-def parseDot(n):
-    return n
-
-def parseSet(n):
-    l = n.getListArgs()
-    return Node(n.getNodeType(), [l[0], parseAST(l[1])])
-
-def parseGet(n):
-    return n.getListArgs()[0] #return as literal
-
-def parseLen(n):
-    return n
-
-def parseTensor(n):
-    return n
-
-def parseTuple(n):
-    return n
-
-def parseCall(n):
-    # currently has args as a node, need to make it into a list of literals
-    l = n.getListArgs()
-    args_node = l[-1]
-    args_list = [Literal(args_node.getNodeType())]
-
-    for el in args_node.getListArgs():
-        args_list.append(el)
-    
-    l[-1] = args_list
-    return Node("call", l)
-
-def parsePrint(n):
-    return n
-
-def parsePrintf(n):
-    return n
-
-def parseBinaryOp(n):
-    l = n.getListArgs()
-    op = n.getNodeType()
-    l.insert(0, Literal(op))
-    return Node("bop", l)
-
-def parserNotImpl(n):
-    raise Exception("Parser not Implemented yet")
+            if len(l) > 3:
+                for i in range(3, len(l)):
+                    self.genCodeFromAst(l[i])
+                    self.genCode.newLine()
 
 
-parsers = {
-    "def": parseFunction,
-    "begin": parseBegin,
-    "let": parseLet,
-    "call": parseCall,
-    "while": parseWhile,
-    "for": parseFor,
-    "for_dataloader": parserNotImpl,
-    "if": parseIf,
-    "array-get": parseArrayGet,
-    "array-set": parseArraySet,
-    "getattr": parserNotImpl,
-    "setattr": parserNotImpl,
-    "dot": parseDot,
-    "tensor": parseTensor,
-    "tuple": parseTuple,
-    "print": parsePrint,
-    "printf": parsePrintf,
-    "set": parseSet,
-    "get": parseGet,
-    "len": parseLen,
-}
+        elif ast.getNodeType() == 'let':
+            stmts = {'if', 'while', 'for', 'def'}
 
-binary_ops = {"+", "-", "*", "/", "%", "==", "!=", "<=", "<", ">=", ">"}
+            if isinstance(l[1], Literal) or (l[1].getNodeType() not in stmts):
+                self.genCode.append("{} = ".format(l[0].getValue())) # var name
 
-def parseAST(n):
-    if isinstance(n, Literal):
-        gen = n
-    elif isinstance(n, Node):
-        keyword = n.getNodeType()
-        # eval 
-        if keyword in binary_ops :
-            gen = parseBinaryOp(n)
-        elif keyword in parsers:   
-            gen = parsers[keyword](n)
+            if isinstance(l[1], Literal) and l[1].getValue() == 'new':
+                self.genCode.append('None')
+            else: 
+                self.genCodeFromAst(l[1]) # rhs
+            self.genCode.newLine()
+
+            # body 
+            self.genCodeFromAst(l[2])
+
+        elif ast.getNodeType() == 'if':
+            self.genCode.append("if ")
+
+            # condition
+            self.genCodeFromAst(l[0])
+            
+            # then
+            self.genCode.startNewScope()
+            self.genCodeFromAst(l[1])
+            self.genCode.endScope()
+
+            # else
+            self.genCode.append("else")
+            self.genCode.startNewScope()
+            self.genCodeFromAst(l[2])
+            self.genCode.endScope()
+
+        elif ast.getNodeType() == 'while':
+
+            self.genCode.append("while ")
+            self.genCodeFromAst(l[0])
+
+            self.genCode.startNewScope()
+
+            # body
+            self.genCodeFromAst(l[1])
+            self.genCode.endScope()
+
+        elif ast.getNodeType() == "array-get":
+            self.genCode.append("{}[".format(l[0])) # var name
+            self.genCodeFromAst(l[1]) # index
+            self.genCode.append("]")
+
+        elif ast.getNodeType() == 'array-set':
+            self.genCode.append("{}[".format(l[0])) # var name
+            self.genCodeFromAst(l[1]) # index
+            self.genCode.append("] = ")
+            self.genCodeFromAst(l[2]) # rhs
+
+        elif ast.getNodeType() == 'dot':
+            self.genCodeFromAst(l[0])
+            self.genCode.append(".")
+            self.genCodeFromAst(l[1])
+
+        elif ast.getNodeType() == 'set':
+            self.genCodeFromAst(l[0])
+            self.genCode.append(" = ")
+            self.genCodeFromAst(l[1])
+
+        elif ast.getNodeType() == 'len':
+            self.genCode.append("len(")
+            self.genCodeFromAst(l[0])
+            self.genCode.append(")")
+
+        elif ast.getNodeType() == 'tensor':
+            self.genCode.append("torch.tensor(")
+            self.genCode.append(",".join(getListLiterals(l[0])))
+            self.genCode.append(")")
+
+        elif ast.getNodeType() == 'tuple':
+            self.genCode.append("(")
+            self.genCode.append(",".join(getListLiterals(l[0])))
+            self.genCode.append(")")
+
+        elif ast.getNodeType() == 'call':
+            fname = l[0].getValue()
+            torch_funs = {"relu": "F.relu", "nll_loss": "F.nll_loss", "log_softmax": "F.log_softmax"}
+            if fname in torch_funs:
+                fname = torch_funs[fname]
+
+            self.genCode.append("{}".format(fname))
+
+            # append dots
+            for i in range(1, len(l) - 1):
+                self.genCode.append(".{}".format(l[i].getValue()))
+            
+            # write params
+            self.genCode.append("(")
+            self.genCode.append(",".join(getListLiterals(l[-1])))
+            self.genCode.append(")")
+
+
+        elif ast.getNodeType() == 'print':
+            self.genCode.append("print(")
+            self.genCodeFromAst(l[0])
+            self.genCode.append(")")
+
+        elif ast.getNodeType() == 'printf':
+            self.genCode.append("print(")
+            self.genCodeFromAst(l[0])
+            self.genCode.append(").format(")
+            self.genCode.append(",".join(getListLiterals(l[1])))
+            self.genCode.append(")")
+
+        elif ast.getNodeType() == 'for':
+            self.genCode.append("for")
+            self.genCodeFromAst(l[0])
+            self.genCode.append(" in ")
+            self.genCodeFromAst(l[1])
+            self.genCode.startNewScope()
+            self.genCodeFromAst(l[2])
+            self.genCode.endScope()
+
+        elif ast.getNodeType() == 'bop':
+            self.genCodeFromAst(l[1]) 
+            self.genCode.append(" {} ".format(l[0].getValue()))
+            self.genCodeFromAst(l[2]) 
+        
+        elif ast.getNodeType() == 'ret':
+            self.genCode.append("return {}".format(ast.getListArgs()[0].getValue()))
+
         else:
-            raise Exception("Parser not implemented for `{}`\n".format(keyword))
-    else:
-        raise Exception("malformed expression, Expr not type Node or Literal")
+            raise Exception("Not found keyword for: {}".format(l[0]))
 
-    return gen
+    def getGenCode(self):
+        return self.genCode.getCode()
