@@ -88,7 +88,7 @@ class Rep(object):
     # RepFunction
     def __call__(self,*args):
         # TODO
-        return reflect([self,','.join([str(a) for a in args])])
+        return reflect(['call', self,','.join([str(a) for a in args])])
 
     ## Tensor Functions
     def __getitem__(self, i):
