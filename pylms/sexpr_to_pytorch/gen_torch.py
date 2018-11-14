@@ -54,11 +54,11 @@ def parseWhile(n):
     # change condition to a function call
     cond_exp = parseAST(l[0]) # is a fundef
     cond_l = cond_exp.getListArgs()
+    call_cond = Node("call", [cond_l[0], []])
 
     # body
+    # cannot be created into a function call as there is reassignment of a global variable
     body_exp = parseAST(getBeginBody(l[1])) # remove begin
-
-    call_cond = Node("call", [cond_l[0], []])
 
     while_exp = Node("while", [call_cond, body_exp])
 
