@@ -1,6 +1,8 @@
 # snek-LMS
 A prototype implementation of [LMS](https://scala-lms.github.io) in Python.
 
+Note: Documentation out of date as of 14 Nov 2018. Documentation refresh scheduled for 19 Nov 2018.
+
 [![Build Status](https://travis-ci.org/jmd1011/snek-LMS.svg?branch=master)](https://travis-ci.org/jmd1011/snek-LMS)
 
 # Lantern Demonstration
