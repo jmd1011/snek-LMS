@@ -107,6 +107,8 @@ class Rep(object):
         return reflect(["array-set",self,"data",i,v])
     def dot(self, t):
         return reflect(["dot",self,t])
+    def item(self):
+        return reflect(['array-get',self,'item',0])
 
     ## Tuple Functions
     @property
@@ -146,6 +148,9 @@ def __break(): raise NonLocalBreak()
 def __continue(): raise NonLocalContinue()
 
 def __print(value): # TODO HACK!
+    if not isinstance(value, Rep):
+        print(value)
+        return
     if isinstance(value, str):
         return reflect(["print", '"{}"'.format(value)])
     else:
@@ -171,13 +176,21 @@ def __printf(s, vs):
 def __var():
     return reflect(["new"])
 
+# env = {}
+
 def __assign(name, value):
+    # env[name.n] = value
+    # print('>> env[{}] = {}'.format(name.n, value))
     return reflect(["set", name, value])
 
 def __read(name):
+    # print('<< env[name.n] = {}'.format(name.n, value))
+    # return env[name.n]
     return reflect(["get", name])
 
 def __len(name):
+    # if not isinstance(name, Rep):
+    #     return len(name)
     return reflect(["len", name])
 
 def __if(test, body, orelse):
@@ -242,9 +255,11 @@ def __while(test, body):
         raise Exception("while: return in body not allowed")
 
 def __for(it, body):
-    if isinstance(it, list):
+    if not isinstance(it, Rep):
         for i in it:
-            try: body(i)
+            try:
+                print('iterating, i = {}'.format(i))
+                body(i)
             except NonLocalBreak as e:
                 return None
             except NonLocalReturnValue as e:

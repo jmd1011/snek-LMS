@@ -55,7 +55,7 @@ def run(dummy):
             # res = F.nll_loss(output, target1)
             res = lossFun(data1, target1)
             loss = res.backward()
-            tloss = tloss + loss.data[0]
+            tloss = tloss + loss.data.item()
             optimizer.step()
             tmp = tloss
             if (batch_idx + 1) % 6000 == 0:
