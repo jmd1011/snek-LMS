@@ -3,7 +3,7 @@ __all__ = [
     'Rep', 'reflectDef', 'Tensor', 'Tuple',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
     '_if', '_while', '_def_staged', '_call_staged', '_return', '_print', '_printf',
-    '_var', '_assign', '_read', '_len',
+    '_var', '_assign', '_assign_cur', '_read', '_read_cur', '_len',
     '_break', '_continue', '_for', '_stageLambda'
 ]
 
@@ -182,8 +182,6 @@ def _printf(s, vs):
 def _var():
     return reflect(["new"])
 
-env = {}
-
 def _assign(name, value):
     # env[name.n] = value
     # print('>> env[{}] = {}'.format(name.n, value))
@@ -194,6 +192,12 @@ def _read(name):
     # print('<< env[{}] = {}'.format(name.n, value))
     # return env[name.n]
     return reflect(["get", name])
+
+env = {}
+def _assign_cur(name, value): env[name.n] = value
+def _read_cur(name):
+    print('in here')
+    return env[name.n]
 
 def _len(name):
     if not isinstance(name, Rep):

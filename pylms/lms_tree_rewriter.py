@@ -7,6 +7,9 @@ import builtins
 import astunparse
 import collections
 
+pldi_eval = True # if True, we don't do staging (i.e., don't virtualize ML
+                 # funcs, only built-ins)
+
 class ScopeAnalysis(ast.NodeVisitor):
     """
     Find single-assigment variables. These correspond to
@@ -116,7 +119,7 @@ class StagingRewriter(ast.NodeTransformer):
 
         a_nodes = [ast.Expr(
                     ast.Call(
-                        func=ast.Name(id='_assign', ctx=ast.Load()),
+                        func=ast.Name(id=('_assign' if not pldi_eval else '_assign_cur'), ctx=ast.Load()),
                         args=[ast.Name(id=arg,ctx=ast.Load()), ast.Name(id=r_args[arg],ctx=ast.Load())],
                         keywords=[])) \
                     for arg in r_args]
@@ -205,7 +208,7 @@ class StagingRewriter(ast.NodeTransformer):
             return node
 
         new_node = ast.Call(
-            func=ast.Name(id='_read', ctx=ast.Load()),
+            func=ast.Name(id=('_read' if not pldi_eval else '_read_cur'), ctx=ast.Load()),
             args=[ast.Name(id=node.id, ctx=ast.Load())],
             keywords=[]
         )
@@ -304,6 +307,7 @@ class StagingRewriter(ast.NodeTransformer):
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Attribute):
             if isinstance(node.func.value.value, ast.Attribute) and isinstance(node.func.value.value.value, ast.Name):
                 if node.func.value.value.value.id is 'torch' and node.func.value.value.attr is 'utils' and node.func.value.attr is 'data' and node.func.attr is 'DataLoader':
+                    if pldi_eval: return node
                     args = [
                         ast.Str(s=node.args[0].func.attr), #set
                         node.args[0].keywords[0].value, #train
@@ -320,6 +324,7 @@ class StagingRewriter(ast.NodeTransformer):
 
         if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
             if node.func.value.id is 'torch':
+                if pldi_eval: return node
                 if node.func.attr is 'Tensor':
                     new_node = ast.Call(func=ast.Name(id='Tensor', ctx=ast.Load()),
                                         args=node.args,
@@ -337,6 +342,7 @@ class StagingRewriter(ast.NodeTransformer):
                     return new_node
 
             if node.func.value.id is 'nn':
+                if pldi_eval: return node
                 if node.func.attr is 'Linear':
                     new_node = ast.Call(func=ast.Name(id="nn_linear", ctx=ast.Load()),
                                         args=node.args,
@@ -354,6 +360,7 @@ class StagingRewriter(ast.NodeTransformer):
                     return new_node
 
             if node.func.value.id is 'transforms':
+                if pldi_eval: return node
                 if node.func.attr is 'Compose':
                     new_node = ast.Call(func=ast.Name(id='trans_compose', ctx=ast.Load()),
                                         args=node.args,
@@ -380,6 +387,7 @@ class StagingRewriter(ast.NodeTransformer):
 
             # TODO(James): Fix this hacky nonsense
             if node.func.value.id in ['optim', 'F', 'onnx', 'lantern']:
+                if pldi_eval: return node
                 new_node = ast.Call(func=ast.Name(id='{}_{}'.format(node.func.value.id, node.func.attr), ctx=ast.Load()),
                                     args=node.args,
                                     keywords=node.keywords)
@@ -388,6 +396,7 @@ class StagingRewriter(ast.NodeTransformer):
                 return new_node
 
             if node.func.value.id is 'Tensor':
+                if pldi_eval: return node
                 new_node = ast.Call(func=ast.Name(id='tensor_{}'.format(node.func.attr), ctx=ast.Load()),
                                     args=node.args,
                                     keywords=node.keywords)
@@ -431,6 +440,7 @@ class StagingRewriter(ast.NodeTransformer):
             return new_node
 
         if node.func.id is 'Variable':
+            if pldi_eval: return node
             new_node = ast.Call(func=ast.Name(id='rep_variable', ctx=ast.Load()),
                                 args=node.args,
                                 keywords=node.keywords)
@@ -440,11 +450,12 @@ class StagingRewriter(ast.NodeTransformer):
 
         if node.func.id is 'print':
             if isinstance(node.args[0], ast.Call) and node.args[0].func.attr is 'format':
+                if pldi_eval: return node
                 args = [
                     node.args[0].func.value,
                     ast.List(elts=node.args[0].args,ctx=ast.Load())
                 ]
-                new_node = ast.Call(func=ast.Name(id='__printf', ctx=ast.Load()),
+                new_node = ast.Call(func=ast.Name(id='_printf', ctx=ast.Load()),
                                     args=args,
                                     keywords=[])
 
@@ -535,6 +546,7 @@ class StagingRewriter(ast.NodeTransformer):
             return res
 
         if isPyTorchDataLoader(node.target, node.iter):
+            if pldi_eval: return node
             outer_fun_name = self.freshName("forfunc")
             outer_fun = ast.FunctionDef(name=outer_fun_name,
                                         args=ast.arguments(args=list(map(lambda x: ast.arg(arg=x, annotation=None),
