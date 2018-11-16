@@ -73,10 +73,10 @@ object Main {
     val prog_val = parseExp(arg)
     println(prog_val)
 
-    val driver = new SnekDslDriverC[Int,Int](dir, moduleName) with Compiler {
-      def snippet(n: Rep[Int]): Rep[Int] = {
+    val driver = new SnekDslDriverC[String, Unit](dir, moduleName) with Compiler {
+      def snippet(n: Rep[String]): Rep[Unit] = {
         compile(prog_val)(Map("arg" -> Literal(n))) match {
-          case Literal(n: Rep[Int]) => n
+          case Literal(_: Rep[Unit]) => ()
         }
       }
     }

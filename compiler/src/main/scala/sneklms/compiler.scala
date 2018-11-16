@@ -46,7 +46,7 @@ trait CpsConv extends Serializable {
   }
 }
 
-trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
+trait Compiler extends ONNXLib with NNModule with UninlinedFunctionOps with CpsConv {
   implicit val pos = implicitly[SourceContext]
 
   // for value
@@ -59,6 +59,10 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     override def get = v.get
   }
   case class Tens(v: TensorR) extends Value
+  case class Ten(v: Tensor) extends Value
+  case class Mods(v: Module) extends Value
+  case class OPT(v: Optim) extends Value
+  case class FloatCons(v: Float) extends Value
   case class ArrayV[T](v: ArrayBuffer[T]) extends Value
   case class ModelV(f: Model) extends Value
   case object VError extends Value
@@ -149,15 +153,31 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       val Mut(vx: Var[Int]) = env(x)
       var_assign(vx, compile(a) match { case Literal(a: Rep[Int]) => a })
       unit(())
+    case "set"::(x: String)::head::a::Nil =>
+      val Mut(vx: Var[Int]) = env(x)
+      val h: Rep[Int] = compile(head) match { case Literal(head: Rep[Int]) => head }
+      val ad = compile(a) match {
+        // case Literal(a: Rep[Int]) => a
+        case FloatCons(a: Float) => a
+      }
+      var_assign(vx, h + ad)
+      unit(())
     case "get"::(x: String)::Nil =>
       val Mut(vx: Var[Int]) = env(x)
       Literal(readVar(vx))
+    case List("array-get", x40: String, i: Int) =>
+      val Literal(arr: Rep[Array[Float]]) = compile(x40)
+      Literal(arr(i))
+    case List("getattr", x43: String, "data") =>
+      val Tens(t: TensorR) = compile(x43)
+      Literal(t.x.data)
     case "while"::t::body::Nil =>
       while (compile(t) match { case Literal(t: Rep[Boolean]) => t })
         compile(body) match { case Literal(b: Rep[Unit]) => b }
       unit(())
     case x: Int => unit(x)
-    case x: String => {env(x)}
+    case x: String => {printDebug(s"search in env $x"); env(x)}
+    case x: Float => FloatCons(x)
     case Str(x) => Literal(unit(x))
     case "*"::n::m::Nil =>
       compile[Int,Int](n, m)(_ * _)
@@ -165,6 +185,21 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       compile[Int,Int](n, m)(_ + _)
     case "-"::n::m::Nil =>
       compile[Int,Int](n, m)(_ - _)
+    case List("/", n, m) =>
+      compile[Int,Int](n, m)(_ / _)
+    case List("/", x52, i: Int) =>
+      compile(x52) match {
+        case Literal(n: Rep[Int]) => Literal(n / i)
+        case Literal(n: Rep[Float]) => Literal(n / i)
+      }
+    case List("%", x48, num: Int) =>
+      val Literal(a: Rep[Int]) = compile(x48)
+      Literal(a % num)
+    case List("*", x31: String, base: Int, extra: Float) =>
+      compile(x31) match {
+        case Literal(n: Rep[Int]) => Literal(n * (base + extra))
+        case Literal(n: Rep[Float]) => Literal(n * (base + extra))
+      }
     case "=="::n::m::Nil =>
       compile[Int,Boolean](n, m)(_ == _)
     case "<"::n::m::Nil =>
@@ -183,6 +218,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       val arg = compile(x) match { case Literal(x: Rep[String]) => x }
       printf("%s\\n", arg)
       unit(1)
+    case "printf"::(Str(format)::args)::Nil =>
+      Literal(printf(formatFromPython(format), args map (compile(_) match { case Literal(x) => x }) : _*))
     case "transform"::t => t match {
       case "toTensor"::Nil => Literal(())
       case "normalize"::t => Literal(()) // FIXME
@@ -206,6 +243,43 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       Literal(())
     case "call"::t =>
       t match {
+        case List(x19, "step") =>
+          val OPT(opt: Optim) = compile(x19)
+          opt.step()
+          Literal(())
+        case List(x42, "backward") => Literal(())
+        case "lossFun" :: (x25: String) :: (x26: String) ::Nil =>
+          val nf = compile("lossFun").get
+          val x25_ = compile(x25).get
+          val x26_ = compile(x26).get
+          printEnv
+          printDebug(s"nf >> $nf")
+          (nf, x25_, x26_) match {
+            case ( ModelV(F1TensorR(f)), Tens(x1: TensorR), Tens(x2: TensorR) ) =>
+              val loss = gradR_loss(x => f(x1)(x2))(Tensor.zeros(1))
+              Literal(loss.data)
+            case ( ModelV(F1TensorRArray(f)), Tens(x1: TensorR), Literal(x2: Rep[Array[Float]]) ) =>
+              val loss = gradR_loss(x => f(x1)(x2))(Tensor.zeros(1))
+              Literal(loss.data)
+          }
+        case x7::"zero_grad":: Nil =>
+          val OPT(o: Optim) = compile(x7)
+          o.zero_grad()
+          Literal(())
+        case "variable" :: ((st: String) :: (b: String) :: Nil) :: Nil => // TODO (Fei Wang): isInput is ignored
+          compile(st)
+
+        case "SGD" :: ((paras:List[String]) :: _ :: lr :: _ :: _ :: Nil) :: Nil =>
+          val FloatCons(learning_rate) = compile(lr).asInstanceOf[FloatCons]
+          val param: Seq[Module] = paras.map(x => compile(x).asInstanceOf[Mods].v).toSeq
+          val module = new Module {
+            val name = "dummy"
+            val content: Seq[Module] = param
+          }
+          OPT(SGD(module, learning_rate))
+
+        case "nn_linear"::(args: List[Int])::Nil =>
+          Mods(Linear1D(args(1), args(0)))
         case "numpy"::"zeros"::x::Nil =>
           compile(x) match {
             case Literal(x: Rep[Int]) => NewArray[Int](x)
@@ -281,7 +355,8 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
       {System.out.println(s"adding $f"); f} match {
         case "lossFun" =>
           System.out.println("we're in lossfun area")
-          val nenv = env filter { case (_,v) => v.isInstanceOf[Tens]} map { case (k,v: Tens) => (k -> Base(v.v))}
+          val nenv = (env filter { case (_,v) => v.isInstanceOf[Tens]} map { case (k:String,v: Tens) => (k -> Base(v.v))}) ++
+                     (env filter { case (_,m) => m.isInstanceOf[Mods]} map { case (k:String,v: Mods) => (k -> ModsR(v.v))})
           System.out.println("we made nenv")
           // printEnv(nenv)
           val model = compileModel("def"::f::args::body::Nil)(nenv)
@@ -371,9 +446,11 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
   implicit def getArrayBuffer(a: ValueR): ArrayBuffer[TensorR] = a match {
     case ABase(v) => v
   }
+  case class ModsR(v: Module) extends ValueR
 
   abstract class Model
   case class Bare(f: TensorR => TensorR @diff) extends Model
+  case class F1TensorRArray(f: TensorR => Rep[Array[Float]] => TensorR @diff) extends Model
   case class F1TensorR(f: TensorR => TensorR => TensorR @diff) extends Model
   case class F2TensorR(f: TensorR => TensorR => TensorR => TensorR @diff) extends Model
   case class F1Array(f: Rep[Array[Float]] => TensorR => TensorR @diff) extends Model
@@ -463,6 +540,31 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
 
       case "call"::t =>
         t match {
+          case List("nll_loss", List(x45, x40, bool: String)) =>
+            assert(bool == "True")
+            val Base(t: TensorR) = com(x45)
+            val LitR(x: Rep[Array[Int]]) = com(x40)
+            Base(t.nllLossB(x))
+          case List("log_softmax", List(x44, dimSet: String)) =>
+            assert(dimSet == "dim=1")
+            val Base(t: TensorR) = com(x44)
+            Base(t.logSoftmaxB(1))
+          case List("relu", List(x42)) =>
+            val Base(t: TensorR) = com(x42)
+            Base(t.relu())
+          case List(x39, "view", a: Int, b: Int) =>
+            val Base(t: TensorR) = com(x39)
+            Base(t.resize(a, b))
+          case List(x5 : String, List(x30 : String)) =>
+            val Base(t: TensorR) = com(x30)
+            val ModsR(v: Linear1D) = com(x5)
+            Base(v(t))
+            // (com(x5), com(x30)) match {
+            //   case (ModsR(v: Linear1D), Base(t: TensorR)) => Base(v(t))
+            // }
+          case List(x28: String, "view", List(a: Int, b: Int)) =>
+            val Base(x28_ : TensorR) = com(x28)
+            Base(x28_.resize(a, b))
           case "tensor_randinit"::(dim0:Int)::(dim1:Int)::(dummy:Int)::(scale:Float)::Nil =>
             Base(TensorR(Tensor.randinit(dim0, dim1, scale)))
           case "tensor_zeros"::(dim0:Int)::Nil =>
@@ -613,9 +715,12 @@ trait Compiler extends ONNXLib with UninlinedFunctionOps with CpsConv {
     // TODO: (Fei Wang): this is assuming the knowledge about the types of args
     if (args.size == 2) {
       // assume that it is the tensor mul tensor case
-      F1TensorR {(base: TensorR) => (x: TensorR) =>
-        com(body)(env + (args(0) -> Base(base), args(1) -> Base(x))) match {case Base(v) => v}
+      F1TensorRArray {(base: TensorR) => (x : Rep[Array[Float]]) =>
+        com(body)(env + (args(0) -> Base(base), args(1) -> LitR(x))) match {case Base(v) => v}
       }
+      // F1TensorR {(base: TensorR) => (x: TensorR) =>
+      //   com(body)(env + (args(0) -> Base(base), args(1) -> Base(x))) match {case Base(v) => v}
+      // }
     } else if (args.size == 3) { // assume that it is the tensor mul tensor case with dummy input
       F2TensorR {(base: TensorR) => (base1: TensorR) => (x: TensorR) =>
         com(body)(env + (args(0) -> Base(base), args(1) -> Base(base1), args(2) -> Base(x))) match { case Base(v) => v}
