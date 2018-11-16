@@ -368,9 +368,10 @@ trait Compiler extends ONNXLib with NNModule with UninlinedFunctionOps with CpsC
           printDebug(s"r    >> $r")
           val func = args match {
             case x1::Nil =>
-              val fptr: Rep[Int => Int] = uninlinedFunc1 { (x1v: Rep[Int]) =>
+              val fptr: Rep[String => Unit] = uninlinedFunc1 { (x1v: Rep[String]) =>
                 compile(body)(env + (x1 -> Literal(x1v)) ) match {
-                  case Literal(n: Rep[Int]) => n
+                  // case Literal(n: Rep[Int]) => n
+                  case _ => ()
                 }
               }
               Literal(fptr)
@@ -543,8 +544,10 @@ trait Compiler extends ONNXLib with NNModule with UninlinedFunctionOps with CpsC
           case List("nll_loss", List(x45, x40, bool: String)) =>
             assert(bool == "True")
             val Base(t: TensorR) = com(x45)
-            val LitR(x: Rep[Array[Int]]) = com(x40)
-            Base(t.nllLossB(x))
+            val LitR(x: Rep[Int]) = com(x40)
+            val arr = NewArray[Int](1)
+            arr(0) = x
+            Base(t.nllLossB(arr))
           case List("log_softmax", List(x44, dimSet: String)) =>
             assert(dimSet == "dim=1")
             val Base(t: TensorR) = com(x44)
@@ -1151,24 +1154,28 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
 
       withStream(out) {
         stream.println(raw"""
-        |#include <stdio.h>
-        |#include <iostream>
-        |#include <stdlib.h>
-        |#include <stdint.h>
-        |#include <math.h>
-        |#include <unistd.h>
-        |#include <sys/types.h>
-        |#include <sys/stat.h>
-        |#include <fcntl.h>
-        |#include <sys/mman.h>
-        |#include <errno.h>
+        |#include <algorithm>
+        |#include <assert.h>
+        |#include <cblas.h>
         |#include <err.h>
-        |#include <sys/time.h>
-        |#include <time.h>
+        |#include <errno.h>
+        |#include <fcntl.h>
         |#include <functional>
+        |#include <iostream>
+        |#include <math.h>
         |#include <memory>
+        |#include <numeric>
         |#include <random>
-        |#include "lantern.h"
+        |#include <stdint.h>
+        |#include <stdio.h>
+        |#include <stdlib.h>
+        |#include <string.h>
+        |#include <sys/mman.h>
+        |#include <sys/stat.h>
+        |#include <sys/time.h>
+        |#include <sys/types.h>
+        |#include <time.h>
+        |#include <unistd.h>
         |#include "$moduleName.h"
         |using namespace std;
         |#ifndef MAP_FILE
@@ -1222,7 +1229,7 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
         |
         |$templateRawCode
         |
-        |void Snippet(char *);
+        |void x1(char *);
         |
         |std::random_device rd{};
         |std::mt19937 gen{rd()};
@@ -1233,7 +1240,7 @@ abstract class SnekDslDriverC[A:Manifest,B:Manifest](ddir: String, mmoduleName: 
         |    printf("usage: query <filename>\n");
         |    return 0;
         |  }
-        |  Snippet(argv[1]);
+        |  x1(argv[1]);
         |  return 0;
         |}
         |""".stripMargin)
