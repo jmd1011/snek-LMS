@@ -33,7 +33,7 @@ def run():
             self.fc2 = nn.Linear(50, 10)
             self.activateFunc = args.activateFunc
 
-        @torch.jit.script
+        @torch.jit.script_method
         def forward(self, x):
             x1 = x.view([-1, 784])
 
@@ -56,7 +56,7 @@ def run():
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     def train(epoch):
-        model.train()
+        # model.train()
         tloss = 0.0
         for batch_idx, (data, target) in enumerate(train_loader):
             data = Variable(data)
