@@ -1,8 +1,9 @@
 from __future__ import print_function
-from pylms import *
+from pylms import lms
 
 @lms
 def run():
+    import argparse
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
@@ -10,13 +11,8 @@ def run():
     from torchvision import datasets, transforms
     from torch.autograd import Variable
     import time
-    import argparse
-    # outer_start = time.time()
-
-    # Training settings
-    # args.cuda = not args.no_cuda and torch.cuda.is_available()
     torch.set_num_threads(1)
-    torch.manual_seed(args.seed)
+    torch.manual_seed(42)
 
     kwargs = {}
     train_loader = torch.utils.data.DataLoader(
@@ -28,15 +24,13 @@ def run():
                        # transform=transforms.ToTensor()),
         batch_size=1, shuffle=False, **kwargs)
 
-    class Net(torch.jit.ScriptModule):
-        # __constants__ = ['activateFunc']
+    class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
             self.fc1 = nn.Linear(784, 50)
             self.fc2 = nn.Linear(50, 10)
-            # self.activateFunc = args.activateFunc
 
-        @torch.jit.script_method
+        # @torch.jit.script_method
         def forward(self, x):
             x1 = x.view([-1, 784])
             x2 = F.relu(self.fc1(x1))
@@ -45,10 +39,10 @@ def run():
             return x4
 
     model = Net()
-
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.0)
 
     def train(epoch):
+        model.train()
         tloss = 0.0
         for batch_idx, (data, target) in enumerate(train_loader):
             data1 = Variable(data)
@@ -62,18 +56,15 @@ def run():
         return tloss / (batch_idx)
 
     astart = time.time()
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(1, 6):
         # start = time.time()
         train(epoch)
         # stop = time.time()
         # print('Training completed in {} sec ({} sec/image)'.format(int(stop - start), (stop - start)/60000))
     astop = time.time()
     print('All training completed in {} sec'.format(int(astop - astart)))
-    # print('Total time: {}'.format(int(astop - outer_start)))
+
+
 
 if __name__ == '__main__':
-    # print(run.src)
-    # start = time.time()
     run()
-    # end = time.time()
-    # print('Total time: {}'.format(int(end - start)))
