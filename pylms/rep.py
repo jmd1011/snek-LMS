@@ -2,9 +2,9 @@ __all__ = [
     'reflect', 'reify', 'fresh',
     'Rep', 'reflectDef', 'Tensor', 'Tuple',
     'NonLocalReturnValue', 'NonLocalBreak', 'NonLocalContinue',
-    '__if', '__while', '__def_staged', '__call_staged', '__return', '__print', '__printf',
-    '__var', '__assign', '__read', '__len',
-    '__break', '__continue', '__for'
+    '_if', '_while', '_def_staged', '_call_staged', '_return', '_print', '_printf',
+    '_var', '_assign', '_read', '_len',
+    '_break', '_continue', '_for', '_stageLambda'
 ]
 
 var_counter = 0
@@ -68,6 +68,8 @@ class Rep(object):
         return reflect(["*",m,self])
     def __truediv__(self, m):
         return reflect(["/",self,m])
+    def __rtruediv__(self, m):
+        return reflect(["/",m,self])
     def __mod__(self, m):
         return reflect(["%",self,m])
     def __eq__(self, m):
@@ -107,6 +109,8 @@ class Rep(object):
         return reflect(["array-set",self,"data",i,v])
     def dot(self, t):
         return reflect(["dot",self,t])
+    def item(self):
+        return reflect(['array-get',self,0])
 
     ## Tuple Functions
     @property
@@ -121,7 +125,7 @@ class Rep(object):
 
     def __getattr__(self, name):
         def wrapper(*args, **kwargs):
-            return reflect(["call",self,name,[' '.join([str(a) for a in args]),' '.join(['{}={}'.format(str(a),str(kwargs[a])) for a in kwargs])]])
+            return reflect(["call",self,name,' '.join([str(a) for a in args]),' '.join(['{}={}'.format(str(a),str(kwargs[a])) for a in kwargs])])
         return wrapper
 
 def Tensor(*dims):
@@ -136,16 +140,23 @@ class NonLocalReturnValue(Exception):
     def __init__(self, value):
         self.value = value
 
-def __return(value):
+def _return(value):
     raise NonLocalReturnValue(value)
 
 class NonLocalBreak(Exception): pass
 class NonLocalContinue(Exception): pass
 
-def __break(): raise NonLocalBreak()
-def __continue(): raise NonLocalContinue()
+def _stageLambda(l):
+    z = fresh()
+    return reflect(['lambda',z,reify(l, z)])
 
-def __print(value): # TODO HACK!
+def _break(): raise NonLocalBreak()
+def _continue(): raise NonLocalContinue()
+
+def _print(value): # TODO HACK!
+    if not isinstance(value, Rep):
+        print(value)
+        return
     if isinstance(value, str):
         return reflect(["print", '"{}"'.format(value)])
     else:
@@ -157,30 +168,39 @@ def reflectDef(name, args, f):
     stBlock += [["def", name, args, f]]
     return id
 
-def __def_staged(f, *args):
+def _def_staged(f, *args):
     nargs = [fresh() for _ in args]
     return reflectDef(f.__name__, nargs, reify(f, *nargs))
 
-def __call_staged(f, *args):
+def _call_staged(f, *args):
     return reflect(['call', f.__name__, *args])
 
-def __printf(s, vs):
+def _printf(s, vs):
     nvs = ['"{}"'.format(i) if isinstance(i, str) else '{}'.format(i) for i in vs]
     return reflect(["printf", ['"{}"'.format(s), "{}".format(", ".join(nvs))]])
 
-def __var():
+def _var():
     return reflect(["new"])
 
-def __assign(name, value):
+env = {}
+
+def _assign(name, value):
+    # env[name.n] = value
+    # print('>> env[{}] = {}'.format(name.n, value))
     return reflect(["set", name, value])
 
-def __read(name):
+def _read(name):
+    # value = env[name.n]
+    # print('<< env[{}] = {}'.format(name.n, value))
+    # return env[name.n]
     return reflect(["get", name])
 
-def __len(name):
+def _len(name):
+    if not isinstance(name, Rep):
+        return len(name)
     return reflect(["len", name])
 
-def __if(test, body, orelse):
+def _if(test, body, orelse):
     if not isinstance(test, Rep):
         if test:
             return body()
@@ -208,7 +228,7 @@ def __if(test, body, orelse):
         else:
             raise Exception("if/else: branches must either both return or none of them")
 
-def __while(test, body):
+def _while(test, body):
     # We don't currently support return inside while
     def capture(f):
         try: return (False, reify(f))
@@ -241,10 +261,11 @@ def __while(test, body):
     else:
         raise Exception("while: return in body not allowed")
 
-def __for(it, body):
-    if isinstance(it, list):
+def _for(it, body):
+    if not isinstance(it, Rep):
         for i in it:
-            try: body(i)
+            try:
+                body(i)
             except NonLocalBreak as e:
                 return None
             except NonLocalReturnValue as e:

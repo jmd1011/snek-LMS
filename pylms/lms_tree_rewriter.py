@@ -89,7 +89,7 @@ class StagingRewriter(ast.NodeTransformer):
         node.parent = self.fundef
         self.fundef = node
 
-        if len(list(filter(lambda n: n.id is 'rep_fun', node.decorator_list))) > 0:
+        if len(list(filter(lambda n: isinstance(n, ast.Name) and n.id is 'rep_fun', node.decorator_list))) > 0:
             self.recs.append(node.name)
 
         self.generic_visit(node)
@@ -109,14 +109,14 @@ class StagingRewriter(ast.NodeTransformer):
         # we stage all vars that are written to more than once
         inits = [ast.Assign(targets=[ast.Name(id=id, ctx=ast.Store())],
                     value=ast.Call(
-                        func=ast.Name(id='__var', ctx=ast.Load()),
+                        func=ast.Name(id='_var', ctx=ast.Load()),
                         args=[],
                         keywords=[])) \
                     for id in node.locals if node.locals[id] > 1]
 
         a_nodes = [ast.Expr(
                     ast.Call(
-                        func=ast.Name(id='__assign', ctx=ast.Load()),
+                        func=ast.Name(id='_assign', ctx=ast.Load()),
                         args=[ast.Name(id=arg,ctx=ast.Load()), ast.Name(id=r_args[arg],ctx=ast.Load())],
                         keywords=[])) \
                     for arg in r_args]
@@ -132,7 +132,7 @@ class StagingRewriter(ast.NodeTransformer):
                             body=[ast.Return(value=ast.Attribute(value=ast.Name(id='r', ctx=ast.Load()), attr='value', ctx=ast.Load()))])],
                         orelse=[],
                         finalbody=[])],
-            decorator_list=list(filter(lambda n: n.id!='lms' and n.id!='rep_fun', node.decorator_list))
+            decorator_list=list(filter(lambda n: isinstance(n, ast.Name) and n.id!='lms' and n.id!='rep_fun', node.decorator_list))
         )
         ast.copy_location(new_node, node)
         ast.fix_missing_locations(new_node)
@@ -168,16 +168,7 @@ class StagingRewriter(ast.NodeTransformer):
         else:
             id = node.targets[0].id
 
-        # if not isinstance(node.value, ast.Name):
-        #     try:
-        #         self.fundef.locals[id] -= 1
-        #     except:
-        #         pass
-
-        # try: self.fundef.locals[id] += 1
-        # except: pass
-
-        # NOTE: grab id before -- recursive call will replace lhs with __read!!
+        # NOTE: grab id before -- recursive call will replace lhs with _read!!
         self.generic_visit(node)
 
         mod = []
@@ -195,7 +186,7 @@ class StagingRewriter(ast.NodeTransformer):
             return mod
 
         new_node = ast.Expr(ast.Call(
-            func=ast.Name(id='__assign', ctx=ast.Load()),
+            func=ast.Name(id='_assign', ctx=ast.Load()),
             args=[ast.Name(id=id, ctx=ast.Load()),
                   node.value
                  ],
@@ -214,7 +205,7 @@ class StagingRewriter(ast.NodeTransformer):
             return node
 
         new_node = ast.Call(
-            func=ast.Name(id='__read', ctx=ast.Load()),
+            func=ast.Name(id='_read', ctx=ast.Load()),
             args=[ast.Name(id=node.id, ctx=ast.Load())],
             keywords=[]
         )
@@ -243,7 +234,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(eBranch)
 
         new_node = ast.Expr(value=ast.Call(
-            func=ast.Name(id='__if', ctx=ast.Load()),
+            func=ast.Name(id='_if', ctx=ast.Load()),
             args=[node.test,
                   ast.Name(id=tBranch_name, ctx=ast.Load()),
                   ast.Name(id=eBranch_name, ctx=ast.Load())
@@ -272,7 +263,7 @@ class StagingRewriter(ast.NodeTransformer):
         ast.fix_missing_locations(bFun)
 
         new_node = ast.Expr(ast.Call(
-            func=ast.Name(id='__while', ctx=ast.Load()),
+            func=ast.Name(id='_while', ctx=ast.Load()),
             args=[ast.Name(id=tFun_name, ctx=ast.Load()),
                   ast.Name(id=bFun_name, ctx=ast.Load()),
                  ],
@@ -287,7 +278,7 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
 
         new_node = ast.Expr(ast.Call(
-            func=ast.Name(id='__continue', ctx=ast.Load()),
+            func=ast.Name(id='_continue', ctx=ast.Load()),
             args=[],
             keywords=[]
         ))
@@ -299,7 +290,7 @@ class StagingRewriter(ast.NodeTransformer):
         self.generic_visit(node)
 
         new_node = ast.Expr(ast.Call(
-            func=ast.Name(id='__break', ctx=ast.Load()),
+            func=ast.Name(id='_break', ctx=ast.Load()),
             args=[],
             keywords=[]
         ))
@@ -409,7 +400,7 @@ class StagingRewriter(ast.NodeTransformer):
 
         # Recursive Call
         if self.fundef is not None and self.fundef.name == node.func.id and node.func.id in self.recs:
-            new_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+            new_node = ast.Call(func=ast.Name(id='_call_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
                                 keywords=node.keywords)
             ast.copy_location(new_node, node)
@@ -418,13 +409,13 @@ class StagingRewriter(ast.NodeTransformer):
 
         # Entering recursive call
         if node.func.id in self.recs:
-            call_node = ast.Call(func=ast.Name(id='__call_staged', ctx=ast.Load()),
+            call_node = ast.Call(func=ast.Name(id='_call_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
                                 keywords=node.keywords)
             ast.copy_location(call_node, node)
             ast.fix_missing_locations(call_node)
 
-            def_node = ast.Expr(ast.Call(func=ast.Name(id='__def_staged', ctx=ast.Load()),
+            def_node = ast.Expr(ast.Call(func=ast.Name(id='_def_staged', ctx=ast.Load()),
                                 args=[ast.Name(id=node.func.id, ctx=ast.Load())] + node.args,
                                 keywords=node.keywords))
             ast.copy_location(def_node, call_node)
@@ -462,7 +453,7 @@ class StagingRewriter(ast.NodeTransformer):
                 return new_node
 
             else:
-                new_node = ast.Call(func=ast.Name(id='__print', ctx=ast.Load()),
+                new_node = ast.Call(func=ast.Name(id='_print', ctx=ast.Load()),
                                     args=node.args,
                                     keywords=[])
 
@@ -471,7 +462,7 @@ class StagingRewriter(ast.NodeTransformer):
                 return new_node
 
         if node.func.id is 'len':
-            new_node = ast.Call(func=ast.Name(id='__len', ctx=ast.Load()),
+            new_node = ast.Call(func=ast.Name(id='_len', ctx=ast.Load()),
                                 args=node.args,
                                 keywords=[])
             ast.copy_location(new_node, node)
@@ -504,7 +495,7 @@ class StagingRewriter(ast.NodeTransformer):
 
     def visit_Return(self, node):
         self.generic_visit(node)
-        new_node = ast.Expr(ast.Call(func=ast.Name(id='__return', ctx=ast.Load()),
+        new_node = ast.Expr(ast.Call(func=ast.Name(id='_return', ctx=ast.Load()),
                                                    args=[node.value],
                                                    keywords=[]))
         ast.copy_location(new_node, node)
@@ -556,7 +547,7 @@ class StagingRewriter(ast.NodeTransformer):
             # self.scope.visit(outer_fun)
             # self.visit(outer_fun)
 
-            new_node = ast.Expr(ast.Call(func=ast.Name(id='__for_dataloader', ctx=ast.Load()),
+            new_node = ast.Expr(ast.Call(func=ast.Name(id='_for_dataloader', ctx=ast.Load()),
                                          args=[node.iter.args[0],
                                                ast.Name(id=outer_fun_name, ctx=ast.Load())],
                                          keywords=[]))
@@ -578,7 +569,7 @@ class StagingRewriter(ast.NodeTransformer):
             # self.visit(bFun)
 
             new_node = ast.Expr(ast.Call(
-                func=ast.Name(id='__for', ctx=ast.Load()),
+                func=ast.Name(id='_for', ctx=ast.Load()),
                 args=[node.iter,
                       ast.Name(id=bFun_name, ctx=ast.Load())],
                 keywords=[]))
