@@ -12,16 +12,18 @@ def run(dummy):
     from torch.autograd import Variable
     import time
 
-    # parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    # parser.add_argument('--epochs', type=int, default=10, metavar='N',
-    #                     help='number of epochs to train (default: 10)')
-    # parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
-    #                     help='learning rate (default: 0.0005)')
-    # parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
-    #                     help='SGD momentum (default: 0.0)')
-    # parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
-    #                     help='how many batches to wait before logging training status')
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--lr', type=float, default=0.0005, metavar='LR',
+                        help='learning rate (default: 0.0005)')
+    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+                        help='SGD momentum (default: 0.0)')
+    parser.add_argument('--log-interval', type=int, default=6000, metavar='N',
+                        help='how many batches to wait before logging training status')
+    parser.add_argument('--activateFunc', type=int, default=1, metavar='N',
+                        help='1 = relu, else tanh')
+    args = parser.parse_args()
 
     kwargs = {}
     train_loader = torch.utils.data.DataLoader(
@@ -33,7 +35,7 @@ def run(dummy):
         batch_size=1, shuffle=False, **kwargs)
 
     fc1 = nn.Linear(784, 50)
-    fc2 = nn.Linear(50, 10) # let x2 (call nn_linear (10, 50))
+    fc2 = nn.Linear(50, 10)
     optimizer = optim.SGD([fc1, fc2], lr=0.0005, momentum=0.0)
 
     @rep_fun
@@ -51,11 +53,9 @@ def run(dummy):
             data1 = Variable(data, volatile=True)
             target1 = Variable(target)
             optimizer.zero_grad()
-            # output = forward(data1)
-            # res = F.nll_loss(output, target1)
             res = lossFun(data1, target1)
-            loss = res.backward()
-            tloss = tloss + loss.data[0]
+            res.backward()
+            tloss = tloss + res.item()
             optimizer.step()
             tmp = tloss
             if (batch_idx + 1) % 6000 == 0:
