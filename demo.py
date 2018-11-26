@@ -1,26 +1,34 @@
 from pylms.decorators import *
 
+# @lms
+# def r(x):
+#   def lifting_param(x):
+#     if x > 0:
+#       x = x + 1
+#     else:
+#       x = x - 1
+#     return x
+#   return lifting_param(x)
+
 @lms
-def r(x):
-  def lifting_param(x):
-    if x > 0:
-      x = x + 1
-    else:
-      x = x - 1
-    return x
-  return lifting_param(x)
+def r(x,y):
+  if True:
+    r = x
+  else:
+    r = y
+  return r
 
 print("======= Original code =======")
 print(r.original_src)
 print("======= Converted code ========")
 print(r.src)
-val = r(2)
+val = r(2, 3)
 assert(val == 3)
 print("\n")
 
 @stage
-def runLift(x):
-  return r(x)
+def runLift(x, y):
+  return r(x, y)
 
 print("======= SExpr ========")
 print(runLift.code)
