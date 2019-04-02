@@ -12,36 +12,35 @@ def power(b, x):
 def power3(b):
   return power(b, 3)
 
-def testPower():
-  x = power(3)
-  print(x)
-  assert x == 27
+# def testPower():
+#   x = power3(3)
+#   assert x == 27
 
-@lms
-def foobar(x):
-  if (x == 0):
-    print('yes')
-  else:
-    print('no')
-  return x
+# @lms
+# def foobar(x):
+#   if (x == 0):
+#     print('yes')
+#   else:
+#     print('no')
+#   return x
 
-@stage
-def foobar1(x):
-  return foobar(x)
+# @stage
+# def foobar1(x):
+#   return foobar(x)
 
-def testFoobar1():
-  assert(foobar1(3) == 3)
+# def testFoobar1():
+#   assert(foobar1(3) == 3)
 
-@lms
-def loop(n):
-  x = 0
-  while x < n:
-    x = x + 1
-  return x
+# @lms
+# def loop(n):
+#   x = 0
+#   while x < n:
+#     x = x + 1
+#   return x
 
-@stage
-def loop1(n):
-  return loop(n)
+# @stage
+# def loop1(n):
+#   return loop(n)
 
-def testLoop1():
-  assert(loop1(5) == 5)
+# def testLoop1():
+#   assert(loop1(5) == 5)
