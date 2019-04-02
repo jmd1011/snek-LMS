@@ -60,7 +60,6 @@ def lms(func):
             self.ast = visitor.visit(self.original_ast)
             py_ast.fix_missing_locations(self.ast)
             self.src = astunparse.unparse(self.ast)
-            print('self.src = {}'.format(self.src))
             exec(compile(self.ast, filename="<ast>", mode="exec"), globals())
             self.func = eval(func.__name__)
         def __call__(self,*args):
@@ -149,7 +148,6 @@ def lmscompile(func):
         def __init__(self):
             self.original = func
             self.code = str(reify(lambda: func(Rep("in"))))
-            print('self.code = {}'.format(self.code))
             # obtain sexpr via .replace("[","(").replace("]",")")
 
         def __call__(self,*args):
