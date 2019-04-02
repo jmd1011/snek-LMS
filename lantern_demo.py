@@ -59,16 +59,16 @@ def run(dummy):
             optimizer.step()
             tmp = tloss
             if (batch_idx + 1) % 6000 == 0:
-                print('Train Epoch: {:.0f} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx + 1, len(train_loader),
-                    100. * batch_idx / len(train_loader), tmp / batch_idx))
+                    100. * batch_idx / len(train_loader), tmp))
         return tloss / len(train_loader)
 
     idx = 0
     print("Start Training")
-    while idx < 10:
+    while idx < 5:
         idx = idx + 1
-        print('Epoch {:.0f}'.format(idx))
+        print('Epoch {}'.format(idx))
         train(idx)
 
 print("==============================================================")
@@ -98,7 +98,11 @@ print(runX.Ccode)
 print("==============================================================")
 print("========================EXECUTING CODE========================")
 print("==============================================================")
+import time
+start = time.time()
 runX('')
+stop = time.time()
+print(int(stop - start))
 
 print("==============================================================")
 print("========================EXITING PROGRAM=======================")

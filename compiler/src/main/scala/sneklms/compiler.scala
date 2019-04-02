@@ -186,7 +186,7 @@ trait Compiler extends ONNXLib with NNModule with UninlinedFunctionOps with CpsC
     case "-"::n::m::Nil =>
       compile[Int,Int](n, m)(_ - _)
     case List("/", n, m) =>
-      compile[Int,Int](n, m)(_ / _)
+      compile[Float,Float](n, m)(_ / _)
     case List("/", x52, i: Int) =>
       compile(x52) match {
         case Literal(n: Rep[Int]) => Literal(n / i)
@@ -394,6 +394,9 @@ trait Compiler extends ONNXLib with NNModule with UninlinedFunctionOps with CpsC
           printDebug(s"******************$r")
           compile(r)(env + (f -> func))
       }
+    case "len"::(x:String)::Nil =>
+      val Dataset1(loader) = env(x)
+      Literal(loader.length)
     case "lambda"::(f: String)::(x: String)::e::Nil =>
       lazy val fptr: Rep[Int => Int] = fun { (xv: Rep[Int]) =>
         compile(e)(env + (x -> Literal(xv)) + (f -> Literal(fptr))) match {

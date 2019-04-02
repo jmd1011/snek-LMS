@@ -32,29 +32,33 @@ def power2(b, x):
     try:
 
         def then$1():
-            __return(1)
+            _return(1)
 
         def else$1():
-            __return((b * power2(b, (x - 1))))
-        __if((x == 0), then$1, else$1)
+            _return((b * power2(b, (x - 1))))
+        _if((x == 0), then$1, else$1)
     except NonLocalReturnValue as r:
         return r.value
 """)
 
+
 @lms
 def foobar1(x):
-    if (x == 0):
+    if x == 0:
         print('yes')
     else:
         print('no')
     return x
 
-# @pytest.mark.skip(reason="careful: print is now lifted!")
+
 def test_foobar1():
-   assert(lmscompile(lambda _: foobar1(7)).code == """['begin', ['let', x0, ['print', '"no"']], 7]""")
+    assert lmscompile(lambda _: foobar1(7)).code == """['begin', 7]"""
+
 
 def test_foobar1_staged():
-    assert(lmscompile(foobar1).code ==
+    foobar1_code = lmscompile(foobar1).code
+    print(foobar1_code)
+    assert(foobar1_code ==
 """
 ['begin', ['let', x0, ['==', in, 0]],
  ['let', x1, ['if', x0,
@@ -62,7 +66,6 @@ def test_foobar1_staged():
   ['begin', ['let', x1, ['print', '"no"']], None]]], in]
 """.replace('\n','').replace('  ',' ').replace('  ',' '))
 
-#        "['if', ['==', in, 0], ['print' 'yes'], ['print' 'no']]")
 
 def test_foobar1_rewrite():
     assert(foobar1.src == """
@@ -71,12 +74,12 @@ def foobar1(x):
     try:
 
         def then$1():
-            __print('yes')
+            _print('yes')
 
         def else$1():
-            __print('no')
-        __if((x == 0), then$1, else$1)
-        __return(x)
+            _print('no')
+        _if((x == 0), then$1, else$1)
+        _return(x)
     except NonLocalReturnValue as r:
         return r.value
 """)
@@ -102,11 +105,11 @@ def foobar2(x):
     try:
 
         def then$1():
-            __return('yes')
+            _return('yes')
 
         def else$1():
-            __return('no')
-        __if((x == 0), then$1, else$1)
+            _return('no')
+        _if((x == 0), then$1, else$1)
     except NonLocalReturnValue as r:
         return r.value
 """)
@@ -144,16 +147,16 @@ def test_loop1_rewrite():
 
 def loop1(n):
     try:
-        x = __var()
-        __assign(x, 0)
+        x = _var()
+        _assign(x, 0)
 
         def cond$1():
-            return (__read(x) < n)
+            return (_read(x) < n)
 
         def body$1():
-            __assign(x, (__read(x) + 1))
-        __while(cond$1, body$1)
-        __return(__read(x))
+            _assign(x, (_read(x) + 1))
+        _while(cond$1, body$1)
+        _return(_read(x))
     except NonLocalReturnValue as r:
         return r.value
 """)

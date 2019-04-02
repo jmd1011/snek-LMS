@@ -7,7 +7,10 @@ __all__ = [
     '_break', '_continue', '_for', '_stageLambda'
 ]
 
+
 var_counter = 0
+in_staging = False
+
 
 def freshName(): # for generating AST
     global var_counter
@@ -154,7 +157,7 @@ def _break(): raise NonLocalBreak()
 def _continue(): raise NonLocalContinue()
 
 def _print(value): # TODO HACK!
-    if not isinstance(value, Rep):
+    if not isinstance(value, Rep) and not in_staging:
         print(value)
         return
     if isinstance(value, str):
@@ -182,34 +185,32 @@ def _printf(s, vs):
 def _var():
     return reflect(["new"])
 
-env = {}
+# env = {}
 
 def _assign(name, value):
-    # env[name.n] = value
-    # print('>> env[{}] = {}'.format(name.n, value))
     return reflect(["set", name, value])
 
 def _read(name):
-    # value = env[name.n]
-    # print('<< env[{}] = {}'.format(name.n, value))
-    # return env[name.n]
     return reflect(["get", name])
 
 def _len(name):
-    if not isinstance(name, Rep):
-        return len(name)
+    # if not isinstance(name, Rep):
+        # return len(name)
     return reflect(["len", name])
 
 def _if(test, body, orelse):
+    global in_staging
     if not isinstance(test, Rep):
         if test:
             return body()
         else:
             return orelse()
     else:
+        curr_in_staging = in_staging
+        in_staging = True
         # There's a little bit of complication dealing with
-        # __return: we currently require that either both
-        # of the if branches __return, or none of them.
+        # _return: we currently require that either both
+        # of the if branches _return, or none of them.
         def capture(f):
             try: return (False, reify(f))
             except NonLocalReturnValue as e:
@@ -221,6 +222,7 @@ def _if(test, body, orelse):
         # if len(elsep) > 1:
         #     elsep.insert(0, "begin")
         rval = reflect(["if", test, thenp, elsep])
+        in_staging = curr_in_staging
         if thenret & elseret:
             raise NonLocalReturnValue(rval) # proper return
         elif (not thenret) & (not elseret):
@@ -229,6 +231,7 @@ def _if(test, body, orelse):
             raise Exception("if/else: branches must either both return or none of them")
 
 def _while(test, body):
+    global in_staging
     # We don't currently support return inside while
     def capture(f):
         try: return (False, reify(f))
@@ -251,17 +254,21 @@ def _while(test, body):
                 pass
         return
 
+    curr_in_staging = in_staging
+    in_staging = True
     # no way to protect against side-effect in gen code other than removing
     # ttest's generated code in post-processing
     testret, testp = capture(test)
     bodyret, bodyp = capture(body)
     rval = reflect(["while", testp, bodyp])
+    in_staging = curr_in_staging
     if (not testret) & (not bodyret):
         return rval
     else:
         raise Exception("while: return in body not allowed")
 
 def _for(it, body):
+    global in_staging
     if not isinstance(it, Rep):
         for i in it:
             try:
@@ -279,9 +286,12 @@ def _for(it, body):
         except NonLocalReturnValue as e:
             return e.value
 
+    curr_in_staging = in_staging
+    in_staging = True
     i = fresh()
     bodyret, bodyp = capture(body, i)
     rval = reflect(["for", i, it, bodyp])
+    in_staging = False
     if not bodyret:
         return rval
     else:

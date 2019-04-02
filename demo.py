@@ -1,4 +1,50 @@
 from pylms.decorators import *
+from pylms.rep import *
+
+@lms
+def foo(value):
+  my_staged_lambda = __stageLambda(lambda x: x if x > 0 else 0)
+  return my_staged_lambda(value)
+
+@stage
+def testFoo(x):
+  return foo(x)
+print(foo.src)
+print(testFoo.code)
+assert(False)
+
+
+@lms
+def run(x):
+  # @rep_fun
+  def power(n, k):
+    if k == 0:
+      return 1
+    else:
+      return n * power(n, k - 1)
+  res = power(x, 4)
+  return res
+
+print("======= Original code =======")
+print(run.original_src)
+print("======= Converted code ========")
+print(run.src)
+print("\n")
+
+@stage
+def runX(x):
+  return run(x)
+
+print(runX.Ccode)
+
+# print(run.src)
+# print(run(4))
+assert(False)
+
+def run(x):
+  x = __var()
+  def body():
+    __assign(x, x - 1)
 
 @lms
 def r(x):
@@ -63,8 +109,7 @@ def run(x):
     if k == 0:
       return 1
     else:
-      return n * \
-        power(n, k - 1)
+      return n * power(n, k - 1)
   res = power(x, 3)
   return res
 

@@ -444,7 +444,7 @@ class StagingRewriter(ast.NodeTransformer):
                     node.args[0].func.value,
                     ast.List(elts=node.args[0].args,ctx=ast.Load())
                 ]
-                new_node = ast.Call(func=ast.Name(id='__printf', ctx=ast.Load()),
+                new_node = ast.Call(func=ast.Name(id='_printf', ctx=ast.Load()),
                                     args=args,
                                     keywords=[])
 
